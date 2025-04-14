@@ -1,0 +1,15 @@
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.csproj.AssemblyReference.cache
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.GeneratedMSBuildEditorConfig.editorconfig
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.AssemblyInfoInputs.cache
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.AssemblyInfo.cs
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.csproj.CoreCompileInputs.cache
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/bin/Debug/net9.0/Themis.Infrastructure.deps.json
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/bin/Debug/net9.0/Themis.Infrastructure.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/bin/Debug/net9.0/Themis.Infrastructure.pdb
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/bin/Debug/net9.0/Themis.Core.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/bin/Debug/net9.0/Themis.Core.pdb
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.I.C537EBB1.Up2Date
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/refint/Themis.Infrastructure.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.pdb
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/ref/Themis.Infrastructure.dll

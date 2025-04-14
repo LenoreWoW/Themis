@@ -1,0 +1,11 @@
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/obj/Debug/net9.0/Themis.Core.GeneratedMSBuildEditorConfig.editorconfig
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/obj/Debug/net9.0/Themis.Core.AssemblyInfoInputs.cache
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/obj/Debug/net9.0/Themis.Core.AssemblyInfo.cs
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/obj/Debug/net9.0/Themis.Core.csproj.CoreCompileInputs.cache
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/bin/Debug/net9.0/Themis.Core.deps.json
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/bin/Debug/net9.0/Themis.Core.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/bin/Debug/net9.0/Themis.Core.pdb
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/obj/Debug/net9.0/Themis.Core.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/obj/Debug/net9.0/refint/Themis.Core.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/obj/Debug/net9.0/Themis.Core.pdb
+/Users/hassanalsahli/Desktop/Themis/Themis.Core/obj/Debug/net9.0/ref/Themis.Core.dll

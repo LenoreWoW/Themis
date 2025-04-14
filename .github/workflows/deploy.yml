@@ -1,0 +1,96 @@
+name: Themis CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build-and-test-api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: '9.0.x'
+          
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: ./Themis.API
+        
+      - name: Build API
+        run: dotnet build --no-restore
+        working-directory: ./Themis.API
+        
+      - name: Test
+        run: dotnet test --no-build --verbosity normal
+        working-directory: ./Themis.API
+        
+      - name: Publish
+        run: dotnet publish -c Release -o ./publish
+        working-directory: ./Themis.API
+        
+      - name: Upload API artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-build
+          path: ./Themis.API/publish
+
+  build-and-test-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+          cache-dependency-path: ./themis-client/package-lock.json
+          
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./themis-client
+        
+      - name: Build client
+        run: npm run build
+        working-directory: ./themis-client
+        
+      - name: Upload client artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: client-build
+          path: ./themis-client/build
+
+  deploy:
+    needs: [build-and-test-api, build-and-test-client]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    environment: production
+    
+    steps:
+      - name: Download API artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: api-build
+          path: ./api-publish
+          
+      - name: Download client artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: client-build
+          path: ./client-build
+          
+      # Add your specific deployment steps here
+      # This might include Azure deployment, Docker builds, etc.
+      
+      - name: Deploy to Azure (placeholder)
+        run: echo "Deployment would happen here"
+        
+      - name: Notify on success
+        if: success()
+        run: echo "Deployment successful" 

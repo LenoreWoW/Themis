@@ -1,0 +1,12 @@
+{
+  "Version": 1,
+  "Hash": "0pi/vw9nK5tG5HjndgCfFfB4/G/25xwaaDBfjGCFwbE=",
+  "Source": "Themis.API",
+  "BasePath": "_content/Themis.API",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": [],
+  "Endpoints": []
+}
