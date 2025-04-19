@@ -24,19 +24,30 @@ import {
   Toolbar,
   Stack,
   CircularProgress,
-  Alert
+  Alert,
+  useMediaQuery,
+  useTheme
 } from '@mui/material';
 import {
   Add as AddIcon,
   FilterList as FilterIcon,
   Search as SearchIcon,
-  MoreVert as MoreIcon
+  MoreVert as MoreIcon,
+  ViewList as ViewListIcon,
+  ViewModule as ViewModuleIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Project, ProjectStatus, User } from '../types';
 import api from '../services/api';
 import AddProjectDialog from '../components/Project/AddProjectDialog';
+import { useTranslation } from 'react-i18next';
+import EnhancedCard from '../components/common/EnhancedCard';
+import StatusBadge from '../components/common/StatusBadge';
+import SkeletonLoader from '../components/common/SkeletonLoader';
+import CircularProgressWithLabel from '../components/common/CircularProgressWithLabel';
+import { GridItem, GridContainer } from '../components/common/MuiGridWrapper';
+import { mockProjects, mockUsers, mockDepartments } from '../services/mockData';
 
 // Define Department type for the dialog
 interface Department {
@@ -55,7 +66,12 @@ const statusOptions = [
 ];
 
 // Helper function to get status color
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: string, endDate?: string) => {
+  // Check if the project is overdue (end date is before current date)
+  if (endDate && new Date(endDate) < new Date()) {
+    return 'error'; // Red color for overdue projects
+  }
+  
   switch(status) {
     case 'PLANNING': return 'info';
     case 'IN_PROGRESS': return 'primary';
@@ -78,109 +94,68 @@ const getStatusLabel = (status: string) => {
   }
 };
 
+// Map API status to component status type
+const mapStatusToType = (status: string): 'planning' | 'inProgress' | 'onHold' | 'completed' | 'cancelled' | 'todo' | 'review' | 'overdue' => {
+  if (status === 'PLANNING') return 'planning';
+  if (status === 'IN_PROGRESS') return 'inProgress';
+  if (status === 'ON_HOLD') return 'onHold';
+  if (status === 'COMPLETED') return 'completed';
+  if (status === 'CANCELLED') return 'cancelled';
+  return 'todo';
+};
+
 const ProjectsPage: React.FC = () => {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [rowsPerPage, setRowsPerPage] = useState(6);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('All');
   const [departmentFilter, setDepartmentFilter] = useState('All');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [departmentOptions, setDepartmentOptions] = useState<string[]>(['All']);
+  const [departmentOptions, setDepartmentOptions] = useState<string[]>([]);
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState(mockDepartments);
+  const [users, setUsers] = useState(mockUsers);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   
   const navigate = useNavigate();
   const { isProjectManager, isAdmin, token, user } = useAuth();
   
   // Fetch projects when component mounts
   useEffect(() => {
-    const fetchProjects = async () => {
-      setLoading(true);
+    const fetchData = async () => {
       try {
-        if (!token) {
-          throw new Error('No authentication token found');
-        }
+        setLoading(true);
         
-        const response = await api.projects.getAllProjects(token);
-        console.log('API Response:', response);
-        
-        let projects: Project[] = [];
-        
-        // Check if response is an array, if not handle accordingly
-        if (!Array.isArray(response)) {
-          console.error('Expected array response from API but got:', typeof response);
-          // If response is an object with a data property that's an array, use that
-          const responseObj = response as any;
-          projects = Array.isArray(responseObj.data) ? responseObj.data : [];
-        } else {
-          projects = response as Project[];
-        }
-        
-        setProjects(projects);
-        
-        // Only try to extract departments if projects is an array and has items
-        if (projects.length > 0) {
-          // Create a Set from department names, filtering out any null/undefined values
-          const departmentSet = new Set(
-            projects
-              .map(project => project.department)
-              .filter(dept => dept !== null && dept !== undefined && dept !== '')
+        // Get mock projects
+        setTimeout(() => {
+          setProjects(mockProjects);
+          
+          // Get unique departments
+          const departmentSet = new Set<string>(
+            mockDepartments.map(dept => dept.name)
           );
           
           // Convert Set to Array and add 'All' at the beginning
           const deptOptions = ['All', ...Array.from(departmentSet)];
           setDepartmentOptions(deptOptions);
-          
-          // Create department objects for the dialog
-          const deptObjects = Array.from(departmentSet).map((dept, index) => ({
-            id: `dept-${index}`,
-            name: dept as string
-          }));
-          setDepartments(deptObjects);
-        }
+          setDepartments(mockDepartments);
+          setLoading(false);
+        }, 1000); // Simulate loading delay
         
-        // Mock users for the dialog
-        setUsers([
-          { 
-            id: '1', 
-            username: 'john.doe', 
-            firstName: 'John', 
-            lastName: 'Doe', 
-            role: 'PROJECT_MANAGER',
-            email: 'john.doe@example.com',
-            department: 'IT',
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          } as User,
-          { 
-            id: '2', 
-            username: 'jane.smith', 
-            firstName: 'Jane', 
-            lastName: 'Smith', 
-            role: 'SUB_PMO',
-            email: 'jane.smith@example.com',
-            department: 'PMO',
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          } as User
-        ]);
-        
-        setError(null);
-      } catch (err) {
-        console.error('Failed to fetch projects:', err);
-        setError('Failed to load projects. Please try again later.');
-      } finally {
+      } catch (error) {
+        console.error('Error fetching projects:', error);
+        setProjects([]);
         setLoading(false);
       }
     };
 
-    fetchProjects();
-  }, [token]);
+    fetchData();
+  }, []);
   
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -210,36 +185,9 @@ const ProjectsPage: React.FC = () => {
     setIsAddProjectDialogOpen(true);
   };
   
-  const handleProjectAdded = () => {
-    // Refresh projects after a new project is added
-    // In a real application, you would fetch the updated project list
-    // For this example, we'll just reuse the existing fetch method
-    if (token) {
-      const fetchProjects = async () => {
-        setLoading(true);
-        try {
-          const response = await api.projects.getAllProjects(token);
-          
-          let projects: Project[] = [];
-          if (!Array.isArray(response)) {
-            const responseObj = response as any;
-            projects = Array.isArray(responseObj.data) ? responseObj.data : [];
-          } else {
-            projects = response as Project[];
-          }
-          
-          setProjects(projects);
-          setError(null);
-        } catch (err) {
-          console.error('Failed to fetch projects:', err);
-          setError('Failed to refresh projects. New project may have been created.');
-        } finally {
-          setLoading(false);
-        }
-      };
-      
-      fetchProjects();
-    }
+  const handleProjectAdded = (newProject: Project) => {
+    // Add the new project to the existing projects list
+    setProjects([...projects, newProject]);
   };
   
   const handleProjectClick = (id: string) => {
@@ -264,7 +212,8 @@ const ProjectsPage: React.FC = () => {
           (typeof project.status === 'string' && project.status.replace(/([A-Z])/g, '_$1').toUpperCase() === statusFilter);
         
         // Department filter
-        const matchesDepartment = departmentFilter === 'All' || project.department === departmentFilter;
+        const matchesDepartment = departmentFilter === 'All' || 
+          (project as Project).department.name === departmentFilter;
         
         return matchesSearch && matchesStatus && matchesDepartment;
       })
@@ -276,26 +225,176 @@ const ProjectsPage: React.FC = () => {
     page * rowsPerPage + rowsPerPage
   );
   
+  // Helper function to get translated status label
+  const getTranslatedStatusLabel = (status: string): string => {
+    // Try to use the projectStatus namespace first for more granular control
+    const projectStatusKey = `projectStatus.${status}`;
+    const translatedStatus = t(projectStatusKey);
+
+    // If the translation key exists and returns a valid translation (not the key itself)
+    if (translatedStatus !== projectStatusKey) {
+      return translatedStatus;
+    }
+
+    // Fall back to the older status namespace if needed
+    switch(status) {
+      case 'PLANNING': return t('status.planning');
+      case 'IN_PROGRESS': return t('status.inProgress');
+      case 'ON_HOLD': return t('status.onHold');
+      case 'COMPLETED': return t('status.completed');
+      case 'CANCELLED': return t('status.cancelled');
+      default: return status;
+    }
+  };
+
+  // Check if a project is overdue
+  const isOverdue = (endDate?: string): boolean => {
+    return endDate ? new Date(endDate) < new Date() : false;
+  };
+
+  // Render grid view
+  const renderGridView = () => (
+    <GridContainer spacing={3}>
+      {paginatedProjects.map((project) => {
+        const statusType = isOverdue(project.endDate) ? 'overdue' : mapStatusToType(
+          typeof project.status === 'string' ? project.status : ProjectStatus[project.status]
+        );
+        
+        return (
+          <GridItem xs={12} sm={6} md={4} key={project.id}>
+            <EnhancedCard
+              title={project.name}
+              subtitle={project.department.name}
+              onClick={() => handleProjectClick(project.id)}
+              sx={{ height: '100%' }}
+              footer={
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                  </Typography>
+                  <Typography variant="caption">
+                    {project.projectManager
+                      ? `${project.projectManager.firstName || ''} ${project.projectManager.lastName || ''}`.trim()
+                      : t('project.unassigned')}
+                  </Typography>
+                </Box>
+              }
+            >
+              <Box sx={{ mb: 2 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ height: 40, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {project.description}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
+                <StatusBadge 
+                  status={statusType}
+                  label={getTranslatedStatusLabel(typeof project.status === 'string' ? project.status : ProjectStatus[project.status])}
+                  size="small"
+                />
+                <CircularProgressWithLabel value={project.progress} size={50} thickness={4} />
+              </Box>
+            </EnhancedCard>
+          </GridItem>
+        );
+      })}
+    </GridContainer>
+  );
+
+  // Render list view
+  const renderListView = () => (
+    <TableContainer>
+      <Table sx={{ minWidth: 750 }} aria-label="projects table">
+        <TableHead>
+          <TableRow>
+            <TableCell>{t('project.name')}</TableCell>
+            <TableCell>{t('project.department')}</TableCell>
+            <TableCell>{t('project.status')}</TableCell>
+            <TableCell>{t('project.projectManager')}</TableCell>
+            <TableCell>{t('common.timeline')}</TableCell>
+            <TableCell>{t('project.progress')}</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {paginatedProjects.map((project) => {
+            const statusType = isOverdue(project.endDate) ? 'overdue' : mapStatusToType(
+              typeof project.status === 'string' ? project.status : ProjectStatus[project.status]
+            );
+            
+            return (
+              <TableRow
+                hover
+                key={project.id}
+                onClick={() => handleProjectClick(project.id)}
+                sx={{ cursor: 'pointer' }}
+              >
+                <TableCell component="th" scope="row">
+                  <Typography variant="body1" fontWeight="medium">
+                    {project.name}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 300 }}>
+                    {project.description}
+                  </Typography>
+                </TableCell>
+                <TableCell>{project.department.name}</TableCell>
+                <TableCell>
+                  <StatusBadge 
+                    status={statusType}
+                    label={getTranslatedStatusLabel(typeof project.status === 'string' ? project.status : ProjectStatus[project.status])}
+                  />
+                </TableCell>
+                <TableCell>
+                  {project.projectManager
+                    ? `${project.projectManager.firstName || ''} ${project.projectManager.lastName || ''}`.trim()
+                    : t('project.unassigned')}
+                </TableCell>
+                <TableCell>
+                  <Typography variant="body2">
+                    {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                  </Typography>
+                </TableCell>
+                <TableCell>
+                  <CircularProgressWithLabel value={project.progress} size={46} thickness={4} />
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+  
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">Projects</Typography>
+        <Typography variant="h4" component="h1" fontWeight="bold">{t('navigation.projects')}</Typography>
         {(isAdmin || isProjectManager) && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleCreateProject}
+            sx={{
+              borderRadius: 2,
+              px: 3,
+              py: 1,
+              boxShadow: 3,
+              transition: 'all 0.2s',
+              '&:hover': {
+                transform: 'translateY(-2px)',
+                boxShadow: 4
+              }
+            }}
           >
-            Create Project
+            {t('project.add')}
           </Button>
         )}
       </Box>
       
-      <Paper sx={{ width: '100%', mb: 2 }}>
+      <Paper sx={{ width: '100%', mb: 2, borderRadius: 2, overflow: 'hidden' }}>
         <Toolbar sx={{ pl: { sm: 2 }, pr: { xs: 1, sm: 1 } }}>
-          <Stack direction="row" spacing={2} sx={{ width: '100%' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: '100%', py: 1 }}>
             <TextField
-              placeholder="Search projects..."
+              placeholder={t('common.search')}
               variant="outlined"
               size="small"
               value={searchQuery}
@@ -303,158 +402,109 @@ const ProjectsPage: React.FC = () => {
               InputProps={{
                 startAdornment: <SearchIcon sx={{ mr: 1, color: 'action.active' }} />,
               }}
-              sx={{ minWidth: 200 }}
+              sx={{ minWidth: { xs: '100%', sm: 200 } }}
             />
             
-            <FormControl sx={{ minWidth: 150, ml: 2 }} size="small">
-              <InputLabel id="status-filter-label">Status</InputLabel>
-              <Select
-                labelId="status-filter-label"
-                id="status-filter"
-                value={statusFilter}
-                label="Status"
-                onChange={handleStatusFilterChange}
-              >
-                {statusOptions.map((status) => (
-                  <MenuItem key={status} value={status}>
-                    {status === 'All' ? 'All' : getStatusLabel(status)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl sx={{ minWidth: 150 }} size="small">
-              <InputLabel id="department-filter-label">Department</InputLabel>
-              <Select
-                labelId="department-filter-label"
-                id="department-filter"
-                value={departmentFilter}
-                label="Department"
-                onChange={handleDepartmentFilterChange}
-              >
-                {departmentOptions.map((department) => (
-                  <MenuItem key={department} value={department}>
-                    {department}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, flex: 1 }}>
+              <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size="small">
+                <InputLabel id="status-filter-label">{t('project.status')}</InputLabel>
+                <Select
+                  labelId="status-filter-label"
+                  id="status-filter"
+                  value={statusFilter}
+                  label={t('project.status')}
+                  onChange={handleStatusFilterChange}
+                >
+                  {statusOptions.map((status) => (
+                    <MenuItem key={status} value={status}>
+                      {status === 'All' ? t('common.all') : getTranslatedStatusLabel(status)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size="small">
+                <InputLabel id="department-filter-label">{t('project.department')}</InputLabel>
+                <Select
+                  labelId="department-filter-label"
+                  id="department-filter"
+                  value={departmentFilter}
+                  label={t('project.department')}
+                  onChange={handleDepartmentFilterChange}
+                >
+                  {departmentOptions.map((department) => (
+                    <MenuItem key={department} value={department}>
+                      {department}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              <Box sx={{ display: 'flex', ml: 'auto', alignItems: 'center' }}>
+                <Tooltip title={t('common.listView')}>
+                  <IconButton color={viewMode === 'list' ? 'primary' : 'default'} onClick={() => setViewMode('list')}>
+                    <ViewListIcon />
+                  </IconButton>
+                </Tooltip>
+                <Tooltip title={t('common.gridView')}>
+                  <IconButton color={viewMode === 'grid' ? 'primary' : 'default'} onClick={() => setViewMode('grid')}>
+                    <ViewModuleIcon />
+                  </IconButton>
+                </Tooltip>
+              </Box>
+            </Box>
           </Stack>
         </Toolbar>
         
-        <TableContainer>
-          <Table sx={{ minWidth: 750 }} aria-label="projects table">
-            <TableHead>
-              <TableRow>
-                <TableCell>Project Name</TableCell>
-                <TableCell>Department</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Project Manager</TableCell>
-                <TableCell>Timeline</TableCell>
-                <TableCell>Progress</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <CircularProgress size={40} />
-                    <Typography variant="body2" sx={{ mt: 2 }}>
-                      Loading projects...
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : error ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <Alert severity="error" sx={{ maxWidth: 500, mx: 'auto' }}>
-                      {error}
-                    </Alert>
-                  </TableCell>
-                </TableRow>
-              ) : paginatedProjects.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 4 }}>
-                    <Typography variant="body1" sx={{ fontWeight: 'medium' }}>
-                      No projects found
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                      {searchQuery || statusFilter !== 'All' || departmentFilter !== 'All'
-                        ? 'Try adjusting your search criteria'
-                        : 'Create a new project to get started'}
-                    </Typography>
-                  </TableCell>
-                </TableRow>
-              ) : (
-                paginatedProjects.map((project) => (
-                  <TableRow
-                    hover
-                    key={project.id}
-                    onClick={() => handleProjectClick(project.id)}
-                    sx={{ cursor: 'pointer' }}
-                  >
-                    <TableCell component="th" scope="row">
-                      <Typography variant="body1" fontWeight="medium">
-                        {project.name}
-                      </Typography>
-                      <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 300 }}>
-                        {project.description}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>{project.department}</TableCell>
-                    <TableCell>
-                      <Chip
-                        label={getStatusLabel(typeof project.status === 'string' ? project.status : ProjectStatus[project.status])}
-                        color={getStatusColor(typeof project.status === 'string' ? project.status : ProjectStatus[project.status]) as any}
-                        size="small"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      {project.projectManager
-                        ? `${project.projectManager.firstName || ''} ${project.projectManager.lastName || ''}`.trim()
-                        : 'Unassigned'}
-                    </TableCell>
-                    <TableCell>
-                      <Typography variant="body2">
-                        {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Box sx={{ width: '100%', mr: 1 }}>
-                          <Box
-                            sx={{
-                              width: `${project.progress}%`,
-                              height: 8,
-                              borderRadius: 1,
-                              bgcolor: project.progress < 30
-                                ? 'error.light'
-                                : project.progress < 70
-                                ? 'warning.light'
-                                : 'success.light',
-                            }}
-                          />
-                        </Box>
-                        <Typography variant="body2" color="text.secondary">
-                          {project.progress}%
-                        </Typography>
-                      </Box>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        {loading ? (
+          <Box sx={{ p: 2 }}>
+            {viewMode === 'grid' ? (
+              <GridContainer spacing={3}>
+                {[1, 2, 3, 4, 5, 6].map((i) => (
+                  <GridItem xs={12} sm={6} md={4} key={i}>
+                    <SkeletonLoader type="card" count={1} />
+                  </GridItem>
+                ))}
+              </GridContainer>
+            ) : (
+              <SkeletonLoader type="table" count={6} />
+            )}
+          </Box>
+        ) : error ? (
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Alert severity="error" sx={{ maxWidth: 500, mx: 'auto' }}>
+              {error}
+            </Alert>
+          </Box>
+        ) : paginatedProjects.length === 0 ? (
+          <Box sx={{ p: 8, textAlign: 'center' }}>
+            <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>
+              {t('common.noData')}
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              {searchQuery || statusFilter !== 'All' || departmentFilter !== 'All'
+                ? t('common.adjustSearchCriteria')
+                : t('project.createNewToStart')}
+            </Typography>
+          </Box>
+        ) : (
+          <Box sx={{ p: 2 }}>
+            {viewMode === 'grid' ? renderGridView() : renderListView()}
+          </Box>
+        )}
         
         <TablePagination
-          rowsPerPageOptions={[5, 10, 25]}
+          rowsPerPageOptions={[6, 12, 24]}
           component="div"
           count={filteredProjects.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onPageChange={handleChangePage}
           onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage={t('common.rowsPerPage')}
+          labelDisplayedRows={({ from, to, count }) =>
+            `${from}-${to} ${t('common.of')} ${count}`
+          }
         />
       </Paper>
       

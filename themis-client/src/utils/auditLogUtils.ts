@@ -221,8 +221,33 @@ export const fetchAuditLogsWithFilters = async (
       queryParams.search = filters.search;
     }
     
-    const logs = await api.auditLogs.getAuditLogs(token, queryParams);
-    return logs as AuditLog[];
+    // Only pass the token parameter since the API doesn't support queryParams yet
+    const logs = await api.auditLogs.getAuditLogs(token);
+    
+    // Apply the filters in memory for now
+    let filteredLogs = logs as AuditLog[];
+    
+    if (filters.startDate && filters.endDate) {
+      filteredLogs = filterLogsByDateRange(filteredLogs, filters.startDate, filters.endDate);
+    }
+    
+    if (filters.userId) {
+      filteredLogs = filterLogsByUser(filteredLogs, filters.userId);
+    }
+    
+    if (filters.action) {
+      filteredLogs = filterLogsByAction(filteredLogs, filters.action);
+    }
+    
+    if (filters.entityType) {
+      filteredLogs = filterLogsByEntityType(filteredLogs, filters.entityType);
+    }
+    
+    if (filters.search) {
+      filteredLogs = searchLogs(filteredLogs, filters.search);
+    }
+    
+    return filteredLogs;
   } catch (error) {
     console.error('Error fetching audit logs:', error);
     throw error;

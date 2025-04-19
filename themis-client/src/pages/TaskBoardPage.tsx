@@ -13,9 +13,18 @@ import {
 import { Add as AddIcon } from '@mui/icons-material';
 import KanbanBoard from '../components/Kanban/KanbanBoard';
 import { useAuth } from '../context/AuthContext';
-import { Task, Project, ProjectStatus, User, UserRole } from '../types';
+import { Task, Project, ProjectStatus, User, UserRole, TaskStatus } from '../types';
 import { TaskService } from '../services/TaskService';
 import AddTaskDialog from '../components/Task/AddTaskDialog';
+import { ProjectPriority } from '../types/index';
+
+// Need to define our own interface for KanbanBoard props that includes tasks
+interface CustomKanbanBoardProps {
+  project: Project;
+  tasks: Task[];
+  onTaskUpdate: (taskId: string, updatedStatus: TaskStatus) => Promise<void>;
+  onTaskClick: (taskId: string) => void;
+}
 
 const TaskBoardPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -53,32 +62,47 @@ const TaskBoardPage: React.FC = () => {
         const mockUser: User = {
           id: '1',
           username: 'admin',
-          email: 'admin@example.com',
           firstName: 'Admin',
           lastName: 'User',
-          role: user?.role || UserRole.ADMIN,
-          department: '',
+          email: 'admin@example.com',
+          role: UserRole.ADMIN,
+          department: {
+            id: '1',
+            name: 'IT',
+            description: 'Information Technology Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
           isActive: true,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
 
-        setProject({
-          id: projectId,
-          name: 'Project', // Placeholder
-          description: '',
-          startDate: new Date().toISOString(),
-          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        const project: Project = {
+          id: '0',
+          name: 'All Tasks',
+          description: 'View and manage all tasks across projects',
+          client: 'Internal',
           status: ProjectStatus.IN_PROGRESS,
+          priority: ProjectPriority.MEDIUM,
+          startDate: new Date().toISOString(),
+          endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(), // 30 days from now
           progress: 0,
           budget: 0,
           actualCost: 0,
-          department: '',
           projectManager: mockUser,
-          createdBy: mockUser,
+          department: {
+            id: '0',
+            name: 'All Departments',
+            description: 'Tasks from all departments',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
-        });
+        };
+
+        setProject(project);
         setError(null);
       } catch (err) {
         console.error('Error fetching tasks:', err);
@@ -91,12 +115,25 @@ const TaskBoardPage: React.FC = () => {
     fetchTasks();
   }, [projectId, token, user]);
 
-  // Handle task updates (from drag-and-drop)
-  const handleTaskUpdate = async (updatedTask: Task) => {
+  // Handle task update (status change from drag and drop)
+  const handleTaskUpdate = async (taskId: string, updatedStatus: TaskStatus) => {
     if (!projectId || !token) return;
-
+    
     try {
-      // The TaskService.updateTask method already handles the status mapping
+      // Find the task that was updated
+      const taskToUpdate = tasks.find(t => t.id === taskId);
+      if (!taskToUpdate) return;
+      
+      // Create an updated task object with the new status
+      const updatedTask: Task = {
+        ...taskToUpdate,
+        status: updatedStatus
+      };
+      
+      // Optimistically update the UI
+      setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+      
+      // Send the update to the server
       await TaskService.updateTask(projectId, updatedTask.id, updatedTask, token);
       showSnackbar('Task updated successfully', 'success');
     } catch (err) {
@@ -110,9 +147,13 @@ const TaskBoardPage: React.FC = () => {
   };
 
   // Handle task click (view/edit)
-  const handleTaskClick = (task: Task) => {
+  const handleTaskClick = (taskId: string) => {
+    // Find the task that was clicked
+    const clickedTask = tasks.find(t => t.id === taskId);
+    if (!clickedTask) return;
+    
     // In a real app, you would open a task detail dialog or navigate to a task detail page
-    console.log('Task clicked:', task);
+    console.log('Task clicked:', clickedTask);
   };
 
   // Handle closing the snackbar
@@ -169,10 +210,12 @@ const TaskBoardPage: React.FC = () => {
 
       {/* Kanban Board */}
       <KanbanBoard
-        project={project as Project}
-        tasks={tasks}
-        onTaskUpdate={handleTaskUpdate}
-        onTaskClick={handleTaskClick}
+        {...{
+          project: project as Project,
+          tasks: tasks,
+          onTaskUpdate: handleTaskUpdate,
+          onTaskClick: handleTaskClick
+        } as CustomKanbanBoardProps}
       />
 
       {/* Add Task Dialog */}

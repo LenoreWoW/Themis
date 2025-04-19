@@ -39,7 +39,7 @@ import {
   PersonAdd as InviteIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-import { User } from '../types';
+import { User, UserRole } from '../types';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DateTimePicker } from '@mui/x-date-pickers';
 import LocalStorageService, { Meeting } from '../services/LocalStorageService';
@@ -90,37 +90,55 @@ const MeetingsPage: React.FC = () => {
               username: 'alice.johnson',
               firstName: 'Alice',
               lastName: 'Johnson',
-              role: 'PROJECT_MANAGER',
+              role: UserRole.PROJECT_MANAGER,
               email: 'alice@example.com',
-              department: 'IT',
+              department: {
+                id: '1',
+                name: 'IT',
+                description: 'Information Technology Department',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              },
               isActive: true,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
-            } as User,
+            },
             {
               id: '102',
               username: 'bob.smith',
               firstName: 'Bob',
               lastName: 'Smith',
-              role: 'ADMIN',
+              role: UserRole.ADMIN,
               email: 'bob@example.com',
-              department: 'Engineering',
+              department: {
+                id: '2',
+                name: 'Engineering',
+                description: 'Engineering Department',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              },
               isActive: true,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
-            } as User,
+            },
             {
               id: '103',
               username: 'carol.williams',
               firstName: 'Carol',
               lastName: 'Williams',
-              role: 'SUB_PMO',
+              role: UserRole.SUB_PMO,
               email: 'carol@example.com',
-              department: 'PMO',
+              department: {
+                id: '3',
+                name: 'PMO',
+                description: 'Project Management Office',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              },
               isActive: true,
               createdAt: new Date().toISOString(),
               updatedAt: new Date().toISOString()
-            } as User
+            }
           ];
           
           setAvailableUsers(mockUsers);
@@ -131,26 +149,37 @@ const MeetingsPage: React.FC = () => {
           // If there are no meetings in localStorage, initialize with default meetings
           if (storedMeetings.length === 0) {
             // Initialize with default meetings
-            const defaultMeetings: Meeting[] = [
+            const mockOrganizer: User = {
+              id: '1',
+              username: 'admin',
+              firstName: 'Admin',
+              lastName: 'User',
+              email: 'admin@example.com',
+              role: UserRole.ADMIN,
+              department: {
+                id: '1',
+                name: 'IT',
+                description: 'Information Technology Department',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+              },
+              isActive: true,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            };
+            
+            const mockMeetings: Meeting[] = [
               {
                 id: '1',
                 title: 'Sprint Planning',
-                description: 'Plan tasks for the next sprint',
-                startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // 2 days from now
-                endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(), // 1 hour duration
-                organizer: {
-                  id: '1',
-                  username: 'admin',
-                  firstName: 'Admin',
-                  lastName: 'User',
-                  email: 'admin@example.com',
-                  role: 'ADMIN',
-                  department: 'IT',
-                  isActive: true,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString()
-                } as User,
+                description: 'Weekly sprint planning meeting',
+                date: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+                startTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(),
+                endTime: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000 + 60 * 60 * 1000).toISOString(),
+                location: 'Virtual',
+                organizer: mockOrganizer,
                 participants: mockUsers.slice(0, 2),
+                attendees: [],
                 isActive: false,
                 meetingLink: 'https://meet.example.com/sprint-planning',
                 createdAt: new Date().toISOString(),
@@ -158,23 +187,15 @@ const MeetingsPage: React.FC = () => {
               },
               {
                 id: '2',
-                title: 'Project Status Review',
-                description: 'Review the current status of the Digital Transformation project',
-                startTime: new Date(Date.now() + 30 * 60 * 1000).toISOString(), // 30 minutes from now
-                endTime: new Date(Date.now() + 90 * 60 * 1000).toISOString(), // 1 hour duration
-                organizer: {
-                  id: '1',
-                  username: 'admin',
-                  firstName: 'Admin',
-                  lastName: 'User',
-                  email: 'admin@example.com',
-                  role: 'ADMIN',
-                  department: 'IT',
-                  isActive: true,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString()
-                } as User,
+                title: 'Project Status Update',
+                description: 'Monthly project status review',
+                date: new Date(Date.now() + 30 * 60 * 1000).toLocaleDateString(),
+                startTime: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+                endTime: new Date(Date.now() + 90 * 60 * 1000).toISOString(),
+                location: 'Conference Room A',
+                organizer: mockOrganizer,
                 participants: mockUsers.slice(0, 2),
+                attendees: [],
                 isActive: false,
                 meetingLink: 'https://meet.example.com/project-status',
                 createdAt: new Date().toISOString(),
@@ -183,8 +204,8 @@ const MeetingsPage: React.FC = () => {
             ];
             
             // Save default meetings to localStorage
-            LocalStorageService.saveMeetings(defaultMeetings);
-            setMeetings(defaultMeetings);
+            LocalStorageService.saveMeetings(mockMeetings);
+            setMeetings(mockMeetings);
           } else {
             // Use stored meetings
             setMeetings(storedMeetings);
@@ -283,12 +304,15 @@ const MeetingsPage: React.FC = () => {
       id: uuidv4(), // Generate a unique ID
       title: meetingData.title,
       description: meetingData.description,
+      date: meetingData.startTime.toLocaleDateString(),
       startTime: meetingData.startTime.toISOString(),
       endTime: meetingData.endTime.toISOString(),
+      location: 'Virtual',
       organizer: user as User,
       participants: meetingData.participants.map(
         id => availableUsers.find(u => u.id === id)
       ).filter(u => u !== undefined) as User[],
+      attendees: [],
       isActive: false,
       meetingLink: `https://meet.example.com/${meetingData.title.toLowerCase().replace(/\s+/g, '-')}`,
       createdAt: new Date().toISOString(),
@@ -728,7 +752,7 @@ const MeetingsPage: React.FC = () => {
                     <Checkbox checked={meetingData.participants.indexOf(user.id) > -1} />
                     <ListItemText 
                       primary={`${user.firstName} ${user.lastName}`} 
-                      secondary={`${user.role} - ${user.department}`} 
+                      secondary={`${user.role} - ${user.department.name}`} 
                     />
                   </MenuItem>
                 ))}

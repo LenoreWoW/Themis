@@ -1,22 +1,69 @@
+// Add this import at the top of the file
+import { ApprovalStatus } from '../context/AuthContext';
+
 // User-related types
 export enum UserRole {
-  PENDING = 'PENDING',
+  ADMIN = 'ADMIN',
   PROJECT_MANAGER = 'PROJECT_MANAGER',
   SUB_PMO = 'SUB_PMO',
   MAIN_PMO = 'MAIN_PMO',
   DEPARTMENT_DIRECTOR = 'DEPARTMENT_DIRECTOR',
   EXECUTIVE = 'EXECUTIVE',
-  ADMIN = 'ADMIN'
+  TEAM_LEAD = 'TEAM_LEAD',
+  DEVELOPER = 'DEVELOPER',
+  PENDING = 'PENDING'
+}
+
+// Helper functions for role-based permissions
+export const canManageProjects = (role: UserRole): boolean => {
+  return role === UserRole.ADMIN || 
+         role === UserRole.PROJECT_MANAGER || 
+         role === UserRole.SUB_PMO || 
+         role === UserRole.MAIN_PMO;
+};
+
+export const canApproveProjects = (role: UserRole): boolean => {
+  return role === UserRole.ADMIN || 
+         role === UserRole.SUB_PMO || 
+         role === UserRole.MAIN_PMO;
+};
+
+export const canAddTasks = (role: UserRole): boolean => {
+  return role === UserRole.ADMIN || 
+         role === UserRole.PROJECT_MANAGER || 
+         role === UserRole.SUB_PMO || 
+         role === UserRole.MAIN_PMO;
+};
+
+export const canRequestTasks = (role: UserRole): boolean => {
+  return role === UserRole.PROJECT_MANAGER || 
+         role === UserRole.SUB_PMO || 
+         role === UserRole.MAIN_PMO;
+};
+
+export const canViewAllProjects = (role: UserRole): boolean => {
+  return role === UserRole.ADMIN || 
+         role === UserRole.MAIN_PMO || 
+         role === UserRole.EXECUTIVE;
+};
+
+// Department interface
+export interface Department {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface User {
   id: string;
   username: string;
-  email: string;
   firstName: string;
   lastName: string;
+  email: string;
   role: UserRole;
-  department: string;
+  department: Department;
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
@@ -42,6 +89,13 @@ export enum ProjectStatus {
   CANCELLED = 'CANCELLED'
 }
 
+export enum ProjectPriority {
+  LOW = 'LOW',
+  MEDIUM = 'MEDIUM',
+  HIGH = 'HIGH',
+  CRITICAL = 'CRITICAL'
+}
+
 export enum ProjectRiskLevel {
   LOW = 'LOW',
   MEDIUM = 'MEDIUM',
@@ -52,12 +106,18 @@ export enum ProjectRiskLevel {
 // Attachment interface
 export interface Attachment {
   id: string;
-  fileName: string;
-  fileType: string;
-  fileSize: number;
-  fileUrl: string;
-  uploadedBy: User;
-  uploadedAt: string;
+  name: string;
+  filename: string;
+  type: string;
+  size: number;
+  url: string;
+  uploadedBy: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Project {
@@ -67,15 +127,21 @@ export interface Project {
   startDate: string;
   endDate: string;
   status: ProjectStatus;
-  progress: number;
+  projectManager?: User;
+  department?: Department;
   budget: number;
-  actualCost: number;
-  department: string;
-  projectManager: User;
-  createdBy: User;
+  goalsLink?: string;
+  client?: string;
+  priority: ProjectPriority;
   createdAt: string;
   updatedAt: string;
-  attachments?: Attachment[]; // Array of project attachments
+  // Add approval workflow properties
+  approvalStatus?: ApprovalStatus;
+  comments?: string;
+  reviewHistory?: ReviewComment[];
+  lastReviewedBy?: User;
+  lastReviewedAt?: string;
+  progress?: number;
 }
 
 // Task-related types
@@ -94,21 +160,16 @@ export enum TaskPriority {
 
 export interface Task {
   id: string;
-  projectId: string;
   title: string;
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
   startDate: string;
   dueDate: string;
-  completionDate?: string;
+  projectId: string;
   assignee?: User;
-  parentTaskId?: string;
-  createdBy: User;
   createdAt: string;
   updatedAt: string;
-  dependencies: string[]; // IDs of tasks this task depends on
-  isMilestone: boolean;
 }
 
 // Risk-related types
@@ -172,26 +233,19 @@ export enum UpdateStatus {
   REJECTED = 'REJECTED'
 }
 
+// Weekly Update interface for project update tracking
 export interface WeeklyUpdate {
   id: string;
   projectId: string;
-  week: number;
-  year: number;
-  summary: string;
-  accomplishments: string;
-  plannedActivities: string;
-  issues: string;
-  risks: string;
-  status: UpdateStatus;
-  submittedBy: User;
-  submittedAt?: string;
-  approvedBySubPmo?: User;
-  approvedBySubPmoAt?: string;
-  approvedByMainPmo?: User;
-  approvedByMainPmoAt?: string;
-  rejectedBy?: User;
-  rejectedAt?: string;
-  rejectionReason?: string;
+  content: string;
+  weekNumber: number;
+  weekYear: number;
+  attachments: Attachment[];
+  author: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -336,4 +390,131 @@ export interface ProjectCharter {
   createdBy: User;
   createdAt: string;
   updatedAt: string;
+}
+
+// Meeting-related types
+export enum MeetingStatus {
+  SCHEDULED = 'SCHEDULED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED'
+}
+
+export interface Meeting {
+  id: string;
+  title: string;
+  description: string;
+  startTime: string;
+  endTime: string;
+  status: MeetingStatus;
+  organizer: User;
+  participants: User[];
+  isActive: boolean;
+  meetingLink: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export enum AssignmentStatus {
+  PENDING = 'PENDING',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED'
+}
+
+export interface Assignment {
+  id: string;
+  title: string;
+  description: string;
+  status: AssignmentStatus;
+  priority: TaskPriority;
+  assignedBy: User;
+  assignedTo: User;
+  dueDate: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// API Response type
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export enum TaskRequestStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  IN_REVIEW = 'IN_REVIEW'
+}
+
+export interface TaskRequest {
+  id: string;
+  title: string;
+  description: string;
+  priority: TaskPriority;
+  dueDate: string;
+  projectId: string;
+  requestedBy: User;
+  status: TaskRequestStatus;
+  reviewer?: User;
+  reviewNotes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Goal-related types
+export enum GoalType {
+  STRATEGIC = 'STRATEGIC',
+  ANNUAL = 'ANNUAL',
+  QUARTERLY = 'QUARTERLY',
+  MONTHLY = 'MONTHLY'
+}
+
+export enum GoalCategory {
+  PERFORMANCE = 'PERFORMANCE',
+  FINANCIAL = 'FINANCIAL',
+  CUSTOMER = 'CUSTOMER',
+  LEARNING = 'LEARNING',
+  PROCESS = 'PROCESS'
+}
+
+export enum GoalStatus {
+  NOT_STARTED = 'NOT_STARTED',
+  IN_PROGRESS = 'IN_PROGRESS',
+  COMPLETED = 'COMPLETED',
+  ON_HOLD = 'ON_HOLD'
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  description: string;
+  type: GoalType;
+  category: GoalCategory;
+  status: GoalStatus;
+  progress: number;
+  startDate: string;
+  endDate: string;
+  assignedTo: string;
+  linkedProjects: string[];
+  isProgressAutoCalculated: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Add a new interface for review comments
+export interface ReviewComment {
+  id?: string;
+  text: string;
+  createdAt: string;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email?: string;
+  };
+  action: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES' | 'SUBMIT';
 } 

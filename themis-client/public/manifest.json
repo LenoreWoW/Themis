@@ -3,24 +3,24 @@
   "name": "Themis Project Management",
   "icons": [
     {
-      "src": "favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "src": "assets/images/LogoClickUP.png",
+      "sizes": "177x285",
+      "type": "image/png"
     },
     {
-      "src": "logo192.png",
+      "src": "assets/images/LogoClickUP.png",
       "type": "image/png",
-      "sizes": "192x192"
+      "sizes": "177x285"
     },
     {
-      "src": "logo512.png",
+      "src": "assets/images/LogoClickUP.png",
       "type": "image/png",
-      "sizes": "512x512"
+      "sizes": "177x285"
     }
   ],
   "start_url": ".",
   "display": "standalone",
-  "theme_color": "#1976d2",
+  "theme_color": "#7B68EE",
   "background_color": "#ffffff",
   "description": "A comprehensive project management system for PMO offices",
   "orientation": "portrait-primary",

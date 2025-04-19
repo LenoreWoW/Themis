@@ -14,7 +14,6 @@ import {
   TextField,
   InputAdornment,
   Tooltip,
-  IconButton,
   Stack
 } from '@mui/material';
 import {
@@ -22,8 +21,9 @@ import {
   Assignment as AssignmentIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
-import { Task, TaskStatus, TaskPriority, User } from '../types';
+import { Task, TaskStatus, TaskPriority, User, Project, ProjectStatus, ProjectPriority, Department, UserRole } from '../types';
 import { TaskService } from '../services/TaskService';
+import { useTranslation } from 'react-i18next';
 
 // Mock data for tasks
 const mockTasks = [
@@ -85,7 +85,12 @@ const mockTasks = [
 ];
 
 // Helper functions for determining the status and priority display
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: string, dueDate?: string) => {
+  // Check if the task is overdue (due date is before current date)
+  if (dueDate && new Date(dueDate) < new Date()) {
+    return 'error'; // Red color for overdue tasks
+  }
+  
   switch(status) {
     case 'TODO': return 'default';
     case 'IN_PROGRESS': return 'primary';
@@ -124,6 +129,7 @@ const TasksPage: React.FC = () => {
   const [projects, setProjects] = useState<{id: string, name: string}[]>([]);
   
   const { user, token } = useAuth();
+  const { t } = useTranslation();
   
   // Fetch tasks
   useEffect(() => {
@@ -134,22 +140,81 @@ const TasksPage: React.FC = () => {
         // In a real application, you would fetch tasks from your API
         // For now, we'll use mock data with a delay to simulate loading
         setTimeout(() => {
-          setTasks(mockTasks.map(task => ({
+          const mockDepartment: Department = {
+            id: '1',
+            name: 'IT Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          const mockUser: User = {
+            id: '1',
+            username: 'manager',
+            firstName: 'Project',
+            lastName: 'Manager',
+            email: 'manager@example.com',
+            role: UserRole.PROJECT_MANAGER,
+            department: mockDepartment,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          const mockProject: Project = {
+            id: '1',
+            name: 'Digital Transformation',
+            description: 'Company-wide digital transformation initiative',
+            client: 'Internal',
+            status: ProjectStatus.IN_PROGRESS,
+            priority: ProjectPriority.HIGH,
+            startDate: '2023-01-01',
+            endDate: '2023-12-31',
+            projectManager: mockUser,
+            department: mockDepartment,
+            progress: 50,
+            budget: 500000,
+            actualCost: 250000,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          const transformedTasks: Task[] = mockTasks.map(task => ({
             id: task.id,
             title: task.title,
             description: task.description,
-            projectId: '1', // Mock project ID
+            projectId: '1',
             status: task.status as TaskStatus,
             priority: task.priority as TaskPriority,
             startDate: task.startDate,
             dueDate: task.dueDate,
-            assignee: { username: task.assignee } as User,
-            createdBy: { username: 'admin' } as User,
+            assignee: {
+              id: '1',
+              username: task.assignee,
+              firstName: 'Admin',
+              lastName: 'User',
+              email: 'admin@example.com',
+              role: UserRole.ADMIN,
+              department: mockDepartment,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
+            project: mockProject,
+            createdBy: {
+              id: '1',
+              username: 'admin',
+              firstName: 'Admin',
+              lastName: 'User',
+              email: 'admin@example.com',
+              role: UserRole.ADMIN,
+              department: mockDepartment,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString(),
-            dependencies: [],
             isMilestone: false
-          })));
+          }));
+          
+          setTasks(transformedTasks);
           
           // Mock projects
           setProjects([
@@ -159,7 +224,6 @@ const TasksPage: React.FC = () => {
           
           setLoading(false);
         }, 500);
-        
       } catch (err) {
         console.error('Error fetching tasks:', err);
         setError('Failed to load tasks. Please try again later.');
@@ -187,21 +251,21 @@ const TasksPage: React.FC = () => {
   // Filter tasks based on search query and current user
   const filteredTasks = tasks.filter((task) => {
     // Only show tasks assigned to the current user (for this demo, show all if user is admin)
-    const isAssignedToUser = user?.username === task.assignee?.username; // In a real app, check user.id against task.assigneeId
+    const isAssignedToUser = user?.username === task.assignee?.username;
     
     // Check if the search query matches task title, description, or project
     const matchesSearch = 
       task.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
       task.description.toLowerCase().includes(searchQuery.toLowerCase());
     
-    return (isAssignedToUser || user?.role === 'ADMIN') && matchesSearch;
+    return (isAssignedToUser || user?.role === UserRole.ADMIN) && matchesSearch;
   });
   
   return (
     <Box>
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" component="h1">
-          My Tasks
+          {t('assignments.myTasks')}
         </Typography>
         <Typography variant="body1" color="text.secondary">
           View and manage tasks assigned to you
@@ -232,8 +296,8 @@ const TasksPage: React.FC = () => {
               <TableRow>
                 <TableCell>Task</TableCell>
                 <TableCell>Project</TableCell>
-                <TableCell>Status</TableCell>
-                <TableCell>Priority</TableCell>
+                <TableCell>{t('status.title')}</TableCell>
+                <TableCell>{t('priority.title')}</TableCell>
                 <TableCell>Due Date</TableCell>
               </TableRow>
             </TableHead>
@@ -281,13 +345,21 @@ const TasksPage: React.FC = () => {
                           </Typography>
                         </Box>
                       </TableCell>
-                      <TableCell>{projects.find(p => p.id === task.projectId)?.name || 'Unknown Project'}</TableCell>
+                      <TableCell>{task.project.name}</TableCell>
                       <TableCell>
-                        <Chip 
-                          label={getStatusLabel(task.status)} 
-                          color={getStatusColor(task.status) as any}
-                          size="small"
-                        />
+                        <Tooltip 
+                          title={
+                            task.dueDate && new Date(task.dueDate) < new Date()
+                              ? `${getStatusLabel(task.status)} (Overdue)`
+                              : getStatusLabel(task.status)
+                          }
+                        >
+                          <Chip 
+                            label={getStatusLabel(task.status)} 
+                            color={getStatusColor(task.status, task.dueDate) as any}
+                            size="small"
+                          />
+                        </Tooltip>
                       </TableCell>
                       <TableCell>
                         <Chip 

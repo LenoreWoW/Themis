@@ -33,10 +33,39 @@ export const mapToBackendStatus = (frontendStatus: TaskStatus): BackendTaskStatu
 
 /**
  * Maps backend TaskStatus values to frontend TaskStatus
- * @param status Backend task status value
+ * @param status Backend task status value or string
  * @returns Frontend task status
  */
-export const mapToFrontendStatus = (backendStatus: number): TaskStatus => {
+export const mapToFrontendStatus = (backendStatus: number | string): TaskStatus => {
+  // Handle string status values (sometimes the API returns string values directly)
+  if (typeof backendStatus === 'string') {
+    switch (backendStatus) {
+      case 'TODO':
+        return TaskStatus.TODO;
+      case 'IN_PROGRESS':
+        return TaskStatus.IN_PROGRESS;
+      case 'REVIEW':
+        return TaskStatus.REVIEW;
+      case 'DONE':
+        return TaskStatus.DONE;
+      case 'NotStarted':
+        return TaskStatus.TODO;
+      case 'InProgress':
+        return TaskStatus.IN_PROGRESS;
+      case 'Completed':
+        return TaskStatus.DONE;
+      case 'Delayed':
+      case 'Blocked':
+        return TaskStatus.IN_PROGRESS;
+      case 'Cancelled':
+        return TaskStatus.DONE;
+      default:
+        console.warn(`Unknown backend task status string: ${backendStatus}`);
+        return TaskStatus.TODO;
+    }
+  }
+  
+  // Handle numeric status values
   switch (backendStatus) {
     case BackendTaskStatus.NotStarted:
       return TaskStatus.TODO;
@@ -51,7 +80,7 @@ export const mapToFrontendStatus = (backendStatus: number): TaskStatus => {
     case BackendTaskStatus.Cancelled:
       return TaskStatus.DONE; // Map Cancelled to DONE in frontend
     default:
-      console.warn(`Unknown backend task status: ${backendStatus}`);
+      console.warn(`Unknown backend task status number: ${backendStatus}`);
       return TaskStatus.TODO;
   }
 }; 

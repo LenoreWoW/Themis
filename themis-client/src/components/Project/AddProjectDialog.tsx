@@ -28,21 +28,29 @@ import {
   Alert,
   AlertTitle,
   ListItemIcon,
-  CircularProgress
+  CircularProgress,
+  Grid,
+  Divider,
+  InputAdornment
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { ProjectStatus, User } from '../../types';
+import { ProjectStatus, User, ProjectPriority } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DescriptionIcon from '@mui/icons-material/Description';
 import api from '../../services/api';
-
-interface Department {
-  id: string;
-  name: string;
-}
+import { useTranslation } from 'react-i18next';
+import { 
+  CalendarMonth as CalendarIcon,
+  Business as BusinessIcon,
+  Person as PersonIcon,
+  PriorityHigh as PriorityIcon
+} from '@mui/icons-material';
+import { GridItem, GridContainer } from '../../components/common/MuiGridWrapper';
+import { Project, Department } from '../../types';
+import { mockProjects } from '../../services/mockData';
 
 interface ApiResponse<T> {
   data: T;
@@ -59,7 +67,7 @@ interface ProjectResponse {
 interface AddProjectDialogProps {
   open: boolean;
   onClose: () => void;
-  onProjectAdded: () => void;
+  onProjectAdded: (project: Project) => void;
   departments: Department[];
   users: User[];
 }
@@ -90,23 +98,26 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentErrors, setAttachmentErrors] = useState<string[]>([]);
+  const { t } = useTranslation();
   
-  const [projectData, setProjectData] = useState({
+  const [formData, setFormData] = useState({
     name: '',
     description: '',
     departmentId: '',
     startDate: new Date(),
-    endDate: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // Default to 90 days from now
+    endDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Default to 30 days from now
     status: ProjectStatus.PLANNING,
     projectManagerId: '',
     budget: 0,
     goalsLink: '',
-    teamMembers: [] as string[] // Add teamMembers array to store selected user IDs
+    teamMembers: [] as string[],
+    client: '', // Add client field
+    priority: ProjectPriority.MEDIUM
   });
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setProjectData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
     
     // Clear error when field is edited
     if (formErrors[name]) {
@@ -122,24 +133,24 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
     const { name, value } = e.target;
     const numValue = parseFloat(value);
     if (!isNaN(numValue) || value === '') {
-      setProjectData(prev => ({ ...prev, [name]: value === '' ? 0 : numValue }));
+      setFormData(prev => ({ ...prev, [name]: value === '' ? 0 : numValue }));
     }
   };
 
   const handleSelectChange = (e: SelectChangeEvent<string>) => {
     const { name, value } = e.target;
-    setProjectData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleStartDateChange = (date: Date | null) => {
     if (date) {
-      setProjectData(prev => ({ ...prev, startDate: date }));
+      setFormData(prev => ({ ...prev, startDate: date }));
     }
   };
 
   const handleEndDateChange = (date: Date | null) => {
     if (date) {
-      setProjectData(prev => ({ ...prev, endDate: date }));
+      setFormData(prev => ({ ...prev, endDate: date }));
     }
   };
 
@@ -217,7 +228,7 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
   // Add handler for team members selection
   const handleTeamMembersChange = (event: SelectChangeEvent<string[]>) => {
     const { value } = event.target;
-    setProjectData(prev => ({
+    setFormData(prev => ({
       ...prev,
       teamMembers: typeof value === 'string' ? value.split(',') : value
     }));
@@ -226,24 +237,28 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
-    if (!projectData.name.trim()) {
-      errors.name = 'Project name is required';
+    if (!formData.name.trim()) {
+      errors.name = t('validation.required');
     }
     
-    if (!projectData.departmentId) {
-      errors.departmentId = 'Department is required';
+    if (!formData.client.trim()) {
+      errors.client = t('validation.required');
     }
     
-    if (!projectData.projectManagerId) {
-      errors.projectManagerId = 'Project manager is required';
+    if (!formData.departmentId) {
+      errors.departmentId = t('validation.required');
     }
     
-    if (projectData.startDate > projectData.endDate) {
-      errors.endDate = 'End date must be after start date';
+    if (!formData.projectManagerId) {
+      errors.projectManagerId = t('validation.required');
     }
     
-    if (projectData.budget < 0) {
-      errors.budget = 'Budget cannot be negative';
+    if (formData.startDate > formData.endDate) {
+      errors.endDate = t('validation.endDateAfterStart');
+    }
+    
+    if (formData.budget < 0) {
+      errors.budget = t('validation.invalidNumber');
     }
     
     setFormErrors(errors);
@@ -255,14 +270,17 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
     
     setIsSubmitting(true);
     try {
-      // Create project first
-      const projectResponse = await api.projects.createProject({
-        ...projectData,
-        startDate: projectData.startDate.toISOString(),
-        endDate: projectData.endDate.toISOString(),
-        // Include team members in the project creation
-        teamMembers: projectData.teamMembers
-      }, token || '') as ApiResponse<ProjectResponse>;
+      const projectData = {
+        ...formData,
+        startDate: formData.startDate.toISOString(),
+        endDate: formData.endDate.toISOString(),
+        client: formData.client.trim(), // Add client to the project data
+        budget: formData.budget,
+        teamMembers: formData.teamMembers,
+        priority: formData.priority
+      };
+      
+      const projectResponse = await api.projects.createProject(projectData, token || '') as ApiResponse<ProjectResponse>;
       
       // If we have attachments, upload them
       if (attachments.length > 0 && projectResponse.data?.id) {
@@ -276,7 +294,7 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
         await Promise.all(uploadPromises);
       }
       
-      onProjectAdded();
+      onProjectAdded(projectResponse.data as Project);
       onClose();
     } catch (error) {
       console.error('Error creating project:', error);
@@ -299,172 +317,269 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>Create New Project</DialogTitle>
+      <DialogTitle>
+        <Typography variant="h5" component="div" fontWeight="bold">
+          {t('project.addNew')}
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+          {t('project.fillDetails')}
+        </Typography>
+      </DialogTitle>
+      
+      <Divider />
+      
       <DialogContent>
-        <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <Stack spacing={3} sx={{ mt: 1 }}>
-            <TextField
-              fullWidth
-              label="Project Name"
-              name="name"
-              value={projectData.name}
-              onChange={handleInputChange}
-              error={!!formErrors.name}
-              helperText={formErrors.name}
-              required
-            />
+        <Box component="form" noValidate autoComplete="off">
+          <GridContainer spacing={3}>
+            <GridItem xs={12}>
+              <TextField
+                label={t('project.name')}
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                fullWidth
+                required
+                error={!!formErrors.name}
+                helperText={formErrors.name}
+                InputProps={{
+                  sx: { borderRadius: 1.5 }
+                }}
+              />
+            </GridItem>
             
-            <TextField
-              fullWidth
-              label="Description"
-              name="description"
-              value={projectData.description}
-              onChange={handleInputChange}
-              multiline
-              rows={4}
-            />
+            <GridItem xs={12}>
+              <TextField
+                label={t('project.description')}
+                name="description"
+                value={formData.description}
+                onChange={handleInputChange}
+                fullWidth
+                required
+                multiline
+                rows={3}
+                error={!!formErrors.description}
+                helperText={formErrors.description}
+                InputProps={{
+                  sx: { borderRadius: 1.5 }
+                }}
+              />
+            </GridItem>
             
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <FormControl fullWidth error={!!formErrors.departmentId}>
-                <InputLabel>Department</InputLabel>
+            <GridItem xs={12} sm={6}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label={t('project.startDate')}
+                  value={formData.startDate}
+                  onChange={handleStartDateChange}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      required: true,
+                      error: !!formErrors.startDate,
+                      helperText: formErrors.startDate,
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarIcon color="action" />
+                          </InputAdornment>
+                        ),
+                        sx: { borderRadius: 1.5 }
+                      }
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+            </GridItem>
+            
+            <GridItem xs={12} sm={6}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label={t('project.endDate')}
+                  value={formData.endDate}
+                  onChange={handleEndDateChange}
+                  minDate={formData.startDate || undefined}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      required: true,
+                      error: !!formErrors.endDate,
+                      helperText: formErrors.endDate,
+                      InputProps: {
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <CalendarIcon color="action" />
+                          </InputAdornment>
+                        ),
+                        sx: { borderRadius: 1.5 }
+                      }
+                    }
+                  }}
+                />
+              </LocalizationProvider>
+            </GridItem>
+            
+            <GridItem xs={12} sm={6}>
+              <FormControl 
+                fullWidth 
+                required
+                error={!!formErrors.departmentId}
+              >
+                <InputLabel id="department-label">
+                  {t('project.department')}
+                </InputLabel>
                 <Select
                   name="departmentId"
-                  value={projectData.departmentId}
-                  label="Department"
+                  value={formData.departmentId}
+                  label={t('project.department')}
                   onChange={handleSelectChange}
                   required
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <BusinessIcon color="action" />
+                    </InputAdornment>
+                  }
+                  sx={{ borderRadius: 1.5 }}
                 >
-                  {departments.map(department => (
-                    <MenuItem key={department.id} value={department.id}>
-                      {department.name}
+                  {departments.map((dept) => (
+                    <MenuItem key={dept.id} value={dept.id}>
+                      {dept.name}
                     </MenuItem>
                   ))}
                 </Select>
                 {formErrors.departmentId && <FormHelperText>{formErrors.departmentId}</FormHelperText>}
               </FormControl>
-              
-              <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
-                <Select
-                  name="status"
-                  value={projectData.status}
-                  label="Status"
-                  onChange={handleSelectChange}
-                >
-                  <MenuItem value={ProjectStatus.PLANNING}>Planning</MenuItem>
-                  <MenuItem value={ProjectStatus.IN_PROGRESS}>In Progress</MenuItem>
-                  <MenuItem value={ProjectStatus.ON_HOLD}>On Hold</MenuItem>
-                  <MenuItem value={ProjectStatus.COMPLETED}>Completed</MenuItem>
-                  <MenuItem value={ProjectStatus.CANCELLED}>Cancelled</MenuItem>
-                </Select>
-              </FormControl>
-            </Box>
+            </GridItem>
             
-            <Box sx={{ display: 'flex', gap: 2 }}>
-              <DatePicker
-                label="Start Date"
-                value={projectData.startDate}
-                onChange={handleStartDateChange}
-                slotProps={{ textField: { fullWidth: true } }}
-              />
-              
-              <DatePicker
-                label="End Date"
-                value={projectData.endDate}
-                onChange={handleEndDateChange}
-                slotProps={{ 
-                  textField: { 
-                    fullWidth: true,
-                    error: !!formErrors.endDate,
-                    helperText: formErrors.endDate
-                  } 
+            <GridItem xs={12} sm={6}>
+              <FormControl 
+                fullWidth 
+                required
+                error={!!formErrors.projectManagerId}
+              >
+                <InputLabel id="manager-label">
+                  {t('project.projectManager')}
+                </InputLabel>
+                <Select
+                  name="projectManagerId"
+                  value={formData.projectManagerId}
+                  label={t('project.projectManager')}
+                  onChange={handleSelectChange}
+                  required
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <PersonIcon color="action" />
+                    </InputAdornment>
+                  }
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  {getProjectManagers().map((pm) => (
+                    <MenuItem key={pm.id} value={pm.id}>
+                      {`${pm.firstName} ${pm.lastName}`}
+                    </MenuItem>
+                  ))}
+                </Select>
+                {formErrors.projectManagerId && <FormHelperText>{formErrors.projectManagerId}</FormHelperText>}
+              </FormControl>
+            </GridItem>
+            
+            <GridItem xs={12} sm={6}>
+              <TextField
+                label={t('project.client')}
+                name="client"
+                value={formData.client}
+                onChange={handleInputChange}
+                fullWidth
+                required
+                error={!!formErrors.client}
+                helperText={formErrors.client}
+                InputProps={{
+                  sx: { borderRadius: 1.5 }
                 }}
               />
-            </Box>
+            </GridItem>
             
-            <FormControl fullWidth error={!!formErrors.projectManagerId}>
-              <InputLabel>Project Manager</InputLabel>
-              <Select
-                name="projectManagerId"
-                value={projectData.projectManagerId}
-                label="Project Manager"
-                onChange={handleSelectChange}
+            <GridItem xs={12} sm={6}>
+              <TextField
+                label={t('project.budget')}
+                name="budget"
+                type="number"
+                value={formData.budget}
+                onChange={handleNumberInputChange}
+                fullWidth
                 required
-              >
-                {getProjectManagers().map(pm => (
-                  <MenuItem key={pm.id} value={pm.id}>
-                    {pm.firstName} {pm.lastName} ({pm.username})
-                  </MenuItem>
-                ))}
-              </Select>
-              {formErrors.projectManagerId && <FormHelperText>{formErrors.projectManagerId}</FormHelperText>}
-            </FormControl>
+                error={!!formErrors.budget}
+                helperText={formErrors.budget}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">$</InputAdornment>,
+                  sx: { borderRadius: 1.5 }
+                }}
+              />
+            </GridItem>
             
-            <FormControl fullWidth>
-              <InputLabel id="team-members-label">Team Members</InputLabel>
-              <Select
-                labelId="team-members-label"
-                id="team-members"
-                multiple
-                value={projectData.teamMembers}
-                onChange={handleTeamMembersChange}
-                input={<OutlinedInput label="Team Members" />}
-                renderValue={(selected) => (
-                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                    {selected.map((userId) => {
-                      const user = users.find(u => u.id === userId);
-                      return (
-                        <Chip 
-                          key={userId} 
-                          label={user ? `${user.firstName} ${user.lastName}` : userId} 
-                          size="small"
-                        />
-                      );
-                    })}
-                  </Box>
-                )}
-              >
-                {users.map((user) => (
-                  <MenuItem key={user.id} value={user.id}>
-                    <Checkbox checked={projectData.teamMembers.indexOf(user.id) > -1} />
-                    <ListItemText 
-                      primary={`${user.firstName} ${user.lastName}`} 
-                      secondary={user.role}
-                    />
-                  </MenuItem>
-                ))}
-              </Select>
-              <FormHelperText>Select team members who will work on this project</FormHelperText>
-            </FormControl>
+            <GridItem xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel id="status-label">
+                  {t('project.status')}
+                </InputLabel>
+                <Select
+                  name="status"
+                  value={formData.status}
+                  label={t('project.status')}
+                  onChange={handleSelectChange}
+                  required
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  <MenuItem value={ProjectStatus.PLANNING}>{t('projectStatus.PLANNING')}</MenuItem>
+                  <MenuItem value={ProjectStatus.IN_PROGRESS}>{t('projectStatus.IN_PROGRESS')}</MenuItem>
+                  <MenuItem value={ProjectStatus.ON_HOLD}>{t('projectStatus.ON_HOLD')}</MenuItem>
+                </Select>
+              </FormControl>
+            </GridItem>
             
-            <TextField
-              fullWidth
-              label="Budget"
-              name="budget"
-              type="number"
-              value={projectData.budget}
-              onChange={handleNumberInputChange}
-              InputProps={{ startAdornment: '$' }}
-              error={!!formErrors.budget}
-              helperText={formErrors.budget}
-            />
+            <GridItem xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel id="priority-label">
+                  {t('project.priority')}
+                </InputLabel>
+                <Select
+                  name="priority"
+                  value={formData.priority}
+                  label={t('project.priority')}
+                  onChange={(e) => setFormData(prev => ({ ...prev, priority: e.target.value as ProjectPriority }))}
+                  required
+                  startAdornment={
+                    <InputAdornment position="start">
+                      <PriorityIcon color="action" />
+                    </InputAdornment>
+                  }
+                  sx={{ borderRadius: 1.5 }}
+                >
+                  <MenuItem value={ProjectPriority.LOW}>{t('projectPriority.LOW')}</MenuItem>
+                  <MenuItem value={ProjectPriority.MEDIUM}>{t('projectPriority.MEDIUM')}</MenuItem>
+                  <MenuItem value={ProjectPriority.HIGH}>{t('projectPriority.HIGH')}</MenuItem>
+                  <MenuItem value={ProjectPriority.CRITICAL}>{t('projectPriority.CRITICAL')}</MenuItem>
+                </Select>
+              </FormControl>
+            </GridItem>
             
-            <TextField
-              fullWidth
-              label="Goals Link (Optional)"
-              name="goalsLink"
-              value={projectData.goalsLink}
-              onChange={handleInputChange}
-              placeholder="https://..."
-            />
+            <GridItem xs={12}>
+              <TextField
+                label={t('project.goalsLink')}
+                name="goalsLink"
+                value={formData.goalsLink}
+                onChange={handleInputChange}
+                fullWidth
+                placeholder="https://..."
+              />
+            </GridItem>
             
             {/* File Attachments */}
-            <Box sx={{ mt: 3 }}>
+            <GridItem xs={12}>
               <Typography variant="subtitle1" gutterBottom>
-                Attachments
+                {t('project.attachments')}
               </Typography>
               <Typography variant="body2" color="text.secondary" gutterBottom>
-                Supported file types: PDF, Word, Excel, Images, Text (Max 10MB per file)
+                {t('project.supportedTypes')}
               </Typography>
               
               <input
@@ -489,13 +604,13 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
               >
                 <CloudUploadIcon color="primary" />
                 <Typography variant="body2" sx={{ mt: 1 }}>
-                  Click to select files or drag and drop files here
+                  {t('project.clickToSelect')}
                 </Typography>
               </Paper>
               
               {attachmentErrors.length > 0 && (
                 <Alert severity="error" sx={{ mb: 2 }}>
-                  <AlertTitle>Error uploading files</AlertTitle>
+                  <AlertTitle>{t('project.errorUploading')}</AlertTitle>
                   <ul style={{ margin: 0, paddingLeft: '1rem' }}>
                     {attachmentErrors.map((error, index) => (
                       <li key={index}>{error}</li>
@@ -530,9 +645,9 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
                   ))}
                 </List>
               )}
-            </Box>
-          </Stack>
-        </LocalizationProvider>
+            </GridItem>
+          </GridContainer>
+        </Box>
         
         {formErrors.submit && (
           <Alert severity="error" sx={{ mt: 2 }}>
@@ -542,7 +657,7 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={isSubmitting}>
-          Cancel
+          {t('common.cancel')}
         </Button>
         <Button 
           onClick={handleSubmit} 
@@ -550,7 +665,7 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
           disabled={isSubmitting}
           startIcon={isSubmitting ? <CircularProgress size={24} /> : null}
         >
-          {isSubmitting ? 'Creating...' : 'Create Project'}
+          {isSubmitting ? t('common.creating') : t('common.create')}
         </Button>
       </DialogActions>
     </Dialog>

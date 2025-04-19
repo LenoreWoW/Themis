@@ -1,119 +1,126 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import CssBaseline from '@mui/material/CssBaseline';
-
-// Context providers
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction } from '@mui/material';
+import theme, { createAppTheme } from './theme';
+import { AuthProvider } from './context/AuthContext';
+import { ProjectProvider } from './context/ProjectContext';
+import { TaskProvider } from './context/TaskContext';
+import { TaskRequestProvider } from './context/TaskRequestContext';
 import { NotificationProvider } from './context/NotificationContext';
-
-// Pages
+import { ThemeProvider, useThemeMode } from './context/ThemeContext';
+import PrivateRoute from './components/common/PrivateRoute';
+import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import TasksPage from './pages/TasksPage';
+import ProfilePage from './pages/ProfilePage';
+import NotFoundPage from './pages/NotFoundPage';
 import RiskIssuesPage from './pages/RiskIssuesPage';
-import TaskBoardPage from './pages/TaskBoardPage';
 import MeetingsPage from './pages/MeetingsPage';
 import UserManagementPage from './pages/UserManagementPage';
+import AssignmentsPage from './pages/AssignmentsPage';
+import GoalsPage from './pages/GoalsPage';
+import DepartmentsPage from './pages/DepartmentsPage';
+import ProjectApprovalPage from './pages/ProjectApprovalPage';
+import { useTranslation } from 'react-i18next';
 
-// Layout component
-import Layout from './components/Layout';
+// Import i18n configuration
+import './i18n';
 
-// Protected Route Component
-const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { isAuthenticated } = useAuth();
-  
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  
-  return <>{children}</>;
-};
+// RTL support
+import { CacheProvider } from '@emotion/react';
+import createCache from '@emotion/cache';
+import rtlPlugin from 'stylis-plugin-rtl';
+import { prefixer } from 'stylis';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    secondary: {
-      main: '#dc004e',
-    },
-    background: {
-      default: '#f5f5f5',
-    },
-  },
-  typography: {
-    fontFamily: [
-      '-apple-system',
-      'BlinkMacSystemFont',
-      '"Segoe UI"',
-      'Roboto',
-      '"Helvetica Neue"',
-      'Arial',
-      'sans-serif',
-    ].join(','),
-  },
-  components: {
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          textTransform: 'none',
-        },
-      },
-    },
-  },
+// Clear localStorage projects data on init to force using mockProjects
+localStorage.removeItem('themis_projects');
+
+// Create caches for RTL and LTR
+const rtlCache = createCache({
+  key: 'muirtl',
+  stylisPlugins: [prefixer, rtlPlugin],
 });
+
+const ltrCache = createCache({
+  key: 'muiltr',
+  stylisPlugins: [prefixer],
+});
+
+// AppContent component separated to use theme context
+const AppContent: React.FC = () => {
+  const { i18n } = useTranslation();
+  const { mode } = useThemeMode();
+  const [direction, setDirection] = useState<Direction>('ltr');
+  const [currentTheme, setCurrentTheme] = useState(theme);
+
+  // Update direction and theme when language changes or theme mode changes
+  useEffect(() => {
+    const currentLang = i18n.language;
+    const newDirection = currentLang === 'ar' ? 'rtl' : 'ltr';
+    setDirection(newDirection);
+    setCurrentTheme(createAppTheme(newDirection, mode));
+    
+    // Set document dir attribute
+    document.dir = newDirection;
+    
+    // Add appropriate font for Arabic
+    if (newDirection === 'rtl') {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap';
+      document.head.appendChild(link);
+    }
+  }, [i18n.language, mode]);
+
+  // Choose the right cache based on direction
+  const cache = direction === 'rtl' ? rtlCache : ltrCache;
+
+  return (
+    <CacheProvider value={cache}>
+      <MuiThemeProvider theme={currentTheme}>
+        <CssBaseline />
+        <NotificationProvider>
+          <AuthProvider>
+            <ProjectProvider>
+              <TaskProvider projectId="default">
+                <TaskRequestProvider>
+                  <Routes>
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/" element={<PrivateRoute><Layout direction={direction} /></PrivateRoute>}>
+                      <Route index element={<Navigate to="/dashboard" replace />} />
+                      <Route path="dashboard" element={<PrivateRoute roleRequired={['ADMIN']}><DashboardPage /></PrivateRoute>} />
+                      <Route path="projects" element={<ProjectsPage />} />
+                      <Route path="projects/:id" element={<ProjectDetailPage />} />
+                      <Route path="tasks" element={<TasksPage />} />
+                      <Route path="assignments" element={<AssignmentsPage />} />
+                      <Route path="profile" element={<ProfilePage />} />
+                      <Route path="risks-issues" element={<RiskIssuesPage />} />
+                      <Route path="meetings" element={<MeetingsPage />} />
+                      <Route path="goals" element={<GoalsPage />} />
+                      <Route path="departments" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']}><DepartmentsPage /></PrivateRoute>} />
+                      <Route path="users" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE']}><UserManagementPage /></PrivateRoute>} />
+                      <Route path="projects/new" element={<PrivateRoute roleRequired={['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO']}><ProjectApprovalPage /></PrivateRoute>} />
+                      <Route path="projects/:projectId/edit" element={<PrivateRoute roleRequired={['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO']}><ProjectApprovalPage /></PrivateRoute>} />
+                    </Route>
+                    <Route path="*" element={<NotFoundPage />} />
+                  </Routes>
+                </TaskRequestProvider>
+              </TaskProvider>
+            </ProjectProvider>
+          </AuthProvider>
+        </NotificationProvider>
+      </MuiThemeProvider>
+    </CacheProvider>
+  );
+};
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <AuthProvider>
-        <NotificationProvider>
-          <Routes>
-            {/* Public route */}
-            <Route path="/login" element={<LoginPage />} />
-            
-            {/* Protected routes with Layout */}
-            <Route 
-              path="/" 
-              element={
-                <ProtectedRoute>
-                  <Layout />
-                </ProtectedRoute>
-              } 
-            >
-              {/* Root path redirects to dashboard */}
-              <Route index element={<Navigate to="/dashboard" replace />} />
-              
-              {/* Dashboard route */}
-              <Route path="dashboard" element={<DashboardPage />} />
-              
-              {/* Projects routes */}
-              <Route path="projects" element={<ProjectsPage />} />
-              <Route path="projects/:projectId" element={<ProjectDetailPage />} />
-              <Route path="projects/:projectId/tasks" element={<TaskBoardPage />} />
-              
-              {/* Tasks route */}
-              <Route path="tasks" element={<TasksPage />} />
-              
-              {/* Risks & Issues route */}
-              <Route path="risks-issues" element={<RiskIssuesPage />} />
-              
-              {/* Meetings route */}
-              <Route path="meetings" element={<MeetingsPage />} />
-              
-              {/* User Management route */}
-              <Route path="users" element={<UserManagementPage />} />
-              
-              {/* Redirect unknown routes to dashboard */}
-              <Route path="*" element={<Navigate to="/dashboard" replace />} />
-            </Route>
-          </Routes>
-        </NotificationProvider>
-      </AuthProvider>
+    <ThemeProvider>
+      <AppContent />
     </ThemeProvider>
   );
 };

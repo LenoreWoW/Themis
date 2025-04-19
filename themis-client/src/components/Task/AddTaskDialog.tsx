@@ -20,9 +20,10 @@ import {
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { TaskPriority, TaskStatus, User, UserRole } from '../../types';
+import { TaskPriority, TaskStatus, User, UserRole, Department } from '../../types';
 import { TaskService } from '../../services/TaskService';
 import { useAuth } from '../../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -30,8 +31,9 @@ interface AddTaskDialogProps {
   projectId?: string; // Optional - if not provided, it's an independent task
   projectUsers?: User[];
   allUsers?: User[]; // For independent tasks
-  onTaskAdded: () => void;
+  onTaskAdded: (success: boolean) => void;
   isIndependentTask?: boolean;
+  initialStatus?: TaskStatus; // Add initialStatus prop
 }
 
 const AddTaskDialog: React.FC<AddTaskDialogProps> = ({ 
@@ -41,16 +43,18 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
   projectUsers = [],
   allUsers = [],
   onTaskAdded,
-  isIndependentTask = false
+  isIndependentTask = false,
+  initialStatus = TaskStatus.TODO // Default to TODO if not provided
 }) => {
   const { token } = useAuth();
+  const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [availableUsers, setAvailableUsers] = useState<User[]>(projectUsers);
   const [taskData, setTaskData] = useState({
     title: '',
     description: '',
-    status: TaskStatus.TODO,
+    status: initialStatus,
     priority: TaskPriority.MEDIUM,
     startDate: new Date(),
     dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // Default to 1 week from now
@@ -58,6 +62,14 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
     isMilestone: false,
     parentTaskId: ''
   });
+
+  // Update status when initialStatus changes
+  useEffect(() => {
+    setTaskData(prev => ({
+      ...prev,
+      status: initialStatus
+    }));
+  }, [initialStatus]);
 
   // Fetch project users if needed
   useEffect(() => {
@@ -67,34 +79,51 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
       try {
         // In a real app, you would fetch project users from your API
         // For now, we'll simulate it with mock data
-        const mockProjectUsers: User[] = [
+        const mockDepartments: Department[] = [
           {
-            id: '101',
-            username: 'alice.johnson',
+            id: '1',
+            name: 'IT',
+            description: 'Information Technology Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '2',
+            name: 'Engineering',
+            description: 'Engineering Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ];
+        
+        const mockUsers: User[] = [
+          {
+            id: '1',
+            username: 'alice',
             firstName: 'Alice',
-            lastName: 'Johnson',
-            role: UserRole.PROJECT_MANAGER,
+            lastName: 'Smith',
             email: 'alice@example.com',
-            department: 'IT',
+            role: UserRole.PROJECT_MANAGER,
+            department: mockDepartments[0],
             isActive: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           },
           {
-            id: '102',
-            username: 'bob.smith',
+            id: '2',
+            username: 'bob',
             firstName: 'Bob',
-            lastName: 'Smith',
-            role: UserRole.ADMIN,
+            lastName: 'Johnson',
             email: 'bob@example.com',
-            department: 'Engineering',
+            role: UserRole.ADMIN,
+            department: mockDepartments[1],
             isActive: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
           }
         ];
         
-        setAvailableUsers(mockProjectUsers);
+        setAvailableUsers(mockUsers);
       } catch (error) {
         console.error("Error fetching project users:", error);
       }
@@ -181,14 +210,14 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
         throw new Error('Missing project ID for project task');
       }
       
-      onTaskAdded();
+      onTaskAdded(true);
       onClose();
       
       // Reset form data
       setTaskData({
         title: '',
         description: '',
-        status: TaskStatus.TODO,
+        status: initialStatus,
         priority: TaskPriority.MEDIUM,
         startDate: new Date(),
         dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
@@ -202,6 +231,7 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
         ...prev, 
         submit: 'Failed to create task. Please try again.' 
       }));
+      onTaskAdded(false);
     } finally {
       setIsSubmitting(false);
     }
@@ -214,72 +244,72 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{isIndependentTask ? 'Create Independent Task' : 'Add New Task'}</DialogTitle>
+      <DialogTitle>{t('task.add')}</DialogTitle>
       <DialogContent>
         <LocalizationProvider dateAdapter={AdapterDateFns}>
-          <Stack spacing={3} sx={{ mt: 1 }}>
+          <Stack spacing={2} sx={{ mt: 1 }}>
             <TextField
-              fullWidth
-              label="Task Title"
               name="title"
+              label={t('task.title')}
               value={taskData.title}
               onChange={handleInputChange}
+              fullWidth
+              required
               error={!!formErrors.title}
               helperText={formErrors.title}
-              required
             />
             
             <TextField
-              fullWidth
-              label="Description"
               name="description"
+              label={t('task.description')}
               value={taskData.description}
               onChange={handleInputChange}
+              fullWidth
               multiline
-              rows={4}
+              rows={3}
             />
             
             <Box sx={{ display: 'flex', gap: 2 }}>
               <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
+                <InputLabel>{t('task.status')}</InputLabel>
                 <Select
                   name="status"
                   value={taskData.status}
-                  label="Status"
+                  label={t('task.status')}
                   onChange={handleSelectChange}
                 >
-                  <MenuItem value={TaskStatus.TODO}>To Do</MenuItem>
-                  <MenuItem value={TaskStatus.IN_PROGRESS}>In Progress</MenuItem>
-                  <MenuItem value={TaskStatus.REVIEW}>Review</MenuItem>
-                  <MenuItem value={TaskStatus.DONE}>Done</MenuItem>
+                  <MenuItem value={TaskStatus.TODO}>{t('taskStatus.TODO')}</MenuItem>
+                  <MenuItem value={TaskStatus.IN_PROGRESS}>{t('taskStatus.IN_PROGRESS')}</MenuItem>
+                  <MenuItem value={TaskStatus.REVIEW}>{t('taskStatus.REVIEW')}</MenuItem>
+                  <MenuItem value={TaskStatus.DONE}>{t('taskStatus.DONE')}</MenuItem>
                 </Select>
               </FormControl>
               
               <FormControl fullWidth>
-                <InputLabel>Priority</InputLabel>
+                <InputLabel>{t('task.priority')}</InputLabel>
                 <Select
                   name="priority"
                   value={taskData.priority}
-                  label="Priority"
+                  label={t('task.priority')}
                   onChange={handleSelectChange}
                 >
-                  <MenuItem value={TaskPriority.LOW}>Low</MenuItem>
-                  <MenuItem value={TaskPriority.MEDIUM}>Medium</MenuItem>
-                  <MenuItem value={TaskPriority.HIGH}>High</MenuItem>
+                  <MenuItem value={TaskPriority.LOW}>{t('taskPriority.LOW')}</MenuItem>
+                  <MenuItem value={TaskPriority.MEDIUM}>{t('taskPriority.MEDIUM')}</MenuItem>
+                  <MenuItem value={TaskPriority.HIGH}>{t('taskPriority.HIGH')}</MenuItem>
                 </Select>
               </FormControl>
             </Box>
             
             <Box sx={{ display: 'flex', gap: 2 }}>
               <DatePicker
-                label="Start Date"
+                label={t('task.startDate')}
                 value={taskData.startDate}
                 onChange={handleStartDateChange}
                 slotProps={{ textField: { fullWidth: true } }}
               />
               
               <DatePicker
-                label="Due Date"
+                label={t('task.dueDate')}
                 value={taskData.dueDate}
                 onChange={handleDueDateChange}
                 slotProps={{ 
@@ -293,15 +323,15 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
             </Box>
             
             <FormControl fullWidth error={!!formErrors.assigneeId}>
-              <InputLabel>Assignee</InputLabel>
+              <InputLabel>{t('task.assignee')}</InputLabel>
               <Select
                 name="assigneeId"
                 value={taskData.assigneeId}
-                label="Assignee"
+                label={t('task.assignee')}
                 onChange={handleSelectChange}
                 required={isIndependentTask}
               >
-                {!isIndependentTask && <MenuItem value="">Unassigned</MenuItem>}
+                {!isIndependentTask && <MenuItem value="">{t('project.unassigned')}</MenuItem>}
                 {getAvailableUsers().map(user => (
                   <MenuItem key={user.id} value={user.id}>
                     {user.firstName} {user.lastName} ({user.username})
@@ -320,7 +350,7 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
                     name="isMilestone"
                   />
                 }
-                label="This is a milestone"
+                label={t('task.milestone')}
               />
             )}
             
@@ -333,13 +363,13 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
         </LocalizationProvider>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
         <Button 
           onClick={handleSubmit} 
           variant="contained" 
           disabled={isSubmitting}
         >
-          {isSubmitting ? 'Creating...' : 'Create Task'}
+          {isSubmitting ? t('common.creating') : t('task.add')}
         </Button>
       </DialogActions>
     </Dialog>

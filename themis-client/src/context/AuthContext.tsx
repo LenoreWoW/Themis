@@ -118,26 +118,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
         role: UserRole.ADMIN, // Default to admin for testing
         token: 'mock-jwt-token-' + Date.now(), // Add timestamp to make it unique
         success: true,
-        message: 'Login successful'
+        message: 'Login successful',
+        // Create a minimal user object to satisfy the interface requirement
+        user: {
+          id: '1',
+          username: adIdentifier,
+          firstName: adIdentifier,
+          lastName: 'User',
+          email: `${adIdentifier}@example.com`,
+          role: UserRole.ADMIN,
+          department: {
+            id: '',
+            name: 'Default Department',
+            description: 'Default Department Description',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }
       };
       
-      // Create a user object from the mock response
-      const user: User = {
-        id: mockResponse.userId,
-        username: mockResponse.username,
-        role: mockResponse.role,
-        // Set default values for other required User properties
-        email: `${adIdentifier}@example.com`,
-        firstName: adIdentifier,
-        lastName: 'User',
-        department: mockResponse.departmentId || '',
-        isActive: true,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-      
-      console.log('Setting user:', user);
-      setUser(user);
+      console.log('Setting user:', mockResponse.user);
+      setUser(mockResponse.user);
       console.log('Setting token:', mockResponse.token);
       setToken(mockResponse.token);
       
@@ -231,4 +235,139 @@ export function AuthProvider({ children }: AuthProviderProps) {
   );
 }
 
-export default AuthContext; 
+export default AuthContext;
+
+// Define roles hierarchy for ApprovalStatus
+export enum ApprovalStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  SUB_PMO_REVIEW = 'SUB_PMO_REVIEW',
+  SUB_PMO_APPROVED = 'SUB_PMO_APPROVED',
+  MAIN_PMO_REVIEW = 'MAIN_PMO_REVIEW',
+  MAIN_PMO_APPROVED = 'MAIN_PMO_APPROVED',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  CHANGES_REQUESTED = 'CHANGES_REQUESTED'
+}
+
+// Define permission functions
+export const canCreateProjects = (userRole: UserRole | string | undefined): boolean => {
+  if (!userRole) return false;
+  
+  return [
+    UserRole.ADMIN,
+    UserRole.PROJECT_MANAGER,
+    UserRole.MAIN_PMO,
+    UserRole.SUB_PMO
+  ].includes(userRole as UserRole);
+};
+
+export const canEditProjects = (userRole: UserRole | string | undefined, isOwnProject: boolean): boolean => {
+  if (!userRole) return false;
+  
+  if (userRole === UserRole.ADMIN || userRole === UserRole.MAIN_PMO) {
+    return true; // Can edit all projects
+  }
+  
+  if (userRole === UserRole.SUB_PMO) {
+    return true; // Can edit projects in their department
+  }
+  
+  if (userRole === UserRole.PROJECT_MANAGER && isOwnProject) {
+    return true; // Project managers can only edit their own projects
+  }
+  
+  return false;
+};
+
+export const canApproveProjects = (userRole: UserRole | string | undefined, isOwnProject: boolean): boolean => {
+  if (!userRole) return false;
+  
+  if (userRole === UserRole.ADMIN || userRole === UserRole.MAIN_PMO) {
+    return true; // Final approval
+  }
+  
+  if (userRole === UserRole.SUB_PMO && !isOwnProject) {
+    return true; // Sub PMOs can approve projects they don't own
+  }
+  
+  return false;
+};
+
+export const canRequestChanges = (userRole: UserRole | string | undefined): boolean => {
+  if (!userRole) return false;
+  
+  return [
+    UserRole.ADMIN,
+    UserRole.PROJECT_MANAGER,
+    UserRole.MAIN_PMO,
+    UserRole.SUB_PMO,
+    UserRole.TEAM_LEAD
+  ].includes(userRole as UserRole);
+};
+
+export const canViewAllProjects = (userRole: UserRole | string | undefined): boolean => {
+  if (!userRole) return false;
+  
+  return [
+    UserRole.ADMIN,
+    UserRole.MAIN_PMO,
+    UserRole.EXECUTIVE
+  ].includes(userRole as UserRole);
+};
+
+export const canViewDepartmentProjects = (userRole: UserRole | string | undefined): boolean => {
+  if (!userRole) return false;
+  
+  return [
+    UserRole.ADMIN,
+    UserRole.MAIN_PMO,
+    UserRole.SUB_PMO,
+    UserRole.DEPARTMENT_DIRECTOR,
+    UserRole.EXECUTIVE
+  ].includes(userRole as UserRole);
+};
+
+// Define the workflow for approvals
+export const getNextApprovalStatus = (
+  currentStatus: ApprovalStatus, 
+  userRole: UserRole | string | undefined, 
+  action: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES'
+): ApprovalStatus | null => {
+  if (!userRole) return null;
+  
+  switch (currentStatus) {
+    case ApprovalStatus.DRAFT:
+      return ApprovalStatus.SUBMITTED;
+      
+    case ApprovalStatus.SUBMITTED:
+      if (userRole === UserRole.SUB_PMO || userRole === UserRole.MAIN_PMO || userRole === UserRole.ADMIN) {
+        if (action === 'APPROVE') {
+          return ApprovalStatus.SUB_PMO_APPROVED;
+        } else if (action === 'REJECT') {
+          return ApprovalStatus.REJECTED;
+        } else if (action === 'REQUEST_CHANGES') {
+          return ApprovalStatus.CHANGES_REQUESTED;
+        }
+      }
+      return null;
+      
+    case ApprovalStatus.SUB_PMO_APPROVED:
+      if (userRole === UserRole.MAIN_PMO || userRole === UserRole.ADMIN) {
+        if (action === 'APPROVE') {
+          return ApprovalStatus.APPROVED;
+        } else if (action === 'REJECT') {
+          return ApprovalStatus.REJECTED;
+        } else if (action === 'REQUEST_CHANGES') {
+          return ApprovalStatus.CHANGES_REQUESTED;
+        }
+      }
+      return null;
+      
+    case ApprovalStatus.CHANGES_REQUESTED:
+      return ApprovalStatus.SUBMITTED;
+      
+    default:
+      return null;
+  }
+}; 

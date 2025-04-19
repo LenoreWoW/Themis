@@ -1,4 +1,4 @@
-import { Task, Project, User, Risk, Issue } from '../types';
+import { Task, Project, User, Risk, Issue, Department } from '../types';
 
 // Keys for localStorage items
 const STORAGE_KEYS = {
@@ -16,14 +16,18 @@ export interface Meeting {
   id: string;
   title: string;
   description: string;
+  date?: string;
   startTime: string;
   endTime: string;
+  location?: string;
   organizer: User;
   participants: User[];
-  isActive: boolean;
-  meetingLink: string;
+  attendees?: User[];
+  isActive?: boolean;
+  meetingLink?: string;
+  projectId?: string;
   createdAt: string;
-  updatedAt?: string;
+  updatedAt: string;
 }
 
 /**
@@ -59,7 +63,8 @@ const LocalStorageService = {
   
   addTask: (task: Task): void => {
     try {
-      const { projectId } = task;
+      // Get the projectId from the task's project property
+      const projectId = task.project?.id;
       if (!projectId) return;
       
       const tasks = LocalStorageService.getTasks(projectId);
@@ -430,7 +435,7 @@ const LocalStorageService = {
   },
   
   // Departments
-  getDepartments: (): string[] => {
+  getDepartments: (): Department[] => {
     try {
       const departmentsJson = localStorage.getItem(STORAGE_KEYS.DEPARTMENTS);
       return departmentsJson ? JSON.parse(departmentsJson) : [];
@@ -440,7 +445,7 @@ const LocalStorageService = {
     }
   },
   
-  saveDepartments: (departments: string[]): void => {
+  saveDepartments: (departments: Department[]): void => {
     try {
       localStorage.setItem(STORAGE_KEYS.DEPARTMENTS, JSON.stringify(departments));
     } catch (error) {
@@ -448,15 +453,52 @@ const LocalStorageService = {
     }
   },
   
-  addDepartment: (department: string): void => {
+  addDepartment: (department: Department): void => {
     try {
       const departments = LocalStorageService.getDepartments();
-      if (!departments.includes(department)) {
+      if (!departments.find(d => d.id === department.id)) {
         departments.push(department);
         LocalStorageService.saveDepartments(departments);
       }
     } catch (error) {
       console.error('Error adding department to localStorage:', error);
+    }
+  },
+  
+  getDepartment: (departmentId: string): Department | null => {
+    try {
+      const departments = LocalStorageService.getDepartments();
+      return departments.find(d => d.id === departmentId) || null;
+    } catch (error) {
+      console.error('Error retrieving department from localStorage:', error);
+      return null;
+    }
+  },
+  
+  updateDepartment: (departmentId: string, updatedDepartment: Partial<Department>): Department | null => {
+    try {
+      const departments = LocalStorageService.getDepartments();
+      const departmentIndex = departments.findIndex(d => d.id === departmentId);
+      
+      if (departmentIndex === -1) return null;
+      
+      departments[departmentIndex] = { ...departments[departmentIndex], ...updatedDepartment };
+      LocalStorageService.saveDepartments(departments);
+      
+      return departments[departmentIndex];
+    } catch (error) {
+      console.error('Error updating department in localStorage:', error);
+      return null;
+    }
+  },
+  
+  deleteDepartment: (departmentId: string): void => {
+    try {
+      const departments = LocalStorageService.getDepartments();
+      const updatedDepartments = departments.filter(d => d.id !== departmentId);
+      LocalStorageService.saveDepartments(updatedDepartments);
+    } catch (error) {
+      console.error('Error deleting department from localStorage:', error);
     }
   },
   
@@ -472,17 +514,77 @@ const LocalStorageService = {
       }
       
       if (!localStorage.getItem(STORAGE_KEYS.DEPARTMENTS)) {
-        const defaultDepartments = [
-          'IT',
-          'Operations',
-          'Engineering',
-          'Marketing',
-          'Sales',
-          'Finance',
-          'HR',
-          'Legal',
-          'Product Development',
-          'Research'
+        const defaultDepartments: Department[] = [
+          {
+            id: '1',
+            name: 'IT',
+            description: 'Information Technology Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '2',
+            name: 'Operations',
+            description: 'Operations Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '3',
+            name: 'Engineering',
+            description: 'Engineering Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '4',
+            name: 'Marketing',
+            description: 'Marketing Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '5',
+            name: 'Sales',
+            description: 'Sales Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '6',
+            name: 'Finance',
+            description: 'Finance Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '7',
+            name: 'HR',
+            description: 'Human Resources Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '8',
+            name: 'Legal',
+            description: 'Legal Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '9',
+            name: 'Product Development',
+            description: 'Product Development Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: '10',
+            name: 'Research',
+            description: 'Research and Development Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
         ];
         LocalStorageService.saveDepartments(defaultDepartments);
       }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Grid, 
@@ -15,14 +15,25 @@ import {
   Menu,
   MenuItem,
   Tooltip,
-  Stack
+  Stack,
+  CircularProgress
 } from '@mui/material';
 import {
   MoreVert as MoreIcon,
   Print as PrintIcon,
-  FileDownload as ExportIcon
+  FileDownload as ExportIcon,
+  Refresh as RefreshIcon,
+  TrendingUp as TrendingUpIcon,
+  TrendingDown as TrendingDownIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
+import ExecutiveDashboardPage from './ExecutiveDashboardPage';
+import { useTranslation } from 'react-i18next';
+import api from '../services/api';
+import { ProjectStatus, Project } from '../types/index';
+
+// Define custom project status types that might be used in the UI
+type CustomProjectStatus = ProjectStatus | 'DRAFT' | 'SubPMOReview' | 'MainPMOApproval';
 
 // Mock data
 const mockProjects = [
@@ -68,18 +79,6 @@ const mockProjects = [
   },
 ];
 
-const kpiData = {
-  totalProjects: 12,
-  inProgress: 5,
-  onHold: 2,
-  completed: 4,
-  draft: 1,
-  averageCompletion: 68,
-  risksOpen: 9,
-  issuesOpen: 3,
-  approvalsPending: 2
-};
-
 // Helper function to get status color
 const getStatusColor = (status: string) => {
   switch(status) {
@@ -108,10 +107,56 @@ const getStatusLabel = (status: string) => {
   }
 };
 
+// Define extended dashboard KPI interface to include all needed fields
+interface DashboardKpiData {
+  totalProjects: number;
+  inProgress: number;
+  onHold: number;
+  completed: number;
+  overdueProjects: number;
+  totalBudget: number;
+  totalActualCost: number;
+  budgetVariance: number;
+  draft: number;
+  averageCompletion: number;
+  risksOpen: number;
+  issuesOpen: number;
+  approvalsPending: number;
+}
+
 const DashboardPage: React.FC = () => {
-  const { user, isDepartmentDirector: isDirector, isHigherManagement: isExecutive, isMainPmo: isMainPMO, isSubPmo: isSubPMO } = useAuth();
+  const { user } = useAuth();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { t } = useTranslation();
+  const [kpiData, setKpiData] = useState<DashboardKpiData>({
+    totalProjects: 0,
+    inProgress: 0,
+    onHold: 0,
+    completed: 0,
+    overdueProjects: 0,
+    totalBudget: 0,
+    totalActualCost: 0,
+    budgetVariance: 0,
+    draft: 0,
+    averageCompletion: 0,
+    risksOpen: 0,
+    issuesOpen: 0,
+    approvalsPending: 0
+  });
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [loading, setLoading] = useState(false);
   
+  const isDirector = user?.role === 'DEPARTMENT_DIRECTOR';
+  const isExecutive = user?.role === 'EXECUTIVE' || user?.role === 'ADMIN';
+  const isMainPMO = user?.role === 'MAIN_PMO';
+  const isSubPMO = user?.role === 'SUB_PMO';
+  
+  // Load dashboard data when component mounts
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
@@ -121,24 +166,117 @@ const DashboardPage: React.FC = () => {
   };
   
   const handlePrint = () => {
-    window.print();
+    console.log('Printing dashboard...');
     handleMenuClose();
   };
   
   const handleExport = () => {
-    // Export logic would go here
-    alert('Export functionality would be implemented here');
+    console.log('Exporting dashboard...');
     handleMenuClose();
   };
   
+  const handleRefresh = async () => {
+    // Call fetchDashboardData instead of only fetching projects
+    fetchDashboardData();
+  };
+  
+  const fetchDashboardData = async () => {
+    setIsLoading(true);
+    try {
+      // Fetch projects
+      const projectsResponse = await api.projects.getAllProjects('');
+      if (projectsResponse.success && projectsResponse.data) {
+        const fetchedProjects = projectsResponse.data;
+        setProjects(fetchedProjects);
+        
+        // Calculate KPI data from projects
+        const inProgressCount = fetchedProjects.filter((p: Project) => p.status === ProjectStatus.IN_PROGRESS).length;
+        const onHoldCount = fetchedProjects.filter((p: Project) => p.status === ProjectStatus.ON_HOLD).length;
+        const completedCount = fetchedProjects.filter((p: Project) => p.status === ProjectStatus.COMPLETED).length;
+        
+        // Check for string status values (these might be custom statuses not in the enum)
+        const draftCount = fetchedProjects.filter((p: Project) => {
+          const status = String(p.status);
+          return status === ProjectStatus.PLANNING || status === 'DRAFT';
+        }).length;
+        
+        // Calculate average completion
+        const avgCompletion = fetchedProjects.length > 0 
+          ? fetchedProjects.reduce((acc: number, p: Project) => acc + (p.progress || 0), 0) / fetchedProjects.length 
+          : 0;
+        
+        // Fetch risks and issues
+        let risksCount = 0;
+        let issuesCount = 0;
+        let pendingApprovalsCount = 0;
+        
+        // Get counts for each project
+        await Promise.all(fetchedProjects.map(async (project: Project) => {
+          // Fetch risks
+          const risksResponse = await api.risks.getAllRisks(project.id, '');
+          if (risksResponse.success && risksResponse.data) {
+            risksCount += risksResponse.data.filter((r: any) => r.status === 'OPEN' || r.status === 'IN_PROGRESS').length;
+          }
+          
+          // Fetch issues
+          const issuesResponse = await api.issues.getAllIssues(project.id, '');
+          if (issuesResponse.success && issuesResponse.data) {
+            issuesCount += issuesResponse.data.filter((i: any) => i.status === 'OPEN' || i.status === 'IN_PROGRESS').length;
+          }
+        }));
+        
+        // Count pending approvals - using string comparison for custom statuses
+        pendingApprovalsCount = fetchedProjects.filter((p: Project) => {
+          const status = String(p.status);
+          return status === 'SubPMOReview' || status === 'MainPMOApproval';
+        }).length;
+        
+        // Update KPI data
+        setKpiData({
+          totalProjects: fetchedProjects.length,
+          inProgress: inProgressCount,
+          onHold: onHoldCount,
+          completed: completedCount,
+          overdueProjects: 0,
+          totalBudget: 0,
+          totalActualCost: 0,
+          budgetVariance: 0,
+          draft: draftCount,
+          averageCompletion: Math.round(avgCompletion),
+          risksOpen: risksCount,
+          issuesOpen: issuesCount,
+          approvalsPending: pendingApprovalsCount
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
+  // If the user is an EXECUTIVE or ADMIN, show the ExecutiveDashboardPage
+  if (isExecutive) {
+    return <ExecutiveDashboardPage />;
+  }
+  
+  // Render only first 4 projects for Recent Projects section or all if less than 4
+  const recentProjects = projects.slice(0, 4);
+
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'center' }}>
+    <Box sx={{ p: 2 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Dashboard
+          {t('dashboard.title')}
         </Typography>
-        <Box>
-          <Tooltip title="Export options">
+        
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Tooltip title={t('dashboard.refresh')}>
+            <IconButton onClick={handleRefresh} disabled={isLoading}>
+              {isLoading ? <CircularProgress size={24} /> : <RefreshIcon />}
+            </IconButton>
+          </Tooltip>
+          <Tooltip title={t('common.actions')}>
             <IconButton onClick={handleMenuOpen}>
               <MoreIcon />
             </IconButton>
@@ -150,11 +288,11 @@ const DashboardPage: React.FC = () => {
           >
             <MenuItem onClick={handlePrint}>
               <PrintIcon fontSize="small" sx={{ mr: 1 }} />
-              Print Dashboard
+              {t('common.print', 'Print Dashboard')}
             </MenuItem>
             <MenuItem onClick={handleExport}>
               <ExportIcon fontSize="small" sx={{ mr: 1 }} />
-              Export as PDF
+              {t('dashboard.export')}
             </MenuItem>
           </Menu>
         </Box>
@@ -162,59 +300,89 @@ const DashboardPage: React.FC = () => {
       
       <Stack spacing={3}>
         {/* Welcome Card */}
-        <Paper sx={{ p: 3 }}>
-          <Typography variant="h6">
-            Welcome, {user?.username || 'User'}
+        <Paper sx={{ p: 3, background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)', color: 'white' }}>
+          <Typography variant="h5" sx={{ mb: 1 }}>
+            {t('common.welcome', 'Welcome')}, {user?.username || t('common.user', 'User')}
           </Typography>
-          <Typography variant="body1" color="text.secondary">
-            {isDirector && 'Department Director Dashboard'}
-            {isExecutive && 'Executive Dashboard'}
-            {isMainPMO && 'Main PMO Dashboard'}
-            {isSubPMO && 'Sub PMO Dashboard'}
-            {!isDirector && !isExecutive && !isMainPMO && !isSubPMO && 'Project Manager Dashboard'}
+          <Typography variant="body1" sx={{ opacity: 0.9 }}>
+            {isDirector && t('dashboard.departmentDirectorDashboard', 'Department Director Dashboard')}
+            {isExecutive && t('dashboard.title')}
+            {isMainPMO && t('dashboard.pmoDashboard', 'PMO Dashboard')}
+            {isSubPMO && t('dashboard.pmoDashboard', 'PMO Dashboard')}
+            {!isDirector && !isExecutive && !isMainPMO && !isSubPMO && t('dashboard.pmDashboard', 'Project Manager Dashboard')}
           </Typography>
         </Paper>
         
         {/* KPI Section */}
         <Box>
-          <Typography variant="h6" sx={{ mb: 2 }}>Key Performance Indicators</Typography>
+          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+            {t('dashboard.kpi')}
+            {kpiData.averageCompletion > 70 ? (
+              <TrendingUpIcon color="success" />
+            ) : (
+              <TrendingDownIcon color="error" />
+            )}
+          </Typography>
           
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 3 }}>
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%' }}>
-              <Typography variant="h3" color="primary">{kpiData.totalProjects}</Typography>
-              <Typography variant="body1">Total Projects</Typography>
+            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
+              <Typography variant="h3" color="primary" sx={{ mb: 1 }}>{kpiData.totalProjects}</Typography>
+              <Typography variant="body1" color="text.secondary">{t('dashboard.totalProjects')}</Typography>
+              <LinearProgress 
+                variant="determinate" 
+                value={100} 
+                sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+              />
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%' }}>
-              <Typography variant="h3" color="primary">{kpiData.inProgress}</Typography>
-              <Typography variant="body1">In Progress</Typography>
+            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
+              <Typography variant="h3" color="info.main" sx={{ mb: 1 }}>{kpiData.inProgress}</Typography>
+              <Typography variant="body1" color="text.secondary">{t('dashboard.inProgress')}</Typography>
+              <LinearProgress 
+                variant="determinate" 
+                value={(kpiData.inProgress / kpiData.totalProjects) * 100} 
+                color="info"
+                sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+              />
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%' }}>
-              <Typography variant="h3" color="success.main">{kpiData.completed}</Typography>
-              <Typography variant="body1">Completed</Typography>
+            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
+              <Typography variant="h3" color="success.main" sx={{ mb: 1 }}>{kpiData.completed}</Typography>
+              <Typography variant="body1" color="text.secondary">{t('dashboard.completed')}</Typography>
+              <LinearProgress 
+                variant="determinate" 
+                value={(kpiData.completed / kpiData.totalProjects) * 100} 
+                color="success"
+                sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+              />
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%' }}>
-              <Typography variant="h3" color="warning.main">{kpiData.onHold}</Typography>
-              <Typography variant="body1">On Hold</Typography>
+            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
+              <Typography variant="h3" color="warning.main" sx={{ mb: 1 }}>{kpiData.onHold}</Typography>
+              <Typography variant="body1" color="text.secondary">{t('dashboard.onHold')}</Typography>
+              <LinearProgress 
+                variant="determinate" 
+                value={(kpiData.onHold / kpiData.totalProjects) * 100} 
+                color="warning"
+                sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+              />
             </Paper>
           </Box>
           
           <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%' }}>
-              <Typography variant="h3" color="error.main">{kpiData.risksOpen}</Typography>
-              <Typography variant="body1">Open Risks</Typography>
+            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2, bgcolor: 'error.light' }}>
+              <Typography variant="h3" color="white" sx={{ mb: 1 }}>{kpiData.risksOpen}</Typography>
+              <Typography variant="body1" color="white" sx={{ opacity: 0.9 }}>{t('dashboard.openRisks')}</Typography>
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%' }}>
-              <Typography variant="h3" color="error.main">{kpiData.issuesOpen}</Typography>
-              <Typography variant="body1">Open Issues</Typography>
+            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2, bgcolor: 'warning.light' }}>
+              <Typography variant="h3" color="white" sx={{ mb: 1 }}>{kpiData.issuesOpen}</Typography>
+              <Typography variant="body1" color="white" sx={{ opacity: 0.9 }}>{t('dashboard.openIssues')}</Typography>
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%' }}>
-              <Typography variant="h3" color="secondary.main">{kpiData.approvalsPending}</Typography>
-              <Typography variant="body1">Pending Approvals</Typography>
+            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2, bgcolor: 'secondary.light' }}>
+              <Typography variant="h3" color="white" sx={{ mb: 1 }}>{kpiData.approvalsPending}</Typography>
+              <Typography variant="body1" color="white" sx={{ opacity: 0.9 }}>{t('common.pendingApprovals', 'Pending Approvals')}</Typography>
             </Paper>
           </Box>
         </Box>
@@ -222,72 +390,86 @@ const DashboardPage: React.FC = () => {
         {/* Projects Section */}
         <Box>
           <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" sx={{ mb: 2 }}>Recent Projects</Typography>
+          <Typography variant="h6" sx={{ mb: 2 }}>{t('dashboard.recentProjects', 'Recent Projects')}</Typography>
           
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, 1fr)' }, gap: 3 }}>
-            {mockProjects.map((project) => (
-              <Card key={project.id}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                    <Typography variant="h6">{project.name}</Typography>
-                    <Chip 
-                      label={getStatusLabel(project.status)} 
-                      color={getStatusColor(project.status) as any}
-                      size="small"
-                    />
-                  </Box>
-                  
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                    Department: {project.department} | Manager: {project.manager}
-                  </Typography>
-                  
-                  <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-                    <Typography variant="body2" sx={{ mr: 1, minWidth: '100px' }}>
-                      Completion: {project.completion}%
+            {projects.length === 0 ? (
+              <Typography>{t('dashboard.noProjects', 'No projects found.')}</Typography>
+            ) : (
+              recentProjects.map((project) => (
+                <Card key={project.id} sx={{ borderRadius: 2, boxShadow: 2 }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="h6">{project.name}</Typography>
+                      <Chip 
+                        label={t(`status.${String(project.status).toLowerCase()}`, String(project.status))} 
+                        color={getStatusColor(String(project.status)) as any}
+                        size="small"
+                      />
+                    </Box>
+                    
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      {t('project.department')}: {project.department?.name || ''} | {t('project.projectManager')}: {project.projectManager?.firstName} {project.projectManager?.lastName}
                     </Typography>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={project.completion} 
-                      sx={{ flexGrow: 1 }} 
-                    />
-                  </Box>
-                  
-                  <Box sx={{ display: 'flex', mt: 2 }}>
-                    {project.riskCount > 0 && (
-                      <Chip 
-                        label={`${project.riskCount} Risks`} 
-                        color="error" 
-                        size="small" 
-                        sx={{ mr: 1 }} 
-                        variant="outlined"
+                    
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                      <Typography variant="body2" sx={{ mr: 1, minWidth: '100px' }}>
+                        {t('project.progress')}: {project.progress}%
+                      </Typography>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={project.progress} 
+                        sx={{ 
+                          flexGrow: 1,
+                          height: 8,
+                          borderRadius: 1,
+                          bgcolor: 'grey.200',
+                          '& .MuiLinearProgress-bar': {
+                            bgcolor: project.progress < 30 
+                              ? 'error.main' 
+                              : project.progress < 70 
+                              ? 'warning.main' 
+                              : 'success.main'
+                          }
+                        }}
                       />
+                    </Box>
+                    
+                    {/* Risk and issue counts will need to be calculated separately */}
+                  </CardContent>
+                  <CardActions>
+                    <Button size="small" color="primary" onClick={() => window.location.href = `/projects/${project.id}`}>
+                      {t('common.view', 'View Details')}
+                    </Button>
+                    {(String(project.status) === 'SubPMOReview' && isSubPMO) && (
+                      <Button size="small" color="secondary">{t('common.review', 'Review')}</Button>
                     )}
-                    {project.issueCount > 0 && (
-                      <Chip 
-                        label={`${project.issueCount} Issues`} 
-                        color="error" 
-                        size="small" 
-                        variant="outlined"
-                      />
+                    {(String(project.status) === 'MainPMOApproval' && isMainPMO) && (
+                      <Button size="small" color="secondary">{t('common.approve', 'Approve')}</Button>
                     )}
-                  </Box>
-                </CardContent>
-                <CardActions>
-                  <Button size="small" color="primary">View Details</Button>
-                  {(project.status === 'SubPMOReview' && isSubPMO) && (
-                    <Button size="small" color="secondary">Review</Button>
-                  )}
-                  {(project.status === 'MainPMOApproval' && isMainPMO) && (
-                    <Button size="small" color="secondary">Approve</Button>
-                  )}
-                </CardActions>
-              </Card>
-            ))}
+                  </CardActions>
+                </Card>
+              ))
+            )}
           </Box>
+          {projects.length > 4 && (
+            <Box sx={{ mt: 2, textAlign: 'center' }}>
+              <Button 
+                variant="outlined" 
+                onClick={() => window.location.href = '/projects'}
+              >
+                {t('dashboard.viewAllProjects', 'View All Projects')} ({projects.length})
+              </Button>
+            </Box>
+          )}
         </Box>
       </Stack>
     </Box>
   );
 };
 
+// Re-export the ExecutiveDashboardPage as DashboardPage
+// This allows routes to use '/dashboard' as a more generic URL
+// while maintaining the same component implementation with both
+// the dashboard overview and assignments tab
 export default DashboardPage; 

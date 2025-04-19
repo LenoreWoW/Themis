@@ -255,7 +255,7 @@ const RiskIssuesPage: React.FC = () => {
           riskForm.id,
           {
             ...riskForm,
-            owner: user
+            owner: user || undefined
           },
           token || ''
         );
@@ -270,8 +270,8 @@ const RiskIssuesPage: React.FC = () => {
           {
             ...riskForm,
             projectId: selectedProjectId,
-            owner: user,
-            createdBy: user
+            owner: user || undefined,
+            createdBy: user || undefined
           },
           token || ''
         );
@@ -298,7 +298,7 @@ const RiskIssuesPage: React.FC = () => {
           issueForm.id,
           {
             ...issueForm,
-            owner: user
+            owner: user || undefined
           },
           token || ''
         );
@@ -313,8 +313,8 @@ const RiskIssuesPage: React.FC = () => {
           {
             ...issueForm,
             projectId: selectedProjectId,
-            owner: user,
-            createdBy: user
+            owner: user || undefined,
+            createdBy: user || undefined
           },
           token || ''
         );

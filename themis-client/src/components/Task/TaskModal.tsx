@@ -20,9 +20,10 @@ import {
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
-import { Task, TaskStatus, TaskPriority, User, UserRole } from '../../types';
+import { Task, TaskStatus, TaskPriority, User, UserRole, Project } from '../../types';
 import { mapToBackendStatus, mapToFrontendStatus } from '../../utils/taskStatusMapper';
-import MuiGridWrapper from '../common/MuiGridWrapper';
+import { GridItem, GridContainer } from '../common/MuiGridWrapper';
+import { useTranslation } from 'react-i18next';
 
 interface TaskModalProps {
   open: boolean;
@@ -41,35 +42,39 @@ const TaskModal: React.FC<TaskModalProps> = ({
   projectUsers,
   projectId
 }) => {
+  const { t } = useTranslation();
   const isNewTask = !task;
+  
+  // Create a minimal project object for the form
+  const defaultProject: Project = {
+    id: projectId,
+    name: '',
+    description: '',
+    client: '',
+    status: 'IN_PROGRESS' as any, // ProjectStatus is imported from another file
+    priority: 'MEDIUM' as any, // ProjectPriority is imported from another file
+    startDate: '',
+    endDate: '',
+    projectManager: {} as User,
+    department: {} as any,
+    progress: 0,
+    budget: 0,
+    actualCost: 0
+  };
   
   // Use the existing task or create a default one
   const [formValues, setFormValues] = useState<Task>({
     id: '',
-    projectId: projectId,
     title: '',
     description: '',
     status: TaskStatus.TODO,
     priority: TaskPriority.MEDIUM,
     startDate: new Date().toISOString(),
     dueDate: new Date().toISOString(),
-    assignee: undefined,
-    createdBy: { 
-      id: '', 
-      username: '', 
-      email: '', 
-      firstName: '', 
-      lastName: '', 
-      role: UserRole.PENDING, 
-      department: '', 
-      isActive: true, 
-      createdAt: '', 
-      updatedAt: '' 
-    },
-    createdAt: '',
-    updatedAt: '',
-    dependencies: [],
-    isMilestone: false
+    projectId: defaultProject.id,
+    project: defaultProject,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   });
 
   useEffect(() => {
@@ -97,21 +102,22 @@ const TaskModal: React.FC<TaskModalProps> = ({
     }));
   };
 
-  const handleDateChange = (name: string) => (date: Date | null) => {
+  const handleDateChange = (date: Date | null) => {
     if (date) {
       setFormValues(prev => ({
         ...prev,
-        [name]: date.toISOString()
+        dueDate: date.toISOString()
       }));
     }
   };
 
-  const handleCheckboxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, checked } = e.target;
-    setFormValues(prev => ({
-      ...prev,
-      [name]: checked
-    }));
+  const handleStartDateChange = (date: Date | null) => {
+    if (date) {
+      setFormValues(prev => ({
+        ...prev,
+        startDate: date.toISOString()
+      }));
+    }
   };
 
   const handleSubmit = () => {
@@ -122,126 +128,119 @@ const TaskModal: React.FC<TaskModalProps> = ({
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>{isNewTask ? 'Create New Task' : 'Edit Task'}</DialogTitle>
+      <DialogTitle>{isNewTask ? t('task.add') : t('task.edit')}</DialogTitle>
       <DialogContent>
-        <Box sx={{ mt: 2 }}>
-          <MuiGridWrapper container spacing={2}>
-            <MuiGridWrapper item xs={12}>
+        <Box sx={{ pt: 1 }}>
+          <GridContainer spacing={2}>
+            <GridItem xs={12}>
               <TextField
                 name="title"
-                label="Task Title"
+                label={t('task.title')}
                 value={formValues.title}
                 onChange={handleChange}
                 fullWidth
                 required
               />
-            </MuiGridWrapper>
-            <MuiGridWrapper item xs={12}>
+            </GridItem>
+            <GridItem xs={12}>
               <TextField
                 name="description"
-                label="Description"
+                label={t('task.description')}
                 value={formValues.description}
                 onChange={handleChange}
                 fullWidth
                 multiline
-                rows={4}
+                rows={3}
               />
-            </MuiGridWrapper>
-            <MuiGridWrapper item xs={12} md={6}>
+            </GridItem>
+            <GridItem xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Status</InputLabel>
+                <InputLabel>{t('task.status')}</InputLabel>
                 <Select
                   name="status"
                   value={formValues.status}
                   onChange={handleStatusChange}
-                  label="Status"
+                  label={t('task.status')}
                 >
-                  <MenuItem value={TaskStatus.TODO}>To Do</MenuItem>
-                  <MenuItem value={TaskStatus.IN_PROGRESS}>In Progress</MenuItem>
-                  <MenuItem value={TaskStatus.REVIEW}>Review</MenuItem>
-                  <MenuItem value={TaskStatus.DONE}>Done</MenuItem>
+                  <MenuItem value={TaskStatus.TODO}>{t('taskStatus.TODO')}</MenuItem>
+                  <MenuItem value={TaskStatus.IN_PROGRESS}>{t('taskStatus.IN_PROGRESS')}</MenuItem>
+                  <MenuItem value={TaskStatus.REVIEW}>{t('taskStatus.REVIEW')}</MenuItem>
+                  <MenuItem value={TaskStatus.DONE}>{t('taskStatus.DONE')}</MenuItem>
                 </Select>
               </FormControl>
-            </MuiGridWrapper>
-            <MuiGridWrapper item xs={12} md={6}>
+            </GridItem>
+            <GridItem xs={12} md={6}>
               <FormControl fullWidth>
-                <InputLabel>Priority</InputLabel>
+                <InputLabel>{t('task.priority')}</InputLabel>
                 <Select
                   name="priority"
                   value={formValues.priority}
                   onChange={handleChange}
-                  label="Priority"
+                  label={t('task.priority')}
                 >
-                  <MenuItem value={TaskPriority.LOW}>Low</MenuItem>
-                  <MenuItem value={TaskPriority.MEDIUM}>Medium</MenuItem>
-                  <MenuItem value={TaskPriority.HIGH}>High</MenuItem>
+                  <MenuItem value={TaskPriority.LOW}>{t('taskPriority.LOW')}</MenuItem>
+                  <MenuItem value={TaskPriority.MEDIUM}>{t('taskPriority.MEDIUM')}</MenuItem>
+                  <MenuItem value={TaskPriority.HIGH}>{t('taskPriority.HIGH')}</MenuItem>
                 </Select>
               </FormControl>
-            </MuiGridWrapper>
-            <MuiGridWrapper item xs={12} md={6}>
+            </GridItem>
+            <GridItem xs={12} md={6}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
-                  label="Start Date"
+                  label={t('task.startDate')}
                   value={new Date(formValues.startDate)}
-                  onChange={handleDateChange('startDate')}
+                  onChange={handleStartDateChange}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </LocalizationProvider>
-            </MuiGridWrapper>
-            <MuiGridWrapper item xs={12} md={6}>
+            </GridItem>
+            <GridItem xs={12} md={6}>
               <LocalizationProvider dateAdapter={AdapterDateFns}>
                 <DatePicker
-                  label="Due Date"
+                  label={t('task.dueDate')}
                   value={new Date(formValues.dueDate)}
-                  onChange={handleDateChange('dueDate')}
+                  onChange={handleDateChange}
                   slotProps={{ textField: { fullWidth: true } }}
                 />
               </LocalizationProvider>
-            </MuiGridWrapper>
-            <MuiGridWrapper item xs={12}>
+            </GridItem>
+            <GridItem xs={12}>
               <FormControl fullWidth>
-                <InputLabel>Assignee</InputLabel>
+                <InputLabel>{t('task.assignee')}</InputLabel>
                 <Select
                   name="assignee"
                   value={formValues.assignee?.id || ''}
                   onChange={(e) => {
-                    const userId = e.target.value as string;
-                    const user = projectUsers.find(u => u.id === userId);
-                    setFormValues(prev => ({
-                      ...prev,
-                      assignee: user
-                    }));
+                    const selectedUserId = e.target.value as string;
+                    const selectedUser = projectUsers.find(user => user.id === selectedUserId);
+                    
+                    if (selectedUser) {
+                      setFormValues(prev => ({
+                        ...prev,
+                        assignee: selectedUser
+                      }));
+                    }
                   }}
-                  label="Assignee"
+                  label={t('task.assignee')}
                 >
-                  <MenuItem value="">None</MenuItem>
+                  <MenuItem value="">
+                    <em>{t('project.unassigned')}</em>
+                  </MenuItem>
                   {projectUsers.map(user => (
                     <MenuItem key={user.id} value={user.id}>
-                      {user.firstName} {user.lastName} ({user.username})
+                      {user.firstName} {user.lastName}
                     </MenuItem>
                   ))}
                 </Select>
               </FormControl>
-            </MuiGridWrapper>
-            <MuiGridWrapper item xs={12}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={formValues.isMilestone}
-                    onChange={handleCheckboxChange}
-                    name="isMilestone"
-                  />
-                }
-                label="This task is a milestone"
-              />
-            </MuiGridWrapper>
-          </MuiGridWrapper>
+            </GridItem>
+          </GridContainer>
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
         <Button onClick={handleSubmit} variant="contained" color="primary">
-          {isNewTask ? 'Create' : 'Save'}
+          {isNewTask ? t('common.create') : t('common.save')}
         </Button>
       </DialogActions>
     </Dialog>
