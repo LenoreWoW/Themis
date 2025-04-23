@@ -86,7 +86,7 @@ const ProjectApprovalPage: React.FC = () => {
           } else if (user?.role === 'MAIN_PMO' || user?.role === 'ADMIN') {
             nextStatus = ApprovalStatus.APPROVED;
           } else {
-            nextStatus = project?.approvalStatus || ApprovalStatus.DRAFT;
+            nextStatus = (project as any)?.approvalStatus || ApprovalStatus.DRAFT;
           }
           break;
         case 'REJECT':
@@ -96,13 +96,13 @@ const ProjectApprovalPage: React.FC = () => {
           nextStatus = ApprovalStatus.CHANGES_REQUESTED;
           break;
         default:
-          nextStatus = project?.approvalStatus || ApprovalStatus.DRAFT;
+          nextStatus = (project as any)?.approvalStatus || ApprovalStatus.DRAFT;
       }
       
       // Add review details if provided
       const reviewData = data.reviewComments ? {
         reviewHistory: [
-          ...(project?.reviewHistory || []),
+          ...((project as any)?.reviewHistory || []),
           {
             id: Date.now().toString(),
             text: data.reviewComments,

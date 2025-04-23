@@ -66,4 +66,13 @@ export const canManageDepartments = (role: UserRole): boolean => {
     UserRole.MAIN_PMO,
     UserRole.DEPARTMENT_DIRECTOR
   ].includes(role);
+};
+
+// Function to check if user can manage legacy projects (only SUB_PMO and MAIN_PMO roles)
+export const canManageLegacyProjects = (role: UserRole): boolean => {
+  return [
+    UserRole.ADMIN,
+    UserRole.SUB_PMO,
+    UserRole.MAIN_PMO
+  ].includes(role);
 }; 

@@ -24,6 +24,9 @@ import AssignmentsPage from './pages/AssignmentsPage';
 import GoalsPage from './pages/GoalsPage';
 import DepartmentsPage from './pages/DepartmentsPage';
 import ProjectApprovalPage from './pages/ProjectApprovalPage';
+import LegacyProjectPage from './pages/LegacyProjectPage';
+import AuditPage from './pages/AuditPage';
+import AuditLogPage from './pages/AuditLogPage';
 import { useTranslation } from 'react-i18next';
 
 // Import i18n configuration
@@ -104,6 +107,9 @@ const AppContent: React.FC = () => {
                       <Route path="users" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE']}><UserManagementPage /></PrivateRoute>} />
                       <Route path="projects/new" element={<PrivateRoute roleRequired={['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO']}><ProjectApprovalPage /></PrivateRoute>} />
                       <Route path="projects/:projectId/edit" element={<PrivateRoute roleRequired={['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO']}><ProjectApprovalPage /></PrivateRoute>} />
+                      <Route path="projects/legacy/new" element={<PrivateRoute roleRequired={['SUB_PMO', 'MAIN_PMO', 'ADMIN']}><LegacyProjectPage /></PrivateRoute>} />
+                      <Route path="audit" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO']}><AuditPage /></PrivateRoute>} />
+                      <Route path="audit-logs" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'SUB_PMO']}><AuditLogPage /></PrivateRoute>} />
                     </Route>
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>

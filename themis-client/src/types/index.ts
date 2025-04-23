@@ -36,7 +36,8 @@ export const canAddTasks = (role: UserRole): boolean => {
 };
 
 export const canRequestTasks = (role: UserRole): boolean => {
-  return role === UserRole.PROJECT_MANAGER || 
+  return role === UserRole.ADMIN ||
+         role === UserRole.PROJECT_MANAGER || 
          role === UserRole.SUB_PMO || 
          role === UserRole.MAIN_PMO;
 };
@@ -132,6 +133,7 @@ export interface Project {
   budget: number;
   goalsLink?: string;
   client?: string;
+  actualCost?: number;
   priority: ProjectPriority;
   createdAt: string;
   updatedAt: string;
@@ -142,6 +144,9 @@ export interface Project {
   lastReviewedBy?: User;
   lastReviewedAt?: string;
   progress?: number;
+  // Legacy project properties
+  legacyImport?: boolean;
+  isDraft?: boolean;
 }
 
 // Task-related types
@@ -170,6 +175,21 @@ export interface Task {
   assignee?: User;
   createdAt: string;
   updatedAt: string;
+  comments?: TaskComment[];
+}
+
+// Task comment interface
+export interface TaskComment {
+  id: string;
+  taskId: string;
+  text: string;
+  createdAt: string;
+  updatedAt: string;
+  author: {
+    id: string;
+    firstName: string;
+    lastName: string;
+  };
 }
 
 // Risk-related types
@@ -256,6 +276,7 @@ export enum ChangeRequestType {
   SCHEDULE = 'SCHEDULE',
   BUDGET = 'BUDGET',
   RESOURCE = 'RESOURCE',
+  CLOSURE = 'CLOSURE',
   OTHER = 'OTHER'
 }
 

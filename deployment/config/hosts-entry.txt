@@ -1,0 +1,2 @@
+# Add this entry to /etc/hosts on the server
+172.28.17.95 modbndc1tms01.defence.local pmo.projects.mod.qa 

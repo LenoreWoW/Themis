@@ -16,6 +16,7 @@ import {
   PriorityHigh as PriorityIcon
 } from '@mui/icons-material';
 import { FormTextField, FormSelect, FormDatePicker } from '../shared/FormWithValidation';
+import { Control, UseFormHandleSubmit, FieldErrors } from 'react-hook-form';
 
 // Project form data structure
 interface ProjectFormData {
@@ -164,10 +165,14 @@ const CreateProjectFormWithYup: React.FC<CreateProjectFormWithYupProps> = ({
   };
   
   // Create form using react-hook-form with yup resolver
-  const { control, handleSubmit, formState: { errors } } = useForm<ProjectFormData>({
+  const { control, handleSubmit, formState: { errors } } = useForm({
     defaultValues,
-    resolver: yupResolver(projectSchema)
-  });
+    resolver: yupResolver(projectSchema as any)
+  }) as { 
+    control: Control<ProjectFormData>;
+    handleSubmit: UseFormHandleSubmit<ProjectFormData>;
+    formState: { errors: FieldErrors<ProjectFormData> }
+  };
   
   return (
     <Paper sx={{ p: 3 }}>

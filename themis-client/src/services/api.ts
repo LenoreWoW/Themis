@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, FEATURES } from '../config';
 import LocalStorageService from './LocalStorageService';
 import { v4 as uuidv4 } from 'uuid';
 import { ProjectStatus, TaskStatus, UserRole, TaskPriority, RiskStatus, RiskImpact, IssueStatus, Project, Task, User, Department, Meeting, Risk, Issue, Assignment, AssignmentStatus, ApiResponse, MeetingStatus, ProjectPriority } from '../types';
@@ -29,6 +29,9 @@ api.interceptors.request.use((config) => {
 
 // Helper function to simulate delay
 const delay = () => new Promise(resolve => setTimeout(resolve, 500));
+
+// Add simulateDelay function if not already present
+const simulateDelay = (ms = 500) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Create a reusable mock IT department
 const mockITDepartment: Department = {
@@ -1498,6 +1501,66 @@ const apiRoutes = {
     
     deleteIndependentTask: (taskId: string, token: string) => 
       apiRequest(`/api/tasks/independent/${taskId}`, 'DELETE', undefined, token),
+
+    // Add task comment
+    addComment: async (projectId: string, taskId: string, commentData: any, token: string) => {
+      if (FEATURES.OFFLINE_MODE) {
+        // In offline mode, simulate API response
+        await simulateDelay();
+        
+        // Get existing tasks from localStorage
+        const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
+        
+        // Find the specific task to add the comment to
+        const taskIndex = allTasks.findIndex((t: any) => t.id === taskId && t.projectId === projectId);
+        
+        if (taskIndex !== -1) {
+          // Create a new comment
+          const newComment = {
+            id: `comment-${Date.now()}`,
+            taskId,
+            text: commentData.text,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            author: {
+              id: commentData.authorId,
+              firstName: commentData.authorFirstName || 'User',
+              lastName: commentData.authorLastName || commentData.authorId,
+            }
+          };
+          
+          // Add comment to the task
+          if (!allTasks[taskIndex].comments) {
+            allTasks[taskIndex].comments = [];
+          }
+          
+          allTasks[taskIndex].comments.push(newComment);
+          
+          // Save back to localStorage
+          localStorage.setItem('tasks', JSON.stringify(allTasks));
+          
+          return {
+            success: true,
+            data: newComment,
+            message: 'Comment added successfully'
+          };
+        } else {
+          throw new Error('Task not found');
+        }
+      } else {
+        // In online mode, make actual API call
+        const response = await axios.post(
+          `${API_BASE_URL}/projects/${projectId}/tasks/${taskId}/comments`,
+          commentData,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
+        return response.data;
+      }
+    },
   },
 
   // Risk endpoints

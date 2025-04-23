@@ -149,21 +149,33 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
         const response = await api.projects.getProject(projectId, token);
         
         if (response.data) {
-          setProject(response.data);
+          // Convert API response to Project type with proper enums
+          const responseData = response.data as any;
+          const projectData = {
+            ...responseData,
+            status: responseData.status as ProjectStatus,
+            priority: responseData.priority as ProjectPriority,
+            approvalStatus: (responseData.approvalStatus as ApprovalStatus) || ApprovalStatus.DRAFT,
+            client: responseData.client || '',
+            goalsLink: responseData.goalsLink || '',
+            actualCost: responseData.actualCost
+          };
+          
+          setProject(projectData as Project);
           
           // Pre-fill form with project data
-          defaultValues.name = response.data.name;
-          defaultValues.description = response.data.description;
-          defaultValues.departmentId = response.data.department?.id || '';
-          defaultValues.startDate = new Date(response.data.startDate);
-          defaultValues.endDate = new Date(response.data.endDate);
-          defaultValues.status = response.data.status;
-          defaultValues.projectManagerId = response.data.projectManager?.id || '';
-          defaultValues.budget = response.data.budget;
-          defaultValues.client = response.data.client || '';
-          defaultValues.priority = response.data.priority;
-          defaultValues.goalsLink = response.data.goalsLink || '';
-          defaultValues.approvalStatus = response.data.approvalStatus || ApprovalStatus.DRAFT;
+          defaultValues.name = responseData.name;
+          defaultValues.description = responseData.description;
+          defaultValues.departmentId = responseData.department?.id || '';
+          defaultValues.startDate = new Date(responseData.startDate);
+          defaultValues.endDate = new Date(responseData.endDate);
+          defaultValues.status = responseData.status as ProjectStatus;
+          defaultValues.projectManagerId = responseData.projectManager?.id || '';
+          defaultValues.budget = responseData.budget;
+          defaultValues.client = responseData.client || '';
+          defaultValues.priority = responseData.priority as ProjectPriority;
+          defaultValues.goalsLink = responseData.goalsLink || '';
+          defaultValues.approvalStatus = (responseData.approvalStatus as ApprovalStatus) || ApprovalStatus.DRAFT;
         } else {
           setError('Project not found');
         }
@@ -290,7 +302,7 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
       onSubmit={handleSubmit}
       title={projectId ? t('project.edit') : t('project.addNew')}
       subtitle={t('project.fillDetails')}
-      currentStatus={project?.approvalStatus || ApprovalStatus.DRAFT}
+      currentStatus={(project as any)?.approvalStatus || ApprovalStatus.DRAFT}
       isOwnItem={isOwnProject}
       objectOwner={project?.projectManager?.id}
     >
@@ -430,8 +442,8 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
         {(user?.role === UserRole.SUB_PMO || 
           user?.role === UserRole.MAIN_PMO || 
           user?.role === UserRole.ADMIN) && 
-         (project?.approvalStatus === ApprovalStatus.SUBMITTED || 
-          project?.approvalStatus === ApprovalStatus.SUB_PMO_APPROVED) && (
+         ((project as any)?.approvalStatus === ApprovalStatus.SUBMITTED || 
+          (project as any)?.approvalStatus === ApprovalStatus.SUB_PMO_APPROVED) && (
           <GridItem xs={12}>
             <Typography variant="subtitle2" gutterBottom>
               Reviewer Comments
@@ -448,11 +460,11 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
         )}
         
         {/* Display previous comments history */}
-        {project?.comments && (
+        {(project as any)?.comments && (
           <GridItem xs={12}>
             <Alert severity="info">
               <Typography variant="subtitle2">Previous Comments:</Typography>
-              <Typography variant="body2">{project.comments}</Typography>
+              <Typography variant="body2">{(project as any).comments}</Typography>
             </Alert>
           </GridItem>
         )}

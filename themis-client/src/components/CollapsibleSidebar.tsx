@@ -27,6 +27,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import FlagIcon from '@mui/icons-material/Flag';
 import BusinessIcon from '@mui/icons-material/Business';
 import SettingsIcon from '@mui/icons-material/Settings';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import { useLocation, NavLink } from 'react-router-dom';
@@ -80,6 +81,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     { text: t('navigation.risksIssues'), icon: <WarningIcon />, path: '/risks-issues' },
     { text: t('navigation.meetings'), icon: <GroupsIcon />, path: '/meetings' },
     { 
+      text: t('navigation.auditLogs', 'Audit Logs'), 
+      icon: <VerifiedUserIcon />, 
+      path: '/audit-logs',
+      role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO'] 
+    },
+    { 
       text: t('navigation.users'), 
       icon: <SettingsIcon />, 
       path: '/system-settings',
@@ -97,6 +104,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
           icon: <BusinessIcon />, 
           path: '/departments',
           role: ['ADMIN', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR'] 
+        },
+        { 
+          text: 'Compliance Audit', 
+          icon: <VerifiedUserIcon />, 
+          path: '/audit',
+          role: ['ADMIN', 'MAIN_PMO'] 
         }
       ]
     }

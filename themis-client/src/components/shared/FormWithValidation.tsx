@@ -158,7 +158,7 @@ interface FormWithValidationProps<T extends FieldValues> {
   defaultValues: DefaultValues<T>;
   validationSchema?: yup.ObjectSchema<any>;
   onSubmit: SubmitHandler<T>;
-  children: React.ReactNode;
+  children: React.ReactNode | ((control: Control<T>, errors: Record<string, any>) => React.ReactNode);
   submitButtonText?: string;
   cancelButtonText?: string;
   onCancel?: () => void;
@@ -206,57 +206,64 @@ function FormWithValidation<T extends FieldValues>({
       
       <Box component="form" noValidate autoComplete="off" onSubmit={handleSubmit(onSubmit)}>
         <Stack spacing={3}>
-          {React.Children.map(children, (child) => {
-            if (!React.isValidElement(child)) {
-              return child;
-            }
-            
-            // We only want to add control and errors to our custom form components
-            const childType = child.type as any;
-            const isCustomFormComponent = 
-              childType === FormTextField || 
-              childType === FormSelect || 
-              childType === FormDatePicker;
-            
-            if (isCustomFormComponent) {
-              // These are our form components, add control and errors
-              return React.cloneElement(child, { 
-                control, 
-                errors 
-              });
-            }
-            
-            // Check if it's a grid or container that might contain our components
-            if (typeof childType === 'function' || typeof childType === 'object') {
-              // Recursively process children of this element
-              return React.cloneElement(
-                child,
-                {},
-                React.Children.map(child.props.children, (nestedChild) => {
-                  if (!React.isValidElement(nestedChild)) {
-                    return nestedChild;
-                  }
-                  
-                  const nestedChildType = nestedChild.type as any;
-                  const isNestedFormComponent = 
-                    nestedChildType === FormTextField || 
-                    nestedChildType === FormSelect || 
-                    nestedChildType === FormDatePicker;
-                  
-                  if (isNestedFormComponent) {
-                    return React.cloneElement(nestedChild, { 
-                      control, 
-                      errors 
-                    });
-                  }
-                  
-                  return nestedChild;
-                })
-              );
-            }
-            
-            return child;
-          })}
+          {typeof children === 'function' 
+            ? children(control, errors)
+            : React.Children.map(children, (child) => {
+                if (!React.isValidElement(child)) {
+                  return child;
+                }
+                
+                // We only want to add control and errors to our custom form components
+                const childType = child.type as any;
+                const isCustomFormComponent = 
+                  childType === FormTextField || 
+                  childType === FormSelect || 
+                  childType === FormDatePicker;
+                
+                if (isCustomFormComponent) {
+                  // These are our form components, add control and errors
+                  return React.cloneElement(child, { 
+                    control, 
+                    errors 
+                  } as React.JSX.IntrinsicAttributes);
+                }
+                
+                // Check if it's a grid or container that might contain our components
+                if (typeof childType === 'function' || typeof childType === 'object') {
+                  // Recursively process children of this element
+                  return React.cloneElement(
+                    child,
+                    {},
+                    React.Children.map(
+                      // Ensure we're mapping over valid React children
+                      React.Children.toArray((child as any).props?.children || []), 
+                      (nestedChild) => {
+                        if (!React.isValidElement(nestedChild)) {
+                          return nestedChild;
+                        }
+                        
+                        const nestedChildType = nestedChild.type as any;
+                        const isNestedFormComponent = 
+                          nestedChildType === FormTextField || 
+                          nestedChildType === FormSelect || 
+                          nestedChildType === FormDatePicker;
+                        
+                        if (isNestedFormComponent) {
+                          return React.cloneElement(nestedChild, { 
+                            control, 
+                            errors 
+                          } as React.JSX.IntrinsicAttributes);
+                        }
+                        
+                        return nestedChild;
+                      }
+                    )
+                  );
+                }
+                
+                return child;
+              })
+          }
           
           {error && (
             <Typography color="error" variant="body2">

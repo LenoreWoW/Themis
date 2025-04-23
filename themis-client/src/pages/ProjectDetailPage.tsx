@@ -44,7 +44,8 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  LinearProgress
+  LinearProgress,
+  Menu
 } from '@mui/material';
 import {
   CalendarMonth as CalendarIcon,
@@ -66,7 +67,16 @@ import {
   FactCheck as LogIcon,
   Download as DownloadIcon,
   Edit as EditIcon,
-  Person as PersonIcon
+  Person as PersonIcon,
+  Folder as FolderIcon,
+  Refresh as RefreshIcon,
+  MoreVert as MoreVertIcon,
+  ChangeCircle as ChangeCircleIcon,
+  Event as EventIcon,
+  AttachMoney as AttachMoneyIcon,
+  Subject as SubjectIcon,
+  MoreHoriz as MoreHorizIcon,
+  Close as CloseIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../context/TaskContext';
@@ -96,6 +106,10 @@ import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useProjects } from '../context/ProjectContext';
 import AddTeamMemberDialog from '../components/Project/AddTeamMemberDialog';
 import WeeklyUpdates from '../components/Project/WeeklyUpdates';
+import GanttChart from '../components/Gantt/GanttChart';
+import ChangeRequestDialog from '../components/Project/ChangeRequestDialog';
+import { canAddTasks, canRequestTasks, canManageProjects, canApproveProjects } from '../utils/permissions';
+import { runFullAudit, AuditResult } from '../utils/auditUtils';
 
 // Add this enum at the top of your file, just before const mockUsers
 enum AuditAction {
@@ -378,15 +392,6 @@ function a11yProps(index: number) {
   };
 }
 
-// Helper functions for permissions
-const canAddTasks = (user: User | null) => {
-  return user?.role === UserRole.ADMIN || user?.role === UserRole.PROJECT_MANAGER;
-};
-
-const canRequestTasks = (user: User | null) => {
-  return user?.role !== UserRole.ADMIN && user?.role !== UserRole.PROJECT_MANAGER;
-};
-
 // Updated interface for AuthContext
 interface AuthUser extends User {
   token?: string;
@@ -585,8 +590,9 @@ const ProjectDetailPage: React.FC = () => {
   };
 
   // Check user permissions
-  const userCanAddTasks = canAddTasks(user);
-  const userCanRequestTasks = canRequestTasks(user);
+  const userCanAddTasks = user?.role ? canAddTasks(user.role) : false;
+  const userCanRequestTasks = user?.role ? canRequestTasks(user.role) : false;
+  const userCanManageProjects = user?.role ? canManageProjects(user.role) : false;
 
   // Load available users when needed
   useEffect(() => {
@@ -974,8 +980,67 @@ const ProjectDetailPage: React.FC = () => {
     }
   };
 
+  // Change request handlers
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const [changeRequestType, setChangeRequestType] = useState<string | null>(null);
+  const openChangeRequestMenu = Boolean(anchorEl);
+  
+  const handleChangeRequestMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleChangeRequestMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleChangeRequestOpen = (type: string | null = null) => {
+    setChangeRequestType(type);
+    setIsChangeRequestDialogOpen(true);
+    handleChangeRequestMenuClose();
+  };
+
+  const handleChangeRequestClose = () => {
+    setIsChangeRequestDialogOpen(false);
+  };
+
+  const handleChangeRequestSubmitted = () => {
+    showSnackbar('Change request submitted successfully!', 'success');
+  };
+
+  // Add state for change request menu and dialog
+  const [isChangeRequestDialogOpen, setIsChangeRequestDialogOpen] = useState(false);
+
+  // Add state for audit results
+  const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
+
+  // Run audit on page load to verify compliance with ClientTerms
+  useEffect(() => {
+    // Only run audit for admin users
+    if (user?.role === UserRole.ADMIN) {
+      const result = runFullAudit();
+      setAuditResult(result);
+      if (!result.passed) {
+        showSnackbar('Audit found compliance issues. Check the console for details.', 'error');
+        console.warn('Audit results:', result);
+      }
+    }
+  }, [user?.role]);
+
   return (
     <Box>
+      {auditResult && !auditResult.passed && (
+        <Alert 
+          severity="warning" 
+          sx={{ mb: 2 }}
+          action={
+            <Button color="inherit" size="small" onClick={() => console.log('Audit details:', auditResult)}>
+              View Details
+            </Button>
+          }
+        >
+          This project has compliance issues with client terms. Please review and address them.
+        </Alert>
+      )}
       <Button 
         startIcon={<BackIcon />} 
         onClick={handleGoBack} 
@@ -1000,23 +1065,82 @@ const ProjectDetailPage: React.FC = () => {
           </Stack>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Project Details</Typography>
-            {userCanAddTasks ? (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={() => setIsAddTaskDialogOpen(true)}
-              >
-                Add Task
-              </Button>
-            ) : userCanRequestTasks ? (
-              <Button
-                variant="outlined"
-                startIcon={<RequestIcon />}
-                onClick={handleRequestTask}
-              >
-                Request Task
-              </Button>
-            ) : null}
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              {userCanManageProjects && (
+                <>
+                  <Button
+                    variant="outlined"
+                    startIcon={<ChangeCircleIcon />}
+                    onClick={handleChangeRequestMenuOpen}
+                  >
+                    Change Request
+                  </Button>
+                  <Menu
+                    anchorEl={anchorEl}
+                    open={openChangeRequestMenu}
+                    onClose={handleChangeRequestMenuClose}
+                    PaperProps={{
+                      elevation: 3,
+                      sx: { minWidth: 200 }
+                    }}
+                  >
+                    <MenuItem onClick={() => handleChangeRequestOpen('SCHEDULE')}>
+                      <ListItemIcon>
+                        <EventIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Extend Project</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleChangeRequestOpen('CLOSURE')}>
+                      <ListItemIcon>
+                        <CloseIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Close Project</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleChangeRequestOpen('SCOPE')}>
+                      <ListItemIcon>
+                        <SubjectIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Change Project Scope</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleChangeRequestOpen('BUDGET')}>
+                      <ListItemIcon>
+                        <AttachMoneyIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Change Project Cost</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleChangeRequestOpen('RESOURCE')}>
+                      <ListItemIcon>
+                        <PersonIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Delegate Project</ListItemText>
+                    </MenuItem>
+                    <MenuItem onClick={() => handleChangeRequestOpen('OTHER')}>
+                      <ListItemIcon>
+                        <MoreHorizIcon fontSize="small" />
+                      </ListItemIcon>
+                      <ListItemText>Other Changes</ListItemText>
+                    </MenuItem>
+                  </Menu>
+                </>
+              )}
+              {userCanAddTasks ? (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={() => setIsAddTaskDialogOpen(true)}
+                >
+                  Add Task
+                </Button>
+              ) : userCanRequestTasks ? (
+                <Button
+                  variant="outlined"
+                  startIcon={<RequestIcon />}
+                  onClick={handleRequestTask}
+                >
+                  Request Task
+                </Button>
+              ) : null}
+            </Box>
           </Box>
         </Stack>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
@@ -1558,6 +1682,15 @@ const ProjectDetailPage: React.FC = () => {
         projectId={mockProject.id}
       />
 
+      {/* Change Request Dialog */}
+      <ChangeRequestDialog
+        open={isChangeRequestDialogOpen}
+        onClose={handleChangeRequestClose}
+        projectId={mockProject.id}
+        onSubmitted={handleChangeRequestSubmitted}
+        changeRequestType={changeRequestType}
+      />
+
       {/* Add Snackbar for notifications */}
       <Snackbar
         open={snackbar.open}
@@ -1577,16 +1710,6 @@ const ProjectDetailPage: React.FC = () => {
 };
 
 // Create mock components for missing imports
-const GanttChart = ({ tasks, onTaskClick, project }: { tasks: Task[], onTaskClick: (task: Task) => void, project: Project }) => (
-  <div>
-    <Typography>Gantt Chart Component (placeholder)</Typography>
-    <Alert severity="info">
-      <AlertTitle>Mock Component</AlertTitle>
-      The actual Gantt Chart component is not available. This is a placeholder.
-    </Alert>
-  </div>
-);
-
 const RequestTaskDialog = ({ open, onClose, projectId }: { open: boolean, onClose: () => void, projectId: string }) => (
   <Dialog open={open} onClose={onClose}>
     <DialogTitle>Request Task (Mock)</DialogTitle>

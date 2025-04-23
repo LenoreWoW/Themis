@@ -32,6 +32,38 @@ export const TaskService = {
   },
 
   /**
+   * Add a comment to a task
+   */
+  addTaskComment: async (projectId: string, taskId: string, commentText: string, userId: string, token: string): Promise<any> => {
+    try {
+      // In a real implementation, this would call an API endpoint
+      // For now, we'll simulate it
+      const newComment = {
+        id: `comment-${Date.now()}`,
+        taskId,
+        text: commentText,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        author: {
+          id: userId,
+          firstName: 'Current',  // This would be populated from the API response
+          lastName: 'User'       // Same as above
+        }
+      };
+      
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      console.log(`Added comment to task ${taskId}:`, newComment);
+      
+      return newComment;
+    } catch (error) {
+      console.error('Error adding comment:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Get all independent tasks (not associated with a project)
    */
   getAllIndependentTasks: async (token: string): Promise<Task[]> => {

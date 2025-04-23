@@ -132,7 +132,11 @@
     "financial": "Financial",
     "customer": "Customer",
     "learning": "Learning",
-    "process": "Process"
+    "process": "Process",
+    "autoCalculated": "Auto-calculated Progress",
+    "autoCalculateProgress": "Auto-calculate progress from linked projects",
+    "autoCalculateDescription": "Calculate progress automatically from linked projects",
+    "linkedProjects": "Linked Projects"
   },
   "status": {
     "planning": "Planning",

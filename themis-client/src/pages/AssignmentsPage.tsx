@@ -188,6 +188,19 @@ const AssignmentsPage: React.FC = () => {
     }
   };
 
+  const getFormattedStatus = (status: AssignmentStatus): string => {
+    switch (status) {
+      case AssignmentStatus.COMPLETED:
+        return 'Completed';
+      case AssignmentStatus.IN_PROGRESS:
+        return 'In Progress';
+      case AssignmentStatus.CANCELLED:
+        return 'Cancelled';
+      default:
+        return status;
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3 }}>
@@ -242,7 +255,7 @@ const AssignmentsPage: React.FC = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center' }}>
                   {getStatusIcon(assignment.status)}
                   <Chip
-                    label={assignment.status}
+                    label={getFormattedStatus(assignment.status)}
                     color={assignment.status === AssignmentStatus.COMPLETED ? 'success' : 'default'}
                     sx={{ ml: 1 }}
                   />

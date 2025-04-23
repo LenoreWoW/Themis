@@ -26,7 +26,8 @@ import {
   CircularProgress,
   Alert,
   useMediaQuery,
-  useTheme
+  useTheme,
+  Menu
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -34,7 +35,8 @@ import {
   Search as SearchIcon,
   MoreVert as MoreIcon,
   ViewList as ViewListIcon,
-  ViewModule as ViewModuleIcon
+  ViewModule as ViewModuleIcon,
+  History as HistoryIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -48,6 +50,7 @@ import SkeletonLoader from '../components/common/SkeletonLoader';
 import CircularProgressWithLabel from '../components/common/CircularProgressWithLabel';
 import { GridItem, GridContainer } from '../components/common/MuiGridWrapper';
 import { mockProjects, mockUsers, mockDepartments } from '../services/mockData';
+import { canManageProjects } from '../utils/permissions';
 
 // Define Department type for the dialog
 interface Department {
@@ -364,97 +367,132 @@ const ProjectsPage: React.FC = () => {
     </TableContainer>
   );
   
+  const handleAddLegacyProject = () => {
+    navigate('/projects/legacy/new');
+  };
+
+  const isPMO = (userRole?: string) => {
+    // Update to include Admin users
+    return userRole === 'SUB_PMO' || userRole === 'MAIN_PMO' || userRole === 'ADMIN';
+  };
+
+  const toolbar = (
+    <Toolbar 
+      sx={{ 
+        p: 2, 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        flexWrap: 'wrap',
+        gap: 2
+      }}
+    >
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <TextField
+          size="small"
+          variant="outlined"
+          placeholder={t('common.search')}
+          value={searchQuery}
+          onChange={handleSearchChange}
+          InputProps={{
+            startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} />,
+          }}
+        />
+        
+        <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+          <InputLabel>{t('project.status')}</InputLabel>
+          <Select
+            label={t('project.status')}
+            value={statusFilter}
+            onChange={handleStatusFilterChange}
+            input={<OutlinedInput label={t('project.status')} />}
+          >
+            {statusOptions.map((status) => (
+              <MenuItem key={status} value={status}>
+                {status === 'All' ? t('common.all') : getTranslatedStatusLabel(status)}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        
+        <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>{t('project.department')}</InputLabel>
+          <Select
+            label={t('project.department')}
+            value={departmentFilter}
+            onChange={handleDepartmentFilterChange}
+            input={<OutlinedInput label={t('project.department')} />}
+          >
+            {departmentOptions.map((department) => (
+              <MenuItem key={department} value={department}>
+                {department === 'All' ? t('common.all') : department}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+      </Box>
+      
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <Tooltip title={viewMode === 'grid' ? t('common.listView') : t('common.gridView')}>
+          <IconButton 
+            onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+            color="primary"
+          >
+            {viewMode === 'grid' ? <ViewListIcon /> : <ViewModuleIcon />}
+          </IconButton>
+        </Tooltip>
+      </Box>
+    </Toolbar>
+  );
+
   return (
     <Box sx={{ p: 3 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
         <Typography variant="h4" component="h1" fontWeight="bold">{t('navigation.projects')}</Typography>
-        {(isAdmin || isProjectManager) && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleCreateProject}
-            sx={{
-              borderRadius: 2,
-              px: 3,
-              py: 1,
-              boxShadow: 3,
-              transition: 'all 0.2s',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: 4
-              }
-            }}
-          >
-            {t('project.add')}
-          </Button>
-        )}
+        <Box sx={{ display: 'flex', gap: 2 }}>
+          {(isAdmin || isProjectManager) && (
+            <Button
+              variant="contained"
+              startIcon={<AddIcon />}
+              onClick={handleCreateProject}
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                py: 1,
+                boxShadow: 3,
+                transition: 'all 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-2px)',
+                  boxShadow: 4
+                }
+              }}
+            >
+              {t('project.add')}
+            </Button>
+          )}
+          
+          {isPMO(user?.role) && (
+            <Button
+              variant="outlined"
+              startIcon={<HistoryIcon />}
+              onClick={handleAddLegacyProject}
+              sx={{
+                borderRadius: 2,
+                px: 3,
+                py: 1,
+                transition: 'all 0.2s',
+                '&:hover': {
+                  transform: 'translateY(-2px)'
+                }
+              }}
+            >
+              {t('project.addLegacy', 'Add Legacy Project')}
+            </Button>
+          )}
+        </Box>
       </Box>
       
       <Paper sx={{ width: '100%', mb: 2, borderRadius: 2, overflow: 'hidden' }}>
-        <Toolbar sx={{ pl: { sm: 2 }, pr: { xs: 1, sm: 1 } }}>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ width: '100%', py: 1 }}>
-            <TextField
-              placeholder={t('common.search')}
-              variant="outlined"
-              size="small"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'action.active' }} />,
-              }}
-              sx={{ minWidth: { xs: '100%', sm: 200 } }}
-            />
-            
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, flex: 1 }}>
-              <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size="small">
-                <InputLabel id="status-filter-label">{t('project.status')}</InputLabel>
-                <Select
-                  labelId="status-filter-label"
-                  id="status-filter"
-                  value={statusFilter}
-                  label={t('project.status')}
-                  onChange={handleStatusFilterChange}
-                >
-                  {statusOptions.map((status) => (
-                    <MenuItem key={status} value={status}>
-                      {status === 'All' ? t('common.all') : getTranslatedStatusLabel(status)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              
-              <FormControl sx={{ minWidth: { xs: '100%', sm: 150 } }} size="small">
-                <InputLabel id="department-filter-label">{t('project.department')}</InputLabel>
-                <Select
-                  labelId="department-filter-label"
-                  id="department-filter"
-                  value={departmentFilter}
-                  label={t('project.department')}
-                  onChange={handleDepartmentFilterChange}
-                >
-                  {departmentOptions.map((department) => (
-                    <MenuItem key={department} value={department}>
-                      {department}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              
-              <Box sx={{ display: 'flex', ml: 'auto', alignItems: 'center' }}>
-                <Tooltip title={t('common.listView')}>
-                  <IconButton color={viewMode === 'list' ? 'primary' : 'default'} onClick={() => setViewMode('list')}>
-                    <ViewListIcon />
-                  </IconButton>
-                </Tooltip>
-                <Tooltip title={t('common.gridView')}>
-                  <IconButton color={viewMode === 'grid' ? 'primary' : 'default'} onClick={() => setViewMode('grid')}>
-                    <ViewModuleIcon />
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            </Box>
-          </Stack>
-        </Toolbar>
+        {toolbar}
         
         {loading ? (
           <Box sx={{ p: 2 }}>

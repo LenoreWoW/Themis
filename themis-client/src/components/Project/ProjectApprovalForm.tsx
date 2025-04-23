@@ -117,7 +117,7 @@ const ProjectApprovalForm: React.FC<ProjectApprovalFormProps> = ({
   };
   
   // Current approval status
-  const currentStatus = project?.approvalStatus || ApprovalStatus.DRAFT;
+  const currentStatus = (project as any)?.approvalStatus || ApprovalStatus.DRAFT;
   
   // Determine if this is user's own project
   const isOwnProject = project ? 
@@ -299,11 +299,11 @@ const ProjectApprovalForm: React.FC<ProjectApprovalFormProps> = ({
         )}
         
         {/* Display existing comments if any */}
-        {project?.comments && (
+        {(project as any)?.comments && (
           <GridItem xs={12}>
             <Alert severity="info">
               <Typography variant="subtitle2">{t('project.previousComments')}:</Typography>
-              <Typography variant="body2">{project.comments}</Typography>
+              <Typography variant="body2">{(project as any).comments}</Typography>
             </Alert>
           </GridItem>
         )}

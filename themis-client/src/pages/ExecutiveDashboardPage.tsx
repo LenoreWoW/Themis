@@ -17,7 +17,6 @@ import {
   TableRow,
   Paper,
   Chip,
-  Grid,
   Container,
   Stack,
   Divider,
@@ -38,7 +37,7 @@ import {
   Dashboard as DashboardIcon,
   BarChart as BarChartIcon
 } from '@mui/icons-material';
-import { Project, ProjectStatus, UserRole, Assignment, AssignmentStatus, TaskPriority, RiskStatus, IssueStatus, Risk, Issue } from '../types';
+import { Project, ProjectStatus, UserRole, Assignment, AssignmentStatus, TaskPriority, RiskStatus, IssueStatus, Risk, Issue, RiskImpact } from '../types';
 import api from '../services/api';
 import { useAuth } from '../hooks/useAuth';
 import { formatDate, getStatusColor, getDashboardAccess } from '../utils/helpers';
@@ -46,6 +45,7 @@ import { ProjectProvider } from '../context/ProjectContext';
 import AnalyticsDashboard from '../components/Analytics/AnalyticsDashboard';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import MetricCard from '../components/common/MetricCard';
 
 interface DashboardMetrics {
   totalProjects: number;
@@ -188,6 +188,10 @@ const DashboardPage: React.FC = () => {
     if (user?.role === UserRole.SUB_PMO) return t('dashboard.pmoDashboard', 'PMO Dashboard');
     return t('navigation.dashboard');
   };
+
+  // New states for risks and issues dialogs
+  const [risksDialogOpen, setRisksDialogOpen] = useState(false);
+  const [issuesDialogOpen, setIssuesDialogOpen] = useState(false);
 
   useEffect(() => {
     const fetchProjects = async () => {
@@ -360,8 +364,10 @@ const DashboardPage: React.FC = () => {
   };
 
   const handleNavigateToRisks = (type: 'risks' | 'issues' = 'risks') => {
-    if (accessPermissions.canViewRisksAndIssues) {
-      navigate(`/risks-issues?tab=${type}`);
+    if (type === 'risks') {
+      setRisksDialogOpen(true);
+    } else {
+      setIssuesDialogOpen(true);
     }
   };
 
@@ -431,210 +437,65 @@ const DashboardPage: React.FC = () => {
           <>
             {/* KPI Section - Show complete KPI section for executives and admins */}
             <Box sx={{ mb: 4 }}>
-              <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                {t('dashboard.kpi')}
-                {metrics.completed > (metrics.totalProjects * 0.3) ? (
-                  <TrendingUpIcon color="success" />
-                ) : (
-                  <TrendingDownIcon color="error" />
-                )}
+              <Typography variant="h5" sx={{ mb: 2 }}>
+                KPIs
               </Typography>
-              
-              <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 3 }}>
-                <Paper 
-                  sx={{ 
-                    p: 2, 
-                    textAlign: 'center', 
-                    height: '100%', 
-                    borderRadius: 2, 
-                    boxShadow: 2,
-                    cursor: 'pointer',
-                    '&:hover': { boxShadow: 6 }
-                  }}
-                  onClick={() => handleMetricClick('totalProjects')}
-                >
-                  <Typography variant="h3" color="primary" sx={{ mb: 1 }}>{metrics.totalProjects}</Typography>
-                  <Typography variant="body1" color="text.secondary">{t('dashboard.totalProjects')}</Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={100} 
-                    sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="Total Projects"
+                    value={metrics.totalProjects}
+                    color="primary"
+                    progress={100}
+                    onClick={() => handleMetricClick('totalProjects')}
                   />
-                </Paper>
-                
-                <Paper 
-                  sx={{ 
-                    p: 2, 
-                    textAlign: 'center', 
-                    height: '100%', 
-                    borderRadius: 2, 
-                    boxShadow: 2,
-                    cursor: 'pointer',
-                    '&:hover': { boxShadow: 6 }
-                  }}
-                  onClick={() => handleMetricClick('inProgress')}
-                >
-                  <Typography variant="h3" color="info.main" sx={{ mb: 1 }}>{metrics.inProgress}</Typography>
-                  <Typography variant="body1" color="text.secondary">{t('dashboard.inProgress')}</Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={(metrics.inProgress / metrics.totalProjects) * 100} 
+                </Box>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="In Progress Projects"
+                    value={metrics.inProgress}
                     color="info"
-                    sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+                    progress={Math.round((metrics.inProgress / metrics.totalProjects) * 100)}
+                    onClick={() => handleMetricClick('inProgress')}
                   />
-                </Paper>
-                
-                <Paper 
-                  sx={{ 
-                    p: 2, 
-                    textAlign: 'center', 
-                    height: '100%', 
-                    borderRadius: 2, 
-                    boxShadow: 2,
-                    cursor: 'pointer',
-                    '&:hover': { boxShadow: 6 }
-                  }}
-                  onClick={() => handleMetricClick('completed')}
-                >
-                  <Typography variant="h3" color="success.main" sx={{ mb: 1 }}>{metrics.completed}</Typography>
-                  <Typography variant="body1" color="text.secondary">{t('dashboard.completed')}</Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={(metrics.completed / metrics.totalProjects) * 100} 
+                </Box>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="Completed Projects"
+                    value={metrics.completed}
                     color="success"
-                    sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+                    progress={Math.round((metrics.completed / metrics.totalProjects) * 100)}
+                    onClick={() => handleMetricClick('completed')}
                   />
-                </Paper>
-                
-                <Paper 
-                  sx={{ 
-                    p: 2, 
-                    textAlign: 'center', 
-                    height: '100%', 
-                    borderRadius: 2, 
-                    boxShadow: 2,
-                    cursor: 'pointer',
-                    '&:hover': { boxShadow: 6 }
-                  }}
-                  onClick={() => handleMetricClick('onHold')}
-                >
-                  <Typography variant="h3" color="warning.main" sx={{ mb: 1 }}>{metrics.onHold}</Typography>
-                  <Typography variant="body1" color="text.secondary">{t('dashboard.onHold')}</Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={(metrics.onHold / metrics.totalProjects) * 100} 
+                </Box>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="On Hold Projects"
+                    value={metrics.onHold}
                     color="warning"
-                    sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+                    progress={Math.round((metrics.onHold / metrics.totalProjects) * 100)}
+                    onClick={() => handleMetricClick('onHold')}
                   />
-                </Paper>
-              </Box>
-              
-              <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-                <Paper 
-                  sx={{ 
-                    p: 2, 
-                    textAlign: 'center', 
-                    height: '100%', 
-                    borderRadius: 2, 
-                    boxShadow: 2,
-                    cursor: 'pointer',
-                    '&:hover': { boxShadow: 6 }
-                  }}
-                  onClick={() => handleMetricClick('overdue')}
-                >
-                  <Typography variant="h3" color="error.main" sx={{ mb: 1 }}>{metrics.overdue}</Typography>
-                  <Typography variant="body1" color="text.secondary">{t('dashboard.overdue')}</Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={(metrics.overdue / metrics.totalProjects) * 100} 
+                </Box>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="High Priority Risks"
+                    value={metrics.openRisks}
                     color="error"
-                    sx={{ mt: 2, height: 4, borderRadius: 2 }} 
-                  />
-                </Paper>
-                
-                <Paper 
-                  sx={{ 
-                    p: 2, 
-                    textAlign: 'center', 
-                    height: '100%', 
-                    borderRadius: 2, 
-                    boxShadow: 2,
-                    cursor: 'pointer',
-                    '&:hover': { boxShadow: 6 }
-                  }}
-                  onClick={() => handleMetricClick('approachingDeadline')}
-                >
-                  <Typography variant="h3" color="secondary.main" sx={{ mb: 1 }}>{metrics.approachingDeadline}</Typography>
-                  <Typography variant="body1" color="text.secondary">{t('dashboard.approachingDeadline')}</Typography>
-                  <LinearProgress 
-                    variant="determinate" 
-                    value={(metrics.approachingDeadline / metrics.totalProjects) * 100} 
-                    color="secondary"
-                    sx={{ mt: 2, height: 4, borderRadius: 2 }} 
-                  />
-                </Paper>
-              </Box>
-              
-              {accessPermissions.canViewRisksAndIssues && (
-                <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-                  <Paper 
-                    sx={{ 
-                      p: 2, 
-                      textAlign: 'center', 
-                      height: '100%', 
-                      borderRadius: 2, 
-                      boxShadow: 2, 
-                      bgcolor: 'error.light',
-                      cursor: 'pointer',
-                      '&:hover': { boxShadow: 6 }
-                    }}
+                    progress={Math.round((metrics.openRisks / metrics.totalProjects) * 100)}
                     onClick={() => handleNavigateToRisks('risks')}
-                  >
-                    <Typography variant="h3" color="white" sx={{ mb: 1 }}>{metrics.openRisks}</Typography>
-                    <Typography variant="body1" color="white" sx={{ opacity: 0.9 }}>{t('dashboard.openRisks')}</Typography>
-                  </Paper>
-                  
-                  <Paper 
-                    sx={{ 
-                      p: 2, 
-                      textAlign: 'center', 
-                      height: '100%', 
-                      borderRadius: 2, 
-                      boxShadow: 2, 
-                      bgcolor: 'warning.light',
-                      cursor: 'pointer',
-                      '&:hover': { boxShadow: 6 }
-                    }}
+                  />
+                </Box>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="Open Issues"
+                    value={metrics.openIssues}
+                    color="error"
+                    progress={Math.round((metrics.openIssues / metrics.totalProjects) * 100)}
                     onClick={() => handleNavigateToRisks('issues')}
-                  >
-                    <Typography variant="h3" color="white" sx={{ mb: 1 }}>{metrics.openIssues}</Typography>
-                    <Typography variant="body1" color="white" sx={{ opacity: 0.9 }}>{t('dashboard.openIssues')}</Typography>
-                  </Paper>
+                  />
                 </Box>
-              )}
-              
-              {accessPermissions.canViewFinancials && (
-                <Box sx={{ mt: 4 }}>
-                  <Typography variant="h6" gutterBottom>{t('dashboard.financialOverview')}</Typography>
-                  <Alert severity="info" sx={{ mb: 2 }}>
-                    {t('dashboard.financialAccessInfo', 'Financial data is being displayed based on your role permissions.')}
-                  </Alert>
-                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-                    <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
-                      <Typography variant="h6" color="text.secondary">{t('dashboard.totalBudget')}</Typography>
-                      <Typography variant="h4" color="primary">$10.2M</Typography>
-                    </Paper>
-                    <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
-                      <Typography variant="h6" color="text.secondary">{t('dashboard.spentToDate')}</Typography>
-                      <Typography variant="h4" color="secondary">$4.7M</Typography>
-                    </Paper>
-                    <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
-                      <Typography variant="h6" color="text.secondary">{t('dashboard.remaining')}</Typography>
-                      <Typography variant="h4" color="success.main">$5.5M</Typography>
-                    </Paper>
-                  </Box>
-                </Box>
-              )}
+              </Box>
             </Box>
           </>
         );
@@ -714,6 +575,131 @@ const DashboardPage: React.FC = () => {
               projects={getFilteredProjects(selectedMetric)}
             />
           )}
+          
+          {/* Risks Dialog */}
+          <Dialog 
+            open={risksDialogOpen} 
+            onClose={() => setRisksDialogOpen(false)} 
+            maxWidth="md" 
+            fullWidth
+          >
+            <DialogTitle>
+              {t('dashboard.highPriorityRisks', 'High Priority Risks')}
+              <IconButton
+                aria-label="close"
+                onClick={() => setRisksDialogOpen(false)}
+                sx={{ position: 'absolute', right: 8, top: 8 }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>{t('risk.title')}</TableCell>
+                      <TableCell>{t('project.name')}</TableCell>
+                      <TableCell>{t('risk.impact')}</TableCell>
+                      <TableCell>{t('risk.status')}</TableCell>
+                      <TableCell>{t('risk.createdAt')}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {risks.filter(risk => risk.status === RiskStatus.IDENTIFIED || 
+                                          risk.status === RiskStatus.ANALYZING || 
+                                          risk.status === RiskStatus.MONITORED)
+                      .map((risk) => {
+                        const project = projects.find(p => p.id === risk.projectId);
+                        return (
+                          <TableRow key={risk.id}>
+                            <TableCell>{risk.title}</TableCell>
+                            <TableCell>{project?.name || t('common.noData')}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={t(`risk.impact.${risk.impact.toLowerCase()}`)}
+                                size="small"
+                                color={risk.impact === RiskImpact.HIGH ? 'error' : 
+                                      risk.impact === RiskImpact.MEDIUM ? 'warning' : 'success'}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={t(`risk.status.${risk.status.toLowerCase()}`)}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>{formatDate(risk.createdAt)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </DialogContent>
+          </Dialog>
+
+          {/* Issues Dialog */}
+          <Dialog 
+            open={issuesDialogOpen} 
+            onClose={() => setIssuesDialogOpen(false)} 
+            maxWidth="md" 
+            fullWidth
+          >
+            <DialogTitle>
+              {t('dashboard.openIssues', 'Open Issues')}
+              <IconButton
+                aria-label="close"
+                onClick={() => setIssuesDialogOpen(false)}
+                sx={{ position: 'absolute', right: 8, top: 8 }}
+              >
+                <CloseIcon />
+              </IconButton>
+            </DialogTitle>
+            <DialogContent>
+              <TableContainer component={Paper}>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>{t('issue.title')}</TableCell>
+                      <TableCell>{t('project.name')}</TableCell>
+                      <TableCell>{t('issue.impact')}</TableCell>
+                      <TableCell>{t('issue.status')}</TableCell>
+                      <TableCell>{t('issue.createdAt')}</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {issues.filter(issue => issue.status === IssueStatus.OPEN || 
+                                            issue.status === IssueStatus.IN_PROGRESS)
+                      .map((issue) => {
+                        const project = projects.find(p => p.id === issue.projectId);
+                        return (
+                          <TableRow key={issue.id}>
+                            <TableCell>{issue.title}</TableCell>
+                            <TableCell>{project?.name || t('common.noData')}</TableCell>
+                            <TableCell>
+                              <Chip
+                                label={t(`issue.impact.${issue.impact.toLowerCase()}`)}
+                                size="small"
+                                color={issue.impact === RiskImpact.HIGH ? 'error' : 
+                                      issue.impact === RiskImpact.MEDIUM ? 'warning' : 'success'}
+                              />
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={t(`issue.status.${issue.status.toLowerCase()}`)}
+                                size="small"
+                              />
+                            </TableCell>
+                            <TableCell>{formatDate(issue.createdAt)}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </DialogContent>
+          </Dialog>
         </Box>
       </Container>
     </ProjectProvider>

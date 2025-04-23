@@ -1,7 +1,7 @@
 import React from 'react';
 import { Typography, Card, CardContent, Box, Chip, LinearProgress } from '@mui/material';
 import { Project, ProjectStatus } from '../../types';
-import { CalendarToday, Person, Business } from '@mui/icons-material';
+import { CalendarToday, Person, Business, History } from '@mui/icons-material';
 
 interface ProjectCardProps {
   project: Project;
@@ -91,10 +91,26 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
         } : {},
         height: '100%',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        position: 'relative' // For positioning the legacy badge
       }}
       onClick={onClick}
     >
+      {(project as any).legacyImport && (
+        <Chip
+          icon={<History fontSize="small" />}
+          label="Legacy Import"
+          size="small"
+          color="secondary"
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 1
+          }}
+        />
+      )}
+      
       <CardContent sx={{ flexGrow: 1 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
           <Chip 
@@ -115,6 +131,15 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
             size="small" 
             color="error"
             sx={{ mt: 1, mb: 1, fontWeight: 'bold' }}
+          />
+        )}
+        
+        {(project as any).isDraft && (
+          <Chip 
+            label="DRAFT" 
+            size="small" 
+            color="default"
+            sx={{ mt: 1, mb: 1 }}
           />
         )}
 

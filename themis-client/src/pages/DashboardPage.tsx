@@ -29,6 +29,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import ExecutiveDashboardPage from './ExecutiveDashboardPage';
 import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { ProjectStatus, Project } from '../types/index';
 
@@ -122,6 +123,7 @@ interface DashboardKpiData {
   risksOpen: number;
   issuesOpen: number;
   approvalsPending: number;
+  legacyProjects: number;
 }
 
 const DashboardPage: React.FC = () => {
@@ -129,6 +131,7 @@ const DashboardPage: React.FC = () => {
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [isLoading, setIsLoading] = useState(false);
   const { t } = useTranslation();
+  const navigate = useNavigate();
   const [kpiData, setKpiData] = useState<DashboardKpiData>({
     totalProjects: 0,
     inProgress: 0,
@@ -142,7 +145,8 @@ const DashboardPage: React.FC = () => {
     averageCompletion: 0,
     risksOpen: 0,
     issuesOpen: 0,
-    approvalsPending: 0
+    approvalsPending: 0,
+    legacyProjects: 0
   });
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
@@ -193,6 +197,7 @@ const DashboardPage: React.FC = () => {
         const inProgressCount = fetchedProjects.filter((p: Project) => p.status === ProjectStatus.IN_PROGRESS).length;
         const onHoldCount = fetchedProjects.filter((p: Project) => p.status === ProjectStatus.ON_HOLD).length;
         const completedCount = fetchedProjects.filter((p: Project) => p.status === ProjectStatus.COMPLETED).length;
+        const legacyCount = fetchedProjects.filter((p: Project) => p.legacyImport === true).length;
         
         // Check for string status values (these might be custom statuses not in the enum)
         const draftCount = fetchedProjects.filter((p: Project) => {
@@ -245,7 +250,8 @@ const DashboardPage: React.FC = () => {
           averageCompletion: Math.round(avgCompletion),
           risksOpen: risksCount,
           issuesOpen: issuesCount,
-          approvalsPending: pendingApprovalsCount
+          approvalsPending: pendingApprovalsCount,
+          legacyProjects: legacyCount
         });
       }
     } catch (error) {
@@ -262,6 +268,18 @@ const DashboardPage: React.FC = () => {
   
   // Render only first 4 projects for Recent Projects section or all if less than 4
   const recentProjects = projects.slice(0, 4);
+
+  // Navigation functions for each card
+  const navigateToProjects = () => navigate('/projects');
+  const navigateToInProgressProjects = () => navigate('/projects', { state: { filterStatus: 'IN_PROGRESS' } });
+  const navigateToCompletedProjects = () => navigate('/projects', { state: { filterStatus: 'COMPLETED' } });
+  const navigateToOnHoldProjects = () => navigate('/projects', { state: { filterStatus: 'ON_HOLD' } });
+  const navigateToLegacyProjects = () => navigate('/projects', { state: { filterStatus: 'LEGACY' } });
+  const navigateToDraftProjects = () => navigate('/projects', { state: { filterStatus: 'PLANNING' } });
+  const navigateToRisks = () => navigate('/risks-issues', { state: { tab: 'risks' } });
+  const navigateToIssues = () => navigate('/risks-issues', { state: { tab: 'issues' } });
+  const navigateToApprovals = () => navigate('/project-approvals');
+  const navigateToProjectDetail = (projectId: string) => navigate(`/projects/${projectId}`);
 
   return (
     <Box sx={{ p: 2 }}>
@@ -325,7 +343,18 @@ const DashboardPage: React.FC = () => {
           </Typography>
           
           <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(4, 1fr)' }, gap: 3 }}>
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2,
+                cursor: 'pointer',
+                '&:hover': { boxShadow: 6, bgcolor: 'rgba(0, 0, 0, 0.02)' }
+              }}
+              onClick={navigateToProjects}
+            >
               <Typography variant="h3" color="primary" sx={{ mb: 1 }}>{kpiData.totalProjects}</Typography>
               <Typography variant="body1" color="text.secondary">{t('dashboard.totalProjects')}</Typography>
               <LinearProgress 
@@ -335,7 +364,18 @@ const DashboardPage: React.FC = () => {
               />
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2,
+                cursor: 'pointer',
+                '&:hover': { boxShadow: 6, bgcolor: 'rgba(0, 0, 0, 0.02)' }
+              }}
+              onClick={navigateToInProgressProjects}
+            >
               <Typography variant="h3" color="info.main" sx={{ mb: 1 }}>{kpiData.inProgress}</Typography>
               <Typography variant="body1" color="text.secondary">{t('dashboard.inProgress')}</Typography>
               <LinearProgress 
@@ -346,7 +386,18 @@ const DashboardPage: React.FC = () => {
               />
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2,
+                cursor: 'pointer',
+                '&:hover': { boxShadow: 6, bgcolor: 'rgba(0, 0, 0, 0.02)' }
+              }}
+              onClick={navigateToCompletedProjects}
+            >
               <Typography variant="h3" color="success.main" sx={{ mb: 1 }}>{kpiData.completed}</Typography>
               <Typography variant="body1" color="text.secondary">{t('dashboard.completed')}</Typography>
               <LinearProgress 
@@ -357,7 +408,18 @@ const DashboardPage: React.FC = () => {
               />
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2 }}>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2,
+                cursor: 'pointer',
+                '&:hover': { boxShadow: 6, bgcolor: 'rgba(0, 0, 0, 0.02)' }
+              }}
+              onClick={navigateToOnHoldProjects}
+            >
               <Typography variant="h3" color="warning.main" sx={{ mb: 1 }}>{kpiData.onHold}</Typography>
               <Typography variant="body1" color="text.secondary">{t('dashboard.onHold')}</Typography>
               <LinearProgress 
@@ -367,20 +429,101 @@ const DashboardPage: React.FC = () => {
                 sx={{ mt: 2, height: 4, borderRadius: 2 }} 
               />
             </Paper>
+
+            {/* Add a new row for additional metrics */}
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2,
+                cursor: 'pointer',
+                '&:hover': { boxShadow: 6, bgcolor: 'rgba(0, 0, 0, 0.02)' }
+              }}
+              onClick={navigateToLegacyProjects}
+            >
+              <Typography variant="h3" color="secondary.main" sx={{ mb: 1 }}>{kpiData.legacyProjects}</Typography>
+              <Typography variant="body1" color="text.secondary">{t('dashboard.legacyProjects', 'Legacy Imports')}</Typography>
+              <LinearProgress 
+                variant="determinate" 
+                value={(kpiData.legacyProjects / kpiData.totalProjects) * 100} 
+                color="secondary"
+                sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+              />
+            </Paper>
+            
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2,
+                cursor: 'pointer',
+                '&:hover': { boxShadow: 6, bgcolor: 'rgba(0, 0, 0, 0.02)' }
+              }}
+              onClick={navigateToDraftProjects}
+            >
+              <Typography variant="h3" color="info.main" sx={{ mb: 1 }}>{kpiData.draft}</Typography>
+              <Typography variant="body1" color="text.secondary">{t('dashboard.draft', 'Draft')}</Typography>
+              <LinearProgress 
+                variant="determinate" 
+                value={(kpiData.draft / kpiData.totalProjects) * 100} 
+                color="info"
+                sx={{ mt: 2, height: 4, borderRadius: 2 }} 
+              />
+            </Paper>
           </Box>
           
           <Box sx={{ mt: 3, display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)' }, gap: 3 }}>
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2, bgcolor: 'error.light' }}>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2, 
+                bgcolor: 'error.light',
+                cursor: 'pointer',
+                '&:hover': { opacity: 0.9, boxShadow: 6 }
+              }}
+              onClick={navigateToRisks}
+            >
               <Typography variant="h3" color="white" sx={{ mb: 1 }}>{kpiData.risksOpen}</Typography>
               <Typography variant="body1" color="white" sx={{ opacity: 0.9 }}>{t('dashboard.openRisks')}</Typography>
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2, bgcolor: 'warning.light' }}>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2, 
+                bgcolor: 'warning.light',
+                cursor: 'pointer',
+                '&:hover': { opacity: 0.9, boxShadow: 6 }
+              }}
+              onClick={navigateToIssues}
+            >
               <Typography variant="h3" color="white" sx={{ mb: 1 }}>{kpiData.issuesOpen}</Typography>
               <Typography variant="body1" color="white" sx={{ opacity: 0.9 }}>{t('dashboard.openIssues')}</Typography>
             </Paper>
             
-            <Paper sx={{ p: 2, textAlign: 'center', height: '100%', borderRadius: 2, boxShadow: 2, bgcolor: 'secondary.light' }}>
+            <Paper 
+              sx={{ 
+                p: 2, 
+                textAlign: 'center', 
+                height: '100%', 
+                borderRadius: 2, 
+                boxShadow: 2, 
+                bgcolor: 'secondary.light',
+                cursor: 'pointer',
+                '&:hover': { opacity: 0.9, boxShadow: 6 }
+              }}
+              onClick={navigateToApprovals}
+            >
               <Typography variant="h3" color="white" sx={{ mb: 1 }}>{kpiData.approvalsPending}</Typography>
               <Typography variant="body1" color="white" sx={{ opacity: 0.9 }}>{t('common.pendingApprovals', 'Pending Approvals')}</Typography>
             </Paper>
@@ -397,7 +540,16 @@ const DashboardPage: React.FC = () => {
               <Typography>{t('dashboard.noProjects', 'No projects found.')}</Typography>
             ) : (
               recentProjects.map((project) => (
-                <Card key={project.id} sx={{ borderRadius: 2, boxShadow: 2 }}>
+                <Card 
+                  key={project.id} 
+                  sx={{ 
+                    borderRadius: 2, 
+                    boxShadow: 2,
+                    cursor: 'pointer',
+                    '&:hover': { boxShadow: 6, bgcolor: 'rgba(0, 0, 0, 0.02)' }
+                  }}
+                  onClick={() => navigateToProjectDetail(project.id)}
+                >
                   <CardContent>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="h6">{project.name}</Typography>
@@ -418,27 +570,25 @@ const DashboardPage: React.FC = () => {
                       </Typography>
                       <LinearProgress 
                         variant="determinate" 
-                        value={project.progress} 
+                        value={project.progress ?? 0} 
                         sx={{ 
                           flexGrow: 1,
                           height: 8,
                           borderRadius: 1,
                           bgcolor: 'grey.200',
                           '& .MuiLinearProgress-bar': {
-                            bgcolor: project.progress < 30 
+                            bgcolor: (project.progress ?? 0) < 30 
                               ? 'error.main' 
-                              : project.progress < 70 
+                              : (project.progress ?? 0) < 70 
                               ? 'warning.main' 
                               : 'success.main'
                           }
                         }}
                       />
                     </Box>
-                    
-                    {/* Risk and issue counts will need to be calculated separately */}
                   </CardContent>
                   <CardActions>
-                    <Button size="small" color="primary" onClick={() => window.location.href = `/projects/${project.id}`}>
+                    <Button size="small" color="primary">
                       {t('common.view', 'View Details')}
                     </Button>
                     {(String(project.status) === 'SubPMOReview' && isSubPMO) && (
@@ -456,7 +606,7 @@ const DashboardPage: React.FC = () => {
             <Box sx={{ mt: 2, textAlign: 'center' }}>
               <Button 
                 variant="outlined" 
-                onClick={() => window.location.href = '/projects'}
+                onClick={navigateToProjects}
               >
                 {t('dashboard.viewAllProjects', 'View All Projects')} ({projects.length})
               </Button>

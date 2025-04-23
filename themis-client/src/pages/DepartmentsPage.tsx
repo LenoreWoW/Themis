@@ -30,7 +30,7 @@ import { apiRequest } from '../services/api';
 import { canManageDepartments } from '../utils/permissions';
 import { format } from 'date-fns';
 import { useTranslation } from 'react-i18next';
-import { api } from '../services/api';
+import api from '../services/api';
 
 const DepartmentsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -118,7 +118,7 @@ const DepartmentsPage: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
+    if (!formData.name?.trim()) {
       setError(t('departments.nameRequired'));
       return;
     }
