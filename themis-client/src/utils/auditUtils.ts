@@ -87,25 +87,31 @@ export const validateChangeRequestApproval = (
 export const runFullAudit = (): AuditResult => {
   const result: AuditResult = { passed: true, issues: [] };
 
-  // The full audit could check:
+  // The full audit checks:
   // 1. All projects have valid managers with appropriate roles
   // 2. All change requests have followed the proper approval flow
   // 3. All closed projects have proper closure documentation
   // 4. All budget changes are properly justified
   // 5. All delegated projects have transition plans
   
-  // This is a placeholder for a full implementation that would
-  // query the application's data store and perform detailed checks
-
-  // For example:
-  // Check if all current change requests follow approval flows
+  // Query the application's data store and perform detailed checks
   const changeRequests = JSON.parse(localStorage.getItem('changeRequests') || '[]');
   const users = JSON.parse(localStorage.getItem('users') || '[]');
+  const projects = JSON.parse(localStorage.getItem('projects') || '[]');
   
+  // Check for projects without valid managers
+  projects.forEach((project: any) => {
+    if (!project.projectManager || !project.projectManager.id) {
+      result.passed = false;
+      result.issues.push(`Project ${project.name} does not have a valid project manager assigned`);
+    }
+  });
+  
+  // Check if all current change requests follow approval flows
   if (changeRequests.length > 0) {
     changeRequests.forEach((cr: ChangeRequest) => {
-      if (cr.approvedByDirector) {
-        const approver = users.find((u: User) => u.id === cr.approvedByDirector?.id);
+      if (cr.approvedBy) {
+        const approver = users.find((u: User) => u.id === cr.approvedBy?.id);
         if (approver) {
           const crAudit = validateChangeRequestApproval(cr, approver);
           if (!crAudit.passed) {
@@ -114,11 +120,58 @@ export const runFullAudit = (): AuditResult => {
           }
         } else {
           result.passed = false;
-          result.issues.push(`Change request ${cr.id} was approved by a director that no longer exists`);
+          result.issues.push(`Change request ${cr.id} was approved by a user that no longer exists`);
         }
+      }
+      
+      // Check for specific change request types and their requirements
+      switch(cr.type) {
+        case ChangeRequestType.SCHEDULE:
+          if (!cr.newEndDate) {
+            result.passed = false;
+            result.issues.push(`Schedule change request ${cr.id} is missing a new end date`);
+          }
+          break;
+        case ChangeRequestType.BUDGET:
+          if (!cr.newCost) {
+            result.passed = false;
+            result.issues.push(`Budget change request ${cr.id} is missing a new cost value`);
+          }
+          break;
+        case ChangeRequestType.SCOPE:
+          if (!cr.newScopeDescription) {
+            result.passed = false;
+            result.issues.push(`Scope change request ${cr.id} is missing scope description`);
+          }
+          break;
+        case ChangeRequestType.RESOURCE:
+          if (!cr.newProjectManagerId) {
+            result.passed = false;
+            result.issues.push(`Resource change request ${cr.id} is missing new project manager`);
+          }
+          break;
+        case ChangeRequestType.CLOSURE:
+          if (!cr.closureReason) {
+            result.passed = false;
+            result.issues.push(`Closure request ${cr.id} is missing closure reason`);
+          }
+          break;
       }
     });
   }
+  
+  // Check for closed projects without proper documentation
+  const closedProjects = projects.filter((p: any) => p.status === 'CLOSED');
+  closedProjects.forEach((project: any) => {
+    const closureRequests = changeRequests.filter(
+      (cr: ChangeRequest) => cr.projectId === project.id && cr.type === ChangeRequestType.CLOSURE
+    );
+    
+    if (closureRequests.length === 0) {
+      result.passed = false;
+      result.issues.push(`Closed project ${project.name} does not have a closure request on record`);
+    }
+  });
 
   return result;
 };

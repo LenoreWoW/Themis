@@ -312,6 +312,13 @@ export interface ChangeRequest {
   rejectionReason?: string;
   createdAt: string;
   updatedAt: string;
+  // Add new properties for different change request types
+  approvedBy?: User;
+  newEndDate?: Date | string | null;
+  newCost?: string | number;
+  newScopeDescription?: string;
+  newProjectManagerId?: string;
+  closureReason?: string;
 }
 
 // Financial types
