@@ -1,7 +1,6 @@
 import React from 'react';
 import { IconButton, Tooltip } from '@mui/material';
-import Brightness4Icon from '@mui/icons-material/Brightness4';
-import Brightness7Icon from '@mui/icons-material/Brightness7';
+import { Brightness4 as DarkIcon, Brightness7 as LightIcon } from '@mui/icons-material';
 import { useThemeMode } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 
@@ -10,15 +9,14 @@ const ThemeToggle: React.FC = () => {
   const { t } = useTranslation();
 
   return (
-    <Tooltip title={mode === 'dark' ? t('theme.lightMode') : t('theme.darkMode')}>
-      <IconButton
-        color="inherit"
-        onClick={toggleTheme}
-        size="medium"
+    <Tooltip title={mode === 'dark' ? t('theme.lightMode', 'Switch to Light Mode') : t('theme.darkMode', 'Switch to Dark Mode')}>
+      <IconButton 
+        color="inherit" 
+        onClick={toggleTheme} 
         sx={{ ml: 1 }}
-        aria-label={mode === 'dark' ? t('theme.lightMode') : t('theme.darkMode')}
+        aria-label={mode === 'dark' ? t('theme.lightMode', 'Switch to Light Mode') : t('theme.darkMode', 'Switch to Dark Mode')}
       >
-        {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+        {mode === 'dark' ? <LightIcon /> : <DarkIcon />}
       </IconButton>
     </Tooltip>
   );

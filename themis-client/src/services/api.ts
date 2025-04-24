@@ -1758,6 +1758,27 @@ const apiRoutes = {
       }
     }
   },
+  
+  // Change Request endpoints
+  changeRequests: {
+    getChangeRequestsByProject: (projectId: string, token: string) =>
+      apiRequest(`/api/projects/${projectId}/change-requests`, 'GET', undefined, token),
+      
+    getChangeRequestById: (requestId: string, token: string) =>
+      apiRequest(`/api/change-requests/${requestId}`, 'GET', undefined, token),
+      
+    createChangeRequest: (requestData: any, token: string) =>
+      apiRequest('/api/change-requests', 'POST', requestData, token),
+      
+    updateChangeRequestStatus: (requestId: string, status: any, reviewNotes: string | undefined, token: string) =>
+      apiRequest(`/api/change-requests/${requestId}/status`, 'PATCH', { status, reviewNotes }, token),
+      
+    approveChangeRequest: (requestId: string, reviewNotes: string | undefined, token: string) =>
+      apiRequest(`/api/change-requests/${requestId}/approve`, 'POST', { reviewNotes }, token),
+      
+    rejectChangeRequest: (requestId: string, reviewNotes: string, token: string) =>
+      apiRequest(`/api/change-requests/${requestId}/reject`, 'POST', { reviewNotes }, token)
+  },
 };
 
 export default apiRoutes;

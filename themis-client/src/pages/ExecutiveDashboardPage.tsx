@@ -56,6 +56,9 @@ interface DashboardMetrics {
   approachingDeadline: number;
   openRisks: number;
   openIssues: number;
+  totalBudget: number;
+  totalActualCost: number;
+  remainingBudget: number;
 }
 
 interface ProjectDialogProps {
@@ -251,58 +254,115 @@ const DashboardPage: React.FC = () => {
   }, [user, accessPermissions.canViewAllProjects, isDepartmentDirector]);
 
   const metrics = useMemo(() => {
-    const today = new Date();
-    const deadlineWarningDays = 14;
+    const now = new Date();
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+    
+    const inProgressProjects = projects.filter(project => project.status === ProjectStatus.IN_PROGRESS);
+    const completedProjects = projects.filter(project => project.status === ProjectStatus.COMPLETED);
+    const onHoldProjects = projects.filter(project => project.status === ProjectStatus.ON_HOLD);
+    const overdueProjects = projects.filter(project => {
+      const dueDate = new Date(project.endDate);
+      return dueDate < now && project.status !== ProjectStatus.COMPLETED;
+    });
+    const approachingDeadline = projects.filter(project => {
+      const dueDate = new Date(project.endDate);
+      return dueDate > now && dueDate < twoWeeksFromNow && project.status !== ProjectStatus.COMPLETED;
+    });
+    
+    const openRisksCount = risks.filter(risk => 
+      risk.status === RiskStatus.IDENTIFIED || 
+      risk.status === RiskStatus.ASSESSED ||
+      risk.impact === RiskImpact.HIGH ||
+      risk.impact === RiskImpact.CRITICAL
+    ).length;
+    
+    const openIssuesCount = issues.filter(issue => 
+      issue.status === IssueStatus.OPEN || 
+      issue.status === IssueStatus.IN_PROGRESS
+    ).length;
+    
+    // Calculate budget metrics
+    const totalBudget = projects.reduce((sum, project) => sum + (project.budget || 0), 0);
+    const totalActualCost = projects.reduce((sum, project) => sum + (project.actualCost || 0), 0);
+    const remainingBudget = totalBudget - totalActualCost;
 
     return {
       totalProjects: projects.length,
-      inProgress: projects.filter((p) => p.status === ProjectStatus.IN_PROGRESS).length,
-      completed: projects.filter((p) => p.status === ProjectStatus.COMPLETED).length,
-      onHold: projects.filter((p) => p.status === ProjectStatus.ON_HOLD).length,
-      overdue: projects.filter((p) => {
-        const endDate = new Date(p.endDate);
-        return endDate < today && p.status !== ProjectStatus.COMPLETED;
-      }).length,
-      approachingDeadline: projects.filter((p) => {
-        const endDate = new Date(p.endDate);
-        const daysUntilDue = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        return daysUntilDue <= deadlineWarningDays && daysUntilDue > 0 && p.status !== ProjectStatus.COMPLETED;
-      }).length,
-      openRisks: risks.filter(risk => risk.status === RiskStatus.IDENTIFIED || risk.status === RiskStatus.ANALYZING || risk.status === RiskStatus.MONITORED).length,
-      openIssues: issues.filter(issue => issue.status === IssueStatus.OPEN || issue.status === IssueStatus.IN_PROGRESS).length,
+      inProgress: inProgressProjects.length,
+      completed: completedProjects.length,
+      onHold: onHoldProjects.length,
+      overdue: overdueProjects.length,
+      approachingDeadline: approachingDeadline.length,
+      openRisks: openRisksCount,
+      openIssues: openIssuesCount,
+      totalBudget,
+      totalActualCost,
+      remainingBudget
     };
   }, [projects, risks, issues]);
 
   const getFilteredProjects = (metricType: string): Project[] => {
-    const today = new Date();
-    const deadlineWarningDays = 14;
-
     switch (metricType) {
       case 'totalProjects':
         return projects;
       case 'inProgress':
-        return projects.filter((p) => p.status === ProjectStatus.IN_PROGRESS);
+        return projects.filter(project => project.status === ProjectStatus.IN_PROGRESS);
       case 'completed':
-        return projects.filter((p) => p.status === ProjectStatus.COMPLETED);
+        return projects.filter(project => project.status === ProjectStatus.COMPLETED);
       case 'onHold':
-        return projects.filter((p) => p.status === ProjectStatus.ON_HOLD);
+        return projects.filter(project => project.status === ProjectStatus.ON_HOLD);
       case 'overdue':
-        return projects.filter((p) => {
-          const endDate = new Date(p.endDate);
-          return endDate < today && p.status !== ProjectStatus.COMPLETED;
+        const today = new Date();
+        return projects.filter(project => {
+          const endDate = new Date(project.endDate);
+          return endDate < today && project.status !== ProjectStatus.COMPLETED;
         });
       case 'approachingDeadline':
-        return projects.filter((p) => {
-          const endDate = new Date(p.endDate);
-          const daysUntilDue = Math.ceil((endDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-          return daysUntilDue <= deadlineWarningDays && daysUntilDue > 0 && p.status !== ProjectStatus.COMPLETED;
+        const now = new Date();
+        const twoWeeksFromNow = new Date();
+        twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+        return projects.filter(project => {
+          const dueDate = new Date(project.endDate);
+          return dueDate > now && dueDate < twoWeeksFromNow && project.status !== ProjectStatus.COMPLETED;
         });
+      case 'highBudget':
+        // Projects with budget above average
+        const avgBudget = projects.reduce((sum, project) => sum + (project.budget || 0), 0) / projects.length;
+        return projects.filter(project => (project.budget || 0) > avgBudget);
+      case 'overBudget':
+        // Projects that have exceeded their budget
+        return projects.filter(project => (project.actualCost || 0) > (project.budget || 0));
+      case 'underBudget':
+        // Projects that are under budget
+        return projects.filter(project => 
+          project.status !== ProjectStatus.COMPLETED && 
+          (project.actualCost || 0) < (project.budget || 0)
+        );
+      case 'totalActualCost':
+        // Sort projects by actual cost (highest first)
+        return [...projects]
+          .filter(project => project.actualCost && project.actualCost > 0)
+          .sort((a, b) => (b.actualCost || 0) - (a.actualCost || 0));
       default:
         return [];
     }
   };
 
   const handleMetricClick = (metricType: string) => {
+    console.log("Metric clicked:", metricType);
+    
+    // Check if the metric type is valid
+    if (!metricType) {
+      console.error("Invalid metric type:", metricType);
+      return;
+    }
+    
+    // Get the filtered projects for this metric
+    const filteredProjects = getFilteredProjects(metricType);
+    console.log(`Found ${filteredProjects.length} projects for ${metricType}`);
+    
+    // Set the selected metric and open the dialog
     setSelectedMetric(metricType);
     setDialogOpen(true);
   };
@@ -380,19 +440,27 @@ const DashboardPage: React.FC = () => {
   const getDialogTitle = (metricType: string): string => {
     switch (metricType) {
       case 'totalProjects':
-        return t('dashboard.totalProjects');
+        return t('dashboard.allProjects', 'All Projects');
       case 'inProgress':
-        return t('dashboard.inProgress');
+        return t('dashboard.inProgressProjects', 'In Progress Projects');
       case 'completed':
-        return t('dashboard.completed');
+        return t('dashboard.completedProjects', 'Completed Projects');
       case 'onHold':
-        return t('dashboard.onHold');
+        return t('dashboard.onHoldProjects', 'On Hold Projects');
       case 'overdue':
-        return t('dashboard.overdue');
+        return t('dashboard.overdueProjects', 'Overdue Projects');
       case 'approachingDeadline':
-        return t('dashboard.approachingDeadline');
+        return t('dashboard.approachingDeadline', 'Projects Approaching Deadline');
+      case 'highBudget':
+        return t('dashboard.highBudgetProjects', 'Projects with Above Average Budget');
+      case 'overBudget':
+        return t('dashboard.overBudgetProjects', 'Projects Over Budget');
+      case 'underBudget':
+        return t('dashboard.underBudgetProjects', 'Projects Under Budget');
+      case 'totalActualCost':
+        return t('dashboard.projectsByActualCost', 'Projects by Actual Cost');
       default:
-        return '';
+        return t('dashboard.filteredProjects', 'Filtered Projects');
     }
   };
 
@@ -493,6 +561,43 @@ const DashboardPage: React.FC = () => {
                     color="error"
                     progress={Math.round((metrics.openIssues / metrics.totalProjects) * 100)}
                     onClick={() => handleNavigateToRisks('issues')}
+                  />
+                </Box>
+              </Box>
+            </Box>
+            
+            {/* Budget Metrics Section */}
+            <Box sx={{ mb: 4 }}>
+              <Typography variant="h5" sx={{ mb: 2 }}>
+                Budget Metrics
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="Total Budget Estimated"
+                    value={`$${metrics.totalBudget.toLocaleString()}`}
+                    color="primary"
+                    progress={100}
+                    onClick={() => handleMetricClick('highBudget')}
+                  />
+                </Box>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="Total Actual Cost"
+                    value={`$${metrics.totalActualCost.toLocaleString()}`}
+                    color={metrics.totalActualCost > metrics.totalBudget ? 'error' : 'info'}
+                    progress={Math.round((metrics.totalActualCost / metrics.totalBudget) * 100)}
+                    onClick={() => handleMetricClick('totalActualCost')}
+                  />
+                </Box>
+                <Box sx={{ flex: '1 1 300px' }}>
+                  <MetricCard
+                    title="Remaining Budget"
+                    value={`$${metrics.remainingBudget.toLocaleString()}`}
+                    color={metrics.remainingBudget < 0 ? 'error' : 'success'}
+                    progress={Math.round((metrics.remainingBudget / metrics.totalBudget) * 100)}
+                    subtitle={metrics.remainingBudget < 0 ? 'Budget Overrun' : ''}
+                    onClick={() => handleMetricClick('underBudget')}
                   />
                 </Box>
               </Box>

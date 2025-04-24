@@ -110,50 +110,48 @@ export const runFullAudit = (): AuditResult => {
   // Check if all current change requests follow approval flows
   if (changeRequests.length > 0) {
     changeRequests.forEach((cr: ChangeRequest) => {
-      if (cr.approvedBy) {
-        const approver = users.find((u: User) => u.id === cr.approvedBy?.id);
+      if (cr.reviewedBy) {
+        const approver = users.find((u: User) => u.id === cr.reviewedBy);
         if (approver) {
           const crAudit = validateChangeRequestApproval(cr, approver);
           if (!crAudit.passed) {
             result.passed = false;
-            result.issues.push(`Change request ${cr.id} has approval issues: ${crAudit.issues.join(', ')}`);
+            result.issues.push(...crAudit.issues);
           }
-        } else {
-          result.passed = false;
-          result.issues.push(`Change request ${cr.id} was approved by a user that no longer exists`);
         }
       }
       
       // Check for specific change request types and their requirements
       switch(cr.type) {
         case ChangeRequestType.SCHEDULE:
-          if (!cr.newEndDate) {
+          if (!cr.schedule?.proposedEndDate) {
             result.passed = false;
             result.issues.push(`Schedule change request ${cr.id} is missing a new end date`);
           }
           break;
         case ChangeRequestType.BUDGET:
-          if (!cr.newCost) {
+          if (!cr.budget?.proposedBudget) {
             result.passed = false;
             result.issues.push(`Budget change request ${cr.id} is missing a new cost value`);
           }
           break;
         case ChangeRequestType.SCOPE:
-          if (!cr.newScopeDescription) {
+          if (!cr.scope?.proposedScope) {
             result.passed = false;
             result.issues.push(`Scope change request ${cr.id} is missing scope description`);
           }
           break;
         case ChangeRequestType.RESOURCE:
-          if (!cr.newProjectManagerId) {
+          if (!cr.resource?.requiredResources) {
             result.passed = false;
-            result.issues.push(`Resource change request ${cr.id} is missing new project manager`);
+            result.issues.push(`Resource change request ${cr.id} is missing required resources`);
           }
           break;
         case ChangeRequestType.CLOSURE:
-          if (!cr.closureReason) {
+          // For closure type, just check if there's a description since we don't have a dedicated field
+          if (cr.description.length < 10) {
             result.passed = false;
-            result.issues.push(`Closure request ${cr.id} is missing closure reason`);
+            result.issues.push(`Closure request ${cr.id} is missing sufficient closure reason`);
           }
           break;
       }

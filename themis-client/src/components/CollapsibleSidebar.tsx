@@ -30,12 +30,20 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useLocation, NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
 const DRAWER_WIDTH = 240;
 const COLLAPSED_WIDTH = 72;
+
+// Qatar flag colors
+const qatarMaroon = {
+  main: '#8A1538',
+  light: '#A43A59',
+  dark: '#6E0020',
+};
 
 const DrawerHeader = styled('div')(({ theme }) => ({
   display: 'flex',
@@ -75,6 +83,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
   const menuItems = [
     { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard', role: ['ADMIN'] },
     { text: t('navigation.projects'), icon: <FolderIcon />, path: '/projects' },
+    { 
+      text: t('navigation.approvals', 'Approvals'), 
+      icon: <CheckCircleIcon />, 
+      path: '/project-approvals',
+      role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO'] 
+    },
     { text: t('navigation.tasks'), icon: <AssignmentIcon />, path: '/tasks' },
     { text: t('navigation.assignments'), icon: <WorkIcon />, path: '/assignments' },
     { text: t('navigation.goals'), icon: <FlagIcon />, path: '/goals' },
@@ -119,28 +133,34 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     <>
       <DrawerHeader sx={{ justifyContent: isOpen ? 'space-between' : 'center' }}>
         {isOpen && (
-          <Typography 
-            variant="h6" 
-            component="div" 
-            sx={{ 
-              ml: 2, 
-              fontWeight: 600,
-              background: theme.palette.mode === 'dark' 
-                ? 'linear-gradient(45deg, #90caf9, #42a5f5)' 
-                : 'linear-gradient(45deg, #1565c0, #0d47a1)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}
-          >
-            {t('app.title')}
-          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
+            <FlagIcon sx={{ 
+              color: qatarMaroon.main,
+              fontSize: 24,
+              mr: 1
+            }} />
+            <Typography 
+              variant="h6" 
+              component="div" 
+              sx={{ 
+                fontWeight: 600,
+                background: theme.palette.mode === 'dark' 
+                  ? `linear-gradient(45deg, ${qatarMaroon.light}, #FFFFFF)`
+                  : `linear-gradient(45deg, ${qatarMaroon.main}, ${qatarMaroon.dark})`,
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+              }}
+            >
+              {t('app.title')}
+            </Typography>
+          </Box>
         )}
         <IconButton onClick={handleDrawerToggle}>
           {!isOpen ? <ChevronRightIcon /> : 
             theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
         </IconButton>
       </DrawerHeader>
-      <Divider />
+      <Divider sx={{ borderColor: alpha(qatarMaroon.main, 0.2) }} />
       <List sx={{ p: 1 }}>
         {menuItems.map((item) => {
           // Check if the route requires a specific role
@@ -162,13 +182,13 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                   sx={{
                     borderRadius: 2,
                     mb: 0.5,
-                    color: (openSettings || isActive) ? 'primary.main' : 'text.primary',
+                    color: (openSettings || isActive) ? qatarMaroon.main : 'text.primary',
                     backgroundColor: (openSettings || isActive)
-                      ? alpha(theme.palette.primary.main, isDark ? 0.2 : 0.1)
+                      ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.08)
                       : 'transparent',
                     '&:hover': {
                       backgroundColor: (openSettings || isActive)
-                        ? alpha(theme.palette.primary.main, isDark ? 0.25 : 0.15)
+                        ? alpha(qatarMaroon.main, isDark ? 0.25 : 0.12)
                         : alpha(theme.palette.action.hover, 0.8),
                     },
                     transition: 'all 0.3s ease',
@@ -177,7 +197,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                 >
                   <ListItemIcon sx={{ 
                     minWidth: 40, 
-                    color: (openSettings || isActive) ? 'primary.main' : 'inherit',
+                    color: (openSettings || isActive) ? qatarMaroon.main : 'inherit',
                   }}>
                     {item.icon}
                   </ListItemIcon>
@@ -210,13 +230,13 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                             borderRadius: 2,
                             mb: 0.5,
                             ml: 2,
-                            color: isChildActive ? 'primary.main' : 'text.primary',
+                            color: isChildActive ? qatarMaroon.main : 'text.primary',
                             backgroundColor: isChildActive 
-                              ? alpha(theme.palette.primary.main, isDark ? 0.2 : 0.1)
+                              ? alpha(qatarMaroon.main, isDark ? 0.1 : 0.05)
                               : 'transparent',
                             '&:hover': {
                               backgroundColor: isChildActive 
-                                ? alpha(theme.palette.primary.main, isDark ? 0.25 : 0.15)
+                                ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.075)
                                 : alpha(theme.palette.action.hover, 0.8),
                             },
                             transition: 'all 0.3s ease',
@@ -224,7 +244,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                         >
                           <ListItemIcon sx={{ 
                             minWidth: 40, 
-                            color: isChildActive ? 'primary.main' : 'inherit',
+                            color: isChildActive ? qatarMaroon.main : 'inherit',
                           }}>
                             {child.icon}
                           </ListItemIcon>
@@ -241,7 +261,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                                 width: 4,
                                 height: 32,
                                 borderRadius: 4,
-                                backgroundColor: 'primary.main',
+                                backgroundColor: qatarMaroon.main,
                                 position: 'absolute',
                                 right: 0,
                               }}
@@ -262,13 +282,13 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                     justifyContent: 'center',
                     borderRadius: 2,
                     mb: 0.5,
-                    color: (openSettings || isActive) ? 'primary.main' : 'text.primary',
+                    color: (openSettings || isActive) ? qatarMaroon.main : 'text.primary',
                     backgroundColor: (openSettings || isActive)
-                      ? alpha(theme.palette.primary.main, isDark ? 0.2 : 0.1)
+                      ? alpha(qatarMaroon.main, isDark ? 0.1 : 0.05)
                       : 'transparent',
                     '&:hover': {
                       backgroundColor: (openSettings || isActive)
-                        ? alpha(theme.palette.primary.main, isDark ? 0.25 : 0.15)
+                        ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.075)
                         : alpha(theme.palette.action.hover, 0.8),
                     },
                     transition: 'all 0.3s ease',
@@ -277,7 +297,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                 >
                   <ListItemIcon sx={{ 
                     minWidth: 'auto', 
-                    color: (openSettings || isActive) ? 'primary.main' : 'inherit',
+                    color: (openSettings || isActive) ? qatarMaroon.main : 'inherit',
                   }}>
                     {item.icon}
                   </ListItemIcon>
@@ -287,7 +307,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                         width: 4,
                         height: 32,
                         borderRadius: 4,
-                        backgroundColor: 'primary.main',
+                        backgroundColor: qatarMaroon.main,
                         position: 'absolute',
                         right: 0,
                       }}
@@ -306,13 +326,13 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
               sx={{
                 borderRadius: 2,
                 mb: 0.5,
-                color: isActive ? 'primary.main' : 'text.primary',
+                color: isActive ? qatarMaroon.main : 'text.primary',
                 backgroundColor: isActive 
-                  ? alpha(theme.palette.primary.main, isDark ? 0.2 : 0.1)
+                  ? alpha(qatarMaroon.main, isDark ? 0.1 : 0.05)
                   : 'transparent',
                 '&:hover': {
                   backgroundColor: isActive 
-                    ? alpha(theme.palette.primary.main, isDark ? 0.25 : 0.15)
+                    ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.075)
                     : alpha(theme.palette.action.hover, 0.8),
                 },
                 transition: 'all 0.3s ease',
@@ -320,7 +340,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
             >
               <ListItemIcon sx={{ 
                 minWidth: 40, 
-                color: isActive ? 'primary.main' : 'inherit',
+                color: isActive ? qatarMaroon.main : 'inherit',
               }}>
                 {item.icon}
               </ListItemIcon>
@@ -337,7 +357,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                     width: 4,
                     height: 32,
                     borderRadius: 4,
-                    backgroundColor: 'primary.main',
+                    backgroundColor: qatarMaroon.main,
                     position: 'absolute',
                     right: 0,
                   }}
@@ -353,13 +373,13 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                   justifyContent: 'center',
                   borderRadius: 2,
                   mb: 0.5,
-                  color: isActive ? 'primary.main' : 'text.primary',
+                  color: isActive ? qatarMaroon.main : 'text.primary',
                   backgroundColor: isActive 
-                    ? alpha(theme.palette.primary.main, isDark ? 0.2 : 0.1)
+                    ? alpha(qatarMaroon.main, isDark ? 0.1 : 0.05)
                     : 'transparent',
                   '&:hover': {
                     backgroundColor: isActive 
-                      ? alpha(theme.palette.primary.main, isDark ? 0.25 : 0.15)
+                      ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.075)
                       : alpha(theme.palette.action.hover, 0.8),
                   },
                   transition: 'all 0.3s ease',
@@ -368,7 +388,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
               >
                 <ListItemIcon sx={{ 
                   minWidth: 'auto', 
-                  color: isActive ? 'primary.main' : 'inherit',
+                  color: isActive ? qatarMaroon.main : 'inherit',
                 }}>
                   {item.icon}
                 </ListItemIcon>
@@ -378,7 +398,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                       width: 4,
                       height: 32,
                       borderRadius: 4,
-                      backgroundColor: 'primary.main',
+                      backgroundColor: qatarMaroon.main,
                       position: 'absolute',
                       right: 0,
                     }}

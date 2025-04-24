@@ -581,18 +581,57 @@ const ProjectDetailPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus | undefined>(undefined);
+  const [projectLogs, setProjectLogs] = useState<ProjectLog[]>(mockProjectLogs);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
 
-  // Gantt Chart error handling
-  const [ganttError, setGanttError] = useState<string | null>(null);
-  const handleGanttError = (error: Error) => {
-    console.error('Gantt chart error:', error);
-    setGanttError(error.message || 'An error occurred loading the Gantt chart');
-  };
-
-  // Check user permissions
-  const userCanAddTasks = user?.role ? canAddTasks(user.role) : false;
-  const userCanRequestTasks = user?.role ? canRequestTasks(user.role) : false;
-  const userCanManageProjects = user?.role ? canManageProjects(user.role) : false;
+  // Fetch project data based on ID
+  useEffect(() => {
+    const fetchProjectData = async () => {
+      if (!id) return;
+      
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // In a real app, this would use the API
+        // const response = await projectService.getProjectById(id);
+        // const projectData = response.data;
+        
+        // For now, find the project in the projects array or use mock data
+        const foundProject = projects.find(p => p.id === id);
+        
+        if (foundProject) {
+          // Convert to ProjectWithTeamData format if needed
+          const projectWithTeam: ProjectWithTeamData = {
+            ...foundProject,
+            team: mockUsers, // In a real app, you would fetch the team members
+            attachments: mockAttachments, // In a real app, you would fetch the attachments
+            // Ensure all required properties are explicitly set with string values
+            createdAt: foundProject.createdAt || new Date().toISOString(), 
+            updatedAt: foundProject.updatedAt || new Date().toISOString()
+          };
+          setProject(projectWithTeam);
+        } else {
+          // If project not found in the context, use the mock data as fallback
+          // but with the correct ID
+          const mockWithCorrectId = {
+            ...mockProject,
+            id: id
+          };
+          setProject(mockWithCorrectId);
+          console.warn(`Project with ID ${id} not found in context, using mock data.`);
+        }
+      } catch (err) {
+        console.error('Error fetching project:', err);
+        setError('Failed to load project data');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchProjectData();
+  }, [id, projects]);
 
   // Load available users when needed
   useEffect(() => {
@@ -629,10 +668,6 @@ const ProjectDetailPage: React.FC = () => {
   }, [id, user?.token, tabValue]);
 
   // Fetch logs when the Logs tab is selected
-  const [projectLogs, setProjectLogs] = useState<ProjectLog[]>([]);
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(10);
-
   useEffect(() => {
     const fetchLogs = async () => {
       if (!id || !user?.token || tabValue !== 7) return;
@@ -649,6 +684,18 @@ const ProjectDetailPage: React.FC = () => {
     fetchLogs();
   }, [id, user?.token, tabValue]);
 
+  // Gantt Chart error handling
+  const [ganttError, setGanttError] = useState<string | null>(null);
+  const handleGanttError = (error: Error) => {
+    console.error('Gantt chart error:', error);
+    setGanttError(error.message || 'An error occurred loading the Gantt chart');
+  };
+
+  // Check user permissions
+  const userCanAddTasks = user?.role ? canAddTasks(user.role) : false;
+  const userCanRequestTasks = user?.role ? canRequestTasks(user.role) : false;
+  const userCanManageProjects = user?.role ? canManageProjects(user.role) : false;
+
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
@@ -657,8 +704,15 @@ const ProjectDetailPage: React.FC = () => {
     navigate('/projects');
   };
 
-  // Convert mock project data
-  const projectData: ProjectWithTeamData = mockProject;
+  // Use the fetched project data instead of the mock
+  const projectData = project || mockProject;
+
+  // Calculate project progress
+  const progress = projectData.progress;
+  const daysTotal = Math.ceil((new Date(projectData.endDate).getTime() - new Date(projectData.startDate).getTime()) / (1000 * 3600 * 24));
+  const daysElapsed = Math.ceil((new Date().getTime() - new Date(projectData.startDate).getTime()) / (1000 * 3600 * 24));
+  const daysRemaining = Math.max(0, daysTotal - daysElapsed);
+  const isOverdue = new Date() > new Date(projectData.endDate) && projectData.status !== ProjectStatus.COMPLETED;
 
   const handleAddTask = async (newTask: Task) => {
     try {
@@ -692,13 +746,6 @@ const ProjectDetailPage: React.FC = () => {
       console.error('Error moving task:', err);
     }
   };
-
-  // Calculate project progress
-  const progress = mockProject.progress;
-  const daysTotal = Math.ceil((new Date(mockProject.endDate).getTime() - new Date(mockProject.startDate).getTime()) / (1000 * 3600 * 24));
-  const daysElapsed = Math.ceil((new Date().getTime() - new Date(mockProject.startDate).getTime()) / (1000 * 3600 * 24));
-  const daysRemaining = Math.max(0, daysTotal - daysElapsed);
-  const isOverdue = new Date() > new Date(mockProject.endDate) && mockProject.status !== ProjectStatus.COMPLETED;
 
   const handleOpenAddTeamMemberDialog = () => {
     setSelectedTeamMembers([]);

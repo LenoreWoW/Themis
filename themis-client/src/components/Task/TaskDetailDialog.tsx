@@ -18,21 +18,33 @@ import {
   Paper,
   IconButton,
   Grid,
-  LinearProgress
+  LinearProgress,
+  CircularProgress
 } from '@mui/material';
 import {
   CalendarToday,
   Person,
   Edit as EditIcon,
   Close as CloseIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Assignment as TaskIcon,
+  PriorityHigh as PriorityIcon,
+  Comment as CommentIcon
 } from '@mui/icons-material';
 import { Task, TaskStatus, TaskPriority, User } from '../../types';
 import { useAuth } from '../../context/AuthContext';
 import { format } from 'date-fns';
 
+interface TaskDetailDialogProps {
+  open: boolean;
+  task: Task | null;
+  onClose: () => void;
+  onEdit: (task: Task) => void;
+  onAddComment: (taskId: string, comment: string) => Promise<void>;
+}
+
 // Define local interface for comments to avoid TypeScript errors
-interface TaskCommentType {
+interface TaskComment {
   id: string;
   taskId: string;
   text: string;
@@ -45,14 +57,6 @@ interface TaskCommentType {
   };
 }
 
-interface TaskDetailDialogProps {
-  open: boolean;
-  task: Task | null;
-  onClose: () => void;
-  onEdit: (task: Task) => void;
-  onAddComment: (taskId: string, comment: string) => Promise<void>;
-}
-
 const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
   open,
   task,
@@ -63,6 +67,8 @@ const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
   const { user } = useAuth();
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [comments, setComments] = useState<TaskComment[]>([]);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     if (open) {
@@ -165,10 +171,10 @@ const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
   };
 
   // Get comments (with type safety)
-  const getComments = (): TaskCommentType[] => {
+  const getComments = (): TaskComment[] => {
     // Handle case where comments are not defined in the Task interface
     // Safe fallback to an empty array
-    return ((task as any).comments || []) as TaskCommentType[];
+    return ((task as any).comments || []) as TaskComment[];
   };
 
   return (
@@ -308,7 +314,7 @@ const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
           
           <List>
             {getComments().length > 0 ? (
-              getComments().map((comment: TaskCommentType) => (
+              getComments().map((comment: TaskComment) => (
                 <ListItem 
                   key={comment.id}
                   alignItems="flex-start"

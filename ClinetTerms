@@ -2,7 +2,7 @@
 Project Managers (PMs): Front-line project owners who manage projects, updates, and scope changes.
 Sub PMOs: Department or division PMOs responsible for reviewing and approving project submissions.
 Main PMO: Enterprise-level PMO responsible for final project approvals and overall PMO governance.
-Department Directors: Executive viewers with read-only access to their department’s project portfolio.
+Department Directors: Executive viewers with read-only access to their department's project portfolio.
 Higher Management (Executives): Top management requiring full visibility into all projects for strategic oversight.
 5. User Roles and Responsibilities
 Project Managers (PMs):
@@ -18,7 +18,7 @@ Review project data from Sub PMOs for alignment with corporate strategy.
 Final approval for new projects and changes.
 Full control over system configuration and project settings.
 Department Directors:
-View-only access to projects within their department’s portfolio.
+View-only access to projects within their department's portfolio.
 Access to status reports and key performance indicators (KPIs).
 Higher Management (Executives):
 Full visibility of all projects across the organization.
@@ -32,7 +32,7 @@ Department Directors and Executives will have read-only access to view projects 
 This system will leverage Active Directory integration to synchronize user roles and departments.
 7. Key Features and Workflows
 Project Registration & Management:
-PMs can create new projects, submit updates, and request changes. Sub PMOs review and approve/deny these requests, ensuring compliance with the organization’s standards.
+PMs can create new projects, submit updates, and request changes. Sub PMOs review and approve/deny these requests, ensuring compliance with the organization's standards.
 Governance & Workflow:
 The system enforces defined workflows for project approval, change management, and status updates. Each approval step is logged for accountability.
 Dashboards and Reporting:

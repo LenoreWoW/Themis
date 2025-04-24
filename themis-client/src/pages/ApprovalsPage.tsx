@@ -171,7 +171,7 @@ const ApprovalsPage: React.FC = () => {
     try {
       let nextStatus: ApprovalStatus | null;
       const action = dialogType === 'approve' ? 'APPROVE' : 'REJECT';
-      const currentStatus = selectedProject.approvalStatus as ApprovalStatus || ApprovalStatus.SUBMITTED;
+      const currentStatus = (selectedProject as any).approvalStatus || ApprovalStatus.SUBMITTED;
       
       nextStatus = getNextApprovalStatus(currentStatus, user.role, action);
       
@@ -206,7 +206,11 @@ const ApprovalsPage: React.FC = () => {
       };
 
       // Update project
-      const response = await api.projects.updateProject(selectedProject.id, projectData);
+      const response = await api.projects.updateProject(
+        selectedProject.id, 
+        projectData,
+        localStorage.getItem('token') || ''
+      );
 
       if (response.success) {
         handleCloseDialog();
@@ -232,13 +236,14 @@ const ApprovalsPage: React.FC = () => {
     
     // SUB_PMO can approve submitted projects that are not their own
     if (user.role === UserRole.SUB_PMO && !isOwnProject && 
-        (project.approvalStatus === ApprovalStatus.SUBMITTED || project.status === 'SUBMITTED')) {
+        ((project as any).approvalStatus === ApprovalStatus.SUBMITTED || 
+        (project.status === ProjectStatus.PLANNING))) {
       return true;
     }
     
     // MAIN_PMO can approve projects that have been approved by SUB_PMO
     if (user.role === UserRole.MAIN_PMO && 
-        (project.approvalStatus === ApprovalStatus.SUB_PMO_APPROVED || project.status === 'SUB_PMO_APPROVED')) {
+        ((project as any).approvalStatus === ApprovalStatus.SUB_PMO_APPROVED)) {
       return true;
     }
     
@@ -323,11 +328,11 @@ const ApprovalsPage: React.FC = () => {
                     `${project.projectManager.firstName} ${project.projectManager.lastName}` : 
                     t('common.unassigned')}
                 </TableCell>
-                <TableCell>{formatDate(project.createdAt)}</TableCell>
+                <TableCell>{formatDate(project.createdAt || '')}</TableCell>
                 <TableCell>
                   <Chip 
-                    label={getStatusLabel(project.approvalStatus || String(project.status))} 
-                    color={getStatusColor(project.approvalStatus || String(project.status)) as any} 
+                    label={getStatusLabel((project as any).approvalStatus || String(project.status))} 
+                    color={getStatusColor((project as any).approvalStatus || String(project.status)) as any} 
                     size="small" 
                   />
                 </TableCell>

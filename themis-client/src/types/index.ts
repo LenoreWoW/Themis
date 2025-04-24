@@ -270,23 +270,21 @@ export interface WeeklyUpdate {
   updatedAt: string;
 }
 
-// Change request types
+// Change Request Types
 export enum ChangeRequestType {
-  SCOPE = 'SCOPE',
   SCHEDULE = 'SCHEDULE',
   BUDGET = 'BUDGET',
+  SCOPE = 'SCOPE',
   RESOURCE = 'RESOURCE',
   CLOSURE = 'CLOSURE',
   OTHER = 'OTHER'
 }
 
 export enum ChangeRequestStatus {
-  DRAFT = 'DRAFT',
-  SUBMITTED = 'SUBMITTED',
-  APPROVED_BY_SUB_PMO = 'APPROVED_BY_SUB_PMO',
-  APPROVED_BY_MAIN_PMO = 'APPROVED_BY_MAIN_PMO',
-  APPROVED_BY_DIRECTOR = 'APPROVED_BY_DIRECTOR',
-  REJECTED = 'REJECTED'
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED',
+  IMPLEMENTED = 'IMPLEMENTED'
 }
 
 export interface ChangeRequest {
@@ -295,30 +293,33 @@ export interface ChangeRequest {
   title: string;
   description: string;
   type: ChangeRequestType;
-  impact: string;
-  justification: string;
-  alternatives: string;
   status: ChangeRequestStatus;
-  submittedBy: User;
-  submittedAt?: string;
-  approvedBySubPmo?: User;
-  approvedBySubPmoAt?: string;
-  approvedByMainPmo?: User;
-  approvedByMainPmoAt?: string;
-  approvedByDirector?: User;
-  approvedByDirectorAt?: string;
-  rejectedBy?: User;
-  rejectedAt?: string;
-  rejectionReason?: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
-  // Add new properties for different change request types
-  approvedBy?: User;
-  newEndDate?: Date | string | null;
-  newCost?: string | number;
-  newScopeDescription?: string;
-  newProjectManagerId?: string;
-  closureReason?: string;
+  reviewedBy?: string;
+  reviewNotes?: string;
+  attachments?: string[];
+  // Additional fields based on type
+  schedule?: {
+    currentEndDate: string;
+    proposedEndDate: string;
+    justification: string;
+  };
+  budget?: {
+    currentBudget: number;
+    proposedBudget: number;
+    justification: string;
+  };
+  scope?: {
+    currentScope: string;
+    proposedScope: string;
+    justification: string;
+  };
+  resource?: {
+    requiredResources: string;
+    justification: string;
+  };
 }
 
 // Financial types

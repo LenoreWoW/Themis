@@ -60,7 +60,7 @@ const LoginPage: React.FC = () => {
         height: '100vh',
         display: 'flex',
         overflow: 'hidden',
-        background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+        background: 'linear-gradient(135deg, #f8f8f8 0%, #e6e6e6 100%)',
       }}
     >
       {!isMobile && (
@@ -80,7 +80,7 @@ const LoginPage: React.FC = () => {
               left: 0,
               width: '100%',
               height: '100%',
-              background: 'linear-gradient(135deg, rgba(100, 88, 238, 0.8) 0%, rgba(123, 104, 238, 0.8) 100%)',
+              background: 'linear-gradient(135deg, rgba(138, 21, 56, 0.9) 0%, rgba(110, 0, 32, 0.9) 100%)',
               zIndex: 1,
             }
           }}
@@ -105,12 +105,13 @@ const LoginPage: React.FC = () => {
               sx={{
                 borderRadius: '16px',
                 overflow: 'hidden',
-                boxShadow: '0 10px 30px rgba(0,0,0,0.1)',
+                boxShadow: '0 10px 30px rgba(0,0,0,0.2)',
+                border: '4px solid white',
               }}
             >
               <Box
                 component="img"
-                src="https://images.unsplash.com/photo-1552664730-d307ca884978?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=2940&q=80"
+                src="https://images.unsplash.com/photo-1518158548792-ff7fcdc5ee8a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1200&q=80"
                 alt={t('auth.projectManagement')}
                 sx={{
                   width: '100%',
@@ -144,7 +145,8 @@ const LoginPage: React.FC = () => {
           <Box
             sx={{
               display: 'flex',
-              justifyContent: 'center',
+              flexDirection: 'column',
+              alignItems: 'center',
               mb: 4,
             }}
           >
@@ -157,6 +159,16 @@ const LoginPage: React.FC = () => {
                 objectFit: 'contain'
               }}
             />
+            <Typography 
+              variant="h5" 
+              sx={{ 
+                mt: 2, 
+                color: '#8A1538',
+                fontWeight: 600 
+              }}
+            >
+              {t('app.title')}
+            </Typography>
           </Box>
           
           <Typography 
@@ -219,15 +231,18 @@ const LoginPage: React.FC = () => {
               type="submit"
               fullWidth
               variant="contained"
+              color="primary"
               size="large"
               disabled={isLoading}
               sx={{ 
-                mt: 2, 
-                mb: 3, 
-                p: 1.5,
+                mt: 3, 
+                mb: 2, 
+                height: 56, 
                 borderRadius: '8px',
-                textTransform: 'none',
-                fontSize: '1rem'
+                backgroundColor: '#8A1538',
+                '&:hover': {
+                  backgroundColor: '#6E0020',
+                }
               }}
             >
               {isLoading ? (

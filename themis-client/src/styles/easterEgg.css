@@ -1,0 +1,133 @@
+/* Easter Egg Mode - 8-bit Retro Gaming Theme */
+
+/* Override when easter egg mode is active */
+.easter-egg-mode {
+  /* Custom font for retro look */
+  --retro-font: 'Press Start 2P', 'Courier New', monospace;
+  --primary-color: #ff6b6b;
+  --secondary-color: #4ecdc4;
+  --background-color: #1a1c2c;
+  --card-background: #2d2d44;
+  --text-color: #f7f7f7;
+  --border-color: #ffd166;
+}
+
+/* Background and text colors */
+.easter-egg-mode body {
+  background-color: var(--background-color);
+  color: var(--text-color);
+  /* Use CSS pattern instead of image file */
+  background-image: 
+    linear-gradient(rgba(26, 28, 44, 0.9), rgba(26, 28, 44, 0.9)),
+    linear-gradient(to right, #2d2d44 1px, transparent 1px),
+    linear-gradient(to bottom, #2d2d44 1px, transparent 1px);
+  background-size: 100%, 20px 20px, 20px 20px;
+}
+
+/* Paper/Card styles */
+.easter-egg-mode .MuiPaper-root {
+  background-color: var(--card-background);
+  border: 2px solid var(--border-color);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Button styles */
+.easter-egg-mode .MuiButton-containedPrimary {
+  background-color: var(--primary-color);
+  color: white;
+  font-family: var(--retro-font);
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border: 2px solid white;
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.5);
+  transition: all 0.1s ease;
+}
+
+.easter-egg-mode .MuiButton-containedPrimary:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 5px 5px 0 rgba(0, 0, 0, 0.5);
+}
+
+.easter-egg-mode .MuiButton-containedPrimary:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.5);
+}
+
+/* Header and typography */
+.easter-egg-mode h1, 
+.easter-egg-mode h2, 
+.easter-egg-mode h3, 
+.easter-egg-mode h4,
+.easter-egg-mode .MuiTypography-h5,
+.easter-egg-mode .MuiTypography-h6 {
+  font-family: var(--retro-font);
+  color: var(--primary-color);
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.5);
+  letter-spacing: 1px;
+}
+
+/* Form controls */
+.easter-egg-mode .MuiInputBase-root {
+  border: 2px solid var(--border-color);
+  background-color: rgba(0, 0, 0, 0.2);
+}
+
+.easter-egg-mode .MuiInputLabel-root {
+  font-family: var(--retro-font);
+  color: var(--secondary-color);
+}
+
+/* Tables */
+.easter-egg-mode .MuiTableCell-head {
+  background-color: var(--primary-color);
+  color: white;
+  font-family: var(--retro-font);
+  font-size: 0.8rem;
+}
+
+.easter-egg-mode .MuiTableRow-root:nth-of-type(odd) {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Navigation */
+.easter-egg-mode .MuiListItemText-primary {
+  font-family: var(--retro-font);
+  font-size: 0.8rem;
+}
+
+.easter-egg-mode .MuiListItemIcon-root {
+  color: var(--secondary-color);
+}
+
+/* Tabs */
+.easter-egg-mode .MuiTab-root {
+  font-family: var(--retro-font);
+  font-size: 0.7rem;
+}
+
+.easter-egg-mode .MuiTab-root.Mui-selected {
+  color: var(--secondary-color);
+}
+
+/* Dialog */
+.easter-egg-mode .MuiDialog-paper {
+  border: 3px solid var(--border-color);
+  background-color: var(--card-background);
+}
+
+.easter-egg-mode .MuiDialogTitle-root {
+  background-color: var(--primary-color);
+  color: white;
+  font-family: var(--retro-font);
+}
+
+/* Special element animations */
+.easter-egg-mode .MuiCircularProgress-root {
+  color: var(--secondary-color);
+  animation: rotate-pixel 1s steps(8) infinite;
+}
+
+@keyframes rotate-pixel {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+} 

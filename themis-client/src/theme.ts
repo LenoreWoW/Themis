@@ -1,6 +1,13 @@
 import { createTheme, Direction } from '@mui/material/styles';
-import { blue, orange, grey } from '@mui/material/colors';
+import { grey } from '@mui/material/colors';
 import { PaletteMode } from '@mui/material';
+
+// Qatar flag colors
+const qatarMaroon = {
+  main: '#8A1538',
+  light: '#A43A59',
+  dark: '#6E0020',
+};
 
 // Create a theme instance with direction and mode support
 const createAppTheme = (direction: Direction, mode: PaletteMode = 'light') => {
@@ -9,32 +16,32 @@ const createAppTheme = (direction: Direction, mode: PaletteMode = 'light') => {
     palette: {
       mode,
       primary: {
-        main: blue[700],
-        light: blue[400],
-        dark: blue[900],
+        main: qatarMaroon.main,
+        light: qatarMaroon.light,
+        dark: qatarMaroon.dark,
         ...(mode === 'dark' && {
-          main: blue[400],
-          light: blue[300],
-          dark: blue[600],
+          main: qatarMaroon.light,
+          light: '#B55A76',
+          dark: qatarMaroon.main,
         }),
       },
       secondary: {
-        main: orange[500],
-        light: orange[300],
-        dark: orange[700],
+        main: '#FFFFFF',
+        light: '#FFFFFF',
+        dark: '#E0E0E0',
         ...(mode === 'dark' && {
-          main: orange[400],
-          light: orange[300],
-          dark: orange[700],
+          main: '#E0E0E0',
+          light: '#FFFFFF',
+          dark: '#C0C0C0',
         }),
       },
       background: {
-        default: mode === 'light' ? '#f5f7fa' : '#121212',
-        paper: mode === 'light' ? '#ffffff' : '#1e1e1e',
+        default: mode === 'light' ? '#F8F8F8' : '#121212',
+        paper: mode === 'light' ? '#FFFFFF' : '#1e1e1e',
       },
       text: {
-        primary: mode === 'light' ? '#333333' : '#ffffff',
-        secondary: mode === 'light' ? '#666666' : '#aaaaaa',
+        primary: mode === 'light' ? '#333333' : '#FFFFFF',
+        secondary: mode === 'light' ? '#666666' : '#CCCCCC',
       },
     },
     typography: {
@@ -67,6 +74,9 @@ const createAppTheme = (direction: Direction, mode: PaletteMode = 'light') => {
             textTransform: 'none',
             borderRadius: 4,
           },
+          containedPrimary: {
+            color: '#FFFFFF',
+          },
         },
       },
       MuiPaper: {
@@ -80,14 +90,14 @@ const createAppTheme = (direction: Direction, mode: PaletteMode = 'light') => {
         styleOverrides: {
           root: {
             boxShadow: '0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24)',
-            backgroundColor: mode === 'light' ? blue[700] : '#1a1a1a',
+            backgroundColor: mode === 'light' ? qatarMaroon.main : '#1a1a1a',
           },
         },
       },
       MuiDrawer: {
         styleOverrides: {
           paper: {
-            backgroundColor: mode === 'light' ? '#ffffff' : '#1e1e1e',
+            backgroundColor: mode === 'light' ? '#FFFFFF' : '#1e1e1e',
           },
         },
       },
@@ -98,7 +108,7 @@ const createAppTheme = (direction: Direction, mode: PaletteMode = 'light') => {
           },
           head: {
             fontWeight: 600,
-            backgroundColor: mode === 'light' ? grey[100] : grey[900],
+            backgroundColor: mode === 'light' ? '#F1E2E5' : grey[900],
           },
         },
       },
@@ -106,7 +116,7 @@ const createAppTheme = (direction: Direction, mode: PaletteMode = 'light') => {
         styleOverrides: {
           root: {
             '&:hover': {
-              backgroundColor: mode === 'light' ? grey[100] : grey[900],
+              backgroundColor: mode === 'light' ? '#F1E2E5' : grey[900],
             },
           },
         },
@@ -115,8 +125,30 @@ const createAppTheme = (direction: Direction, mode: PaletteMode = 'light') => {
         styleOverrides: {
           root: {
             ...(mode === 'dark' && {
-              color: grey[100],
+              color: '#FFFFFF',
             }),
+          },
+          colorPrimary: {
+            color: '#FFFFFF',
+          },
+        },
+      },
+      MuiLinearProgress: {
+        styleOverrides: {
+          colorPrimary: {
+            backgroundColor: mode === 'light' ? '#D9C0C7' : '#4A2A32',
+          },
+        },
+      },
+      MuiSwitch: {
+        styleOverrides: {
+          switchBase: {
+            '&.Mui-checked': {
+              color: qatarMaroon.main,
+              '& + .MuiSwitch-track': {
+                backgroundColor: qatarMaroon.light,
+              },
+            },
           },
         },
       },

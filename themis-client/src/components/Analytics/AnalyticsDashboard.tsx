@@ -86,6 +86,12 @@ const AnalyticsDashboard: React.FC = () => {
     { value: 'stalled', label: t('analytics.stalledProjects', 'Number of Stalled Projects'), allowedRoles: [UserRole.ADMIN, UserRole.EXECUTIVE, UserRole.MAIN_PMO, UserRole.DEPARTMENT_DIRECTOR, UserRole.PROJECT_MANAGER] },
     { value: 'inProgress', label: t('analytics.inProgressProjects', 'Number of Projects In Progress'), allowedRoles: [UserRole.ADMIN, UserRole.EXECUTIVE, UserRole.MAIN_PMO, UserRole.SUB_PMO, UserRole.DEPARTMENT_DIRECTOR, UserRole.PROJECT_MANAGER, UserRole.DEVELOPER] },
     
+    // Budget metrics
+    { value: 'budgetByDepartment', label: t('analytics.budgetByDepartment', 'Budget Allocation by Department'), allowedRoles: [UserRole.ADMIN, UserRole.EXECUTIVE, UserRole.MAIN_PMO], description: t('analytics.budgetByDepartmentDesc', 'Shows how budget is distributed across departments') },
+    { value: 'budgetVsActual', label: t('analytics.budgetVsActual', 'Budget vs Actual Cost'), allowedRoles: [UserRole.ADMIN, UserRole.EXECUTIVE, UserRole.MAIN_PMO, UserRole.DEPARTMENT_DIRECTOR, UserRole.PROJECT_MANAGER], description: t('analytics.budgetVsActualDesc', 'Compares planned budget with actual expenditure') },
+    { value: 'topBudgetProjects', label: t('analytics.topBudgetProjects', 'Top Projects by Budget'), allowedRoles: [UserRole.ADMIN, UserRole.EXECUTIVE, UserRole.MAIN_PMO, UserRole.DEPARTMENT_DIRECTOR], description: t('analytics.topBudgetProjectsDesc', 'Shows projects with the highest budget allocation') },
+    { value: 'budgetUtilization', label: t('analytics.budgetUtilization', 'Budget Utilization Rate'), allowedRoles: [UserRole.ADMIN, UserRole.EXECUTIVE, UserRole.MAIN_PMO, UserRole.DEPARTMENT_DIRECTOR, UserRole.PROJECT_MANAGER], description: t('analytics.budgetUtilizationDesc', 'Shows percentage of budget utilized by projects') },
+    
     // Risk metrics
     { value: 'riskStatus', label: t('analytics.risksByStatus', 'Risks by Status'), allowedRoles: Object.values(UserRole), description: t('analytics.risksByStatusDesc', 'Shows the distribution of risks by their status') },
     { value: 'riskImpact', label: t('analytics.risksByImpact', 'Risks by Impact Level'), allowedRoles: Object.values(UserRole), description: t('analytics.risksByImpactDesc', 'Shows the distribution of risks by their impact level') },
@@ -157,6 +163,15 @@ const AnalyticsDashboard: React.FC = () => {
         return processStalledData();
       case 'inProgress':
         return processInProgressData();
+      // Budget metrics
+      case 'budgetByDepartment':
+        return processBudgetByDepartmentData();
+      case 'budgetVsActual':
+        return processBudgetVsActualData();
+      case 'topBudgetProjects':
+        return processTopBudgetProjectsData();
+      case 'budgetUtilization':
+        return processBudgetUtilizationData();
       // Risk metrics
       case 'riskStatus':
         return processRiskStatusData();
@@ -303,6 +318,53 @@ const AnalyticsDashboard: React.FC = () => {
       return acc;
     }, {});
     return Object.entries(projectCounts).map(([name, value]) => ({ name, value }));
+  };
+
+  // Add new processing functions for budget metrics  
+  const processBudgetByDepartmentData = (): ChartData[] => {
+    const departmentBudgets = filteredProjects.reduce((acc: { [key: string]: number }, project) => {
+      const deptName = project.department?.name || 'Unknown';
+      acc[deptName] = (acc[deptName] || 0) + (project.budget || 0);
+      return acc;
+    }, {});
+    
+    return Object.entries(departmentBudgets)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value);
+  };
+
+  const processBudgetVsActualData = (): ChartData[] => {
+    const totalBudget = filteredProjects.reduce((sum, project) => sum + (project.budget || 0), 0);
+    const totalActual = filteredProjects.reduce((sum, project) => sum + (project.actualCost || 0), 0);
+    
+    return [
+      { name: t('analytics.plannedBudget', 'Planned Budget'), value: totalBudget },
+      { name: t('analytics.actualCost', 'Actual Cost'), value: totalActual }
+    ];
+  };
+
+  const processTopBudgetProjectsData = (): ChartData[] => {
+    return filteredProjects
+      .filter(project => project.budget && project.budget > 0)
+      .sort((a, b) => (b.budget || 0) - (a.budget || 0))
+      .slice(0, 10)  // Get top 10 projects by budget
+      .map(project => ({
+        name: project.name,
+        value: project.budget || 0
+      }));
+  };
+
+  const processBudgetUtilizationData = (): ChartData[] => {
+    return filteredProjects
+      .filter(project => project.budget && project.budget > 0)
+      .map(project => {
+        const utilization = ((project.actualCost || 0) / (project.budget || 1)) * 100;
+        return {
+          name: project.name,
+          value: Math.min(utilization, 100) // Cap at 100% for display purposes
+        };
+      })
+      .sort((a, b) => b.value - a.value);
   };
 
   useEffect(() => {
