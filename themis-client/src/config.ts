@@ -1,9 +1,9 @@
 // API Configuration
-export const API_BASE_URL = 'http://localhost:5095';
+export const API_BASE_URL = 'http://localhost:5065';
 
 // Feature flags
 export const FEATURES = {
-  OFFLINE_MODE: true,
+  OFFLINE_MODE: false,
   ENABLE_NOTIFICATIONS: true,
   ENABLE_AUDIT_LOGS: true,
   ENABLE_ANALYTICS: false

@@ -1,56 +1,105 @@
-import React, { createContext, useState, useContext, useEffect, ReactNode } from 'react';
-import { PaletteMode } from '@mui/material';
+import React, { createContext, useContext } from 'react';
+import { createTheme, ThemeProvider as MuiThemeProvider, PaletteMode } from '@mui/material';
+import useThemeMode, { ThemeMode } from '../hooks/useThemeMode';
 
+// Define the context type
 interface ThemeContextType {
-  mode: PaletteMode;
-  toggleTheme: () => void;
+  themeMode: ThemeMode;
+  isDarkMode: boolean;
+  isLightMode: boolean;
+  toggleThemeMode: () => void;
+  setThemeMode: (mode: ThemeMode) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType>({
-  mode: 'light',
-  toggleTheme: () => {},
-});
+// Create the context with a default value
+const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export const useThemeMode = () => useContext(ThemeContext);
-
-interface ThemeProviderProps {
-  children: ReactNode;
-}
-
-export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
-  // Get the initial theme mode from localStorage or use 'light' as default
-  const [mode, setMode] = useState<PaletteMode>(() => {
-    const savedMode = localStorage.getItem('themisThemeMode');
-    return (savedMode as PaletteMode) || 'light';
+// Create the provider component
+export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const themeHook = useThemeMode();
+  
+  // Create the MUI theme based on current mode
+  const theme = createTheme({
+    palette: {
+      mode: themeHook.themeMode as PaletteMode,
+      primary: {
+        main: '#007FFF', // Primary color
+      },
+      secondary: {
+        main: '#FF4081', // Secondary color
+      },
+      ...(themeHook.themeMode === 'light'
+        ? {
+            background: {
+              default: '#f5f5f5',
+              paper: '#ffffff',
+            },
+          }
+        : {
+            background: {
+              default: '#303030',
+              paper: '#424242',
+            },
+            text: {
+              primary: '#ffffff',
+              secondary: 'rgba(255, 255, 255, 0.7)',
+            },
+          }),
+    },
+    typography: {
+      fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
+      h1: {
+        fontSize: '2.5rem',
+        fontWeight: 500,
+      },
+      h2: {
+        fontSize: '2rem',
+        fontWeight: 500,
+      },
+      h3: {
+        fontSize: '1.75rem',
+        fontWeight: 500,
+      },
+      h4: {
+        fontSize: '1.5rem',
+        fontWeight: 500,
+      },
+      h5: {
+        fontSize: '1.25rem',
+        fontWeight: 500,
+      },
+      h6: {
+        fontSize: '1rem',
+        fontWeight: 500,
+      },
+    },
+    components: {
+      MuiButton: {
+        styleOverrides: {
+          root: {
+            textTransform: 'none',
+          },
+        },
+      },
+    },
   });
 
-  // Toggle between light and dark mode
-  const toggleTheme = () => {
-    setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'));
-  };
-
-  // Save the theme mode to localStorage whenever it changes
-  useEffect(() => {
-    localStorage.setItem('themisThemeMode', mode);
-    
-    // Update the document's class for potential global styling
-    if (mode === 'dark') {
-      document.documentElement.classList.add('dark-mode');
-    } else {
-      document.documentElement.classList.remove('dark-mode');
-    }
-  }, [mode]);
-
-  const value = {
-    mode,
-    toggleTheme,
-  };
-
   return (
-    <ThemeContext.Provider value={value}>
-      {children}
+    <ThemeContext.Provider value={themeHook}>
+      <MuiThemeProvider theme={theme}>
+        {children}
+      </MuiThemeProvider>
     </ThemeContext.Provider>
   );
 };
 
-export default ThemeContext; 
+// Create a custom hook to use the theme context
+export const useTheme = (): ThemeContextType => {
+  const context = useContext(ThemeContext);
+  if (context === undefined) {
+    throw new Error('useTheme must be used within a ThemeProvider');
+  }
+  return context;
+};
+
+export default ThemeProvider; 

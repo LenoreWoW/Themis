@@ -7,6 +7,7 @@ import { jwtDecode } from 'jwt-decode';
 
 // Use the token storage key from config
 const TOKEN_STORAGE_KEY = AUTH_CONFIG.TOKEN_STORAGE_KEY;
+const AUTH_PRESERVE_KEY = 'themis_preserve_auth';
 
 interface AuthContextType {
   user: User | null;
@@ -42,6 +43,12 @@ interface JwtPayload {
 
 interface AuthProviderProps {
   children: React.ReactNode;
+}
+
+interface PreservedAuthState {
+  isPreserved: boolean;
+  userId: string;
+  username: string;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -94,6 +101,25 @@ export function AuthProvider({ children }: AuthProviderProps) {
         logout();
       }
     } else {
+      // No token found in localStorage
+      // Check if we need to restore auth state after language change
+      const preservedAuthJson = sessionStorage.getItem(AUTH_PRESERVE_KEY);
+      if (preservedAuthJson) {
+        try {
+          const preservedAuth = JSON.parse(preservedAuthJson) as PreservedAuthState;
+          if (preservedAuth && preservedAuth.isPreserved) {
+            console.log('Found preserved auth state, restoring login...');
+            // Restore the user's login
+            login(preservedAuth.username);
+            // Remove the preserved state to prevent reuse
+            sessionStorage.removeItem(AUTH_PRESERVE_KEY);
+            return;
+          }
+        } catch (error) {
+          console.error('Error parsing preserved auth state:', error);
+        }
+      }
+      
       setIsLoading(false);
     }
   };
@@ -162,6 +188,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setUser(null);
     setToken(null);
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(AUTH_PRESERVE_KEY);
     navigate('/login');
   };
 

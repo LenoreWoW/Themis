@@ -1,5 +1,5 @@
 import { User, UserRole } from '../types';
-import { ChangeRequest, ChangeRequestType } from '../types/index';
+import { ChangeRequest, ChangeRequestType, ChangeRequestStatus } from '../types/change-request';
 import { canApproveProjects } from './permissions';
 
 /**
@@ -110,8 +110,8 @@ export const runFullAudit = (): AuditResult => {
   // Check if all current change requests follow approval flows
   if (changeRequests.length > 0) {
     changeRequests.forEach((cr: ChangeRequest) => {
-      if (cr.reviewedBy) {
-        const approver = users.find((u: User) => u.id === cr.reviewedBy);
+      if (cr.reviewerId) {
+        const approver = users.find((u: User) => u.id === cr.reviewerId);
         if (approver) {
           const crAudit = validateChangeRequestApproval(cr, approver);
           if (!crAudit.passed) {
@@ -124,25 +124,25 @@ export const runFullAudit = (): AuditResult => {
       // Check for specific change request types and their requirements
       switch(cr.type) {
         case ChangeRequestType.SCHEDULE:
-          if (!cr.schedule?.proposedEndDate) {
+          if (!cr.scheduleChange?.proposedEndDate && !cr.proposedEndDate) {
             result.passed = false;
             result.issues.push(`Schedule change request ${cr.id} is missing a new end date`);
           }
           break;
         case ChangeRequestType.BUDGET:
-          if (!cr.budget?.proposedBudget) {
+          if (!cr.budgetChange?.proposedBudget && !cr.proposedBudget) {
             result.passed = false;
             result.issues.push(`Budget change request ${cr.id} is missing a new cost value`);
           }
           break;
         case ChangeRequestType.SCOPE:
-          if (!cr.scope?.proposedScope) {
+          if (!cr.scopeChange?.changes && !cr.scopeChanges) {
             result.passed = false;
             result.issues.push(`Scope change request ${cr.id} is missing scope description`);
           }
           break;
         case ChangeRequestType.RESOURCE:
-          if (!cr.resource?.requiredResources) {
+          if (!cr.resourceChange?.changes && !cr.resourceChanges) {
             result.passed = false;
             result.issues.push(`Resource change request ${cr.id} is missing required resources`);
           }

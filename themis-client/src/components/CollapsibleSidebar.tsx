@@ -84,7 +84,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard', role: ['ADMIN'] },
     { text: t('navigation.projects'), icon: <FolderIcon />, path: '/projects' },
     { 
-      text: t('navigation.approvals', 'Approvals'), 
+      text: t('navigation.approvals'), 
       icon: <CheckCircleIcon />, 
       path: '/project-approvals',
       role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO'] 
@@ -95,7 +95,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     { text: t('navigation.risksIssues'), icon: <WarningIcon />, path: '/risks-issues' },
     { text: t('navigation.meetings'), icon: <GroupsIcon />, path: '/meetings' },
     { 
-      text: t('navigation.auditLogs', 'Audit Logs'), 
+      text: t('navigation.auditLogs'), 
       icon: <VerifiedUserIcon />, 
       path: '/audit-logs',
       role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO'] 
@@ -108,19 +108,19 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       submenu: true,
       children: [
         { 
-          text: 'User Management', 
+          text: t('navigation.userManagement', 'User Management'), 
           icon: <PeopleIcon />, 
           path: '/users',
           role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE'] 
         },
         { 
-          text: 'Departments', 
+          text: t('navigation.departments'), 
           icon: <BusinessIcon />, 
           path: '/departments',
           role: ['ADMIN', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR'] 
         },
         { 
-          text: 'Compliance Audit', 
+          text: t('navigation.complianceAudit', 'Compliance Audit'), 
           icon: <VerifiedUserIcon />, 
           path: '/audit',
           role: ['ADMIN', 'MAIN_PMO'] 

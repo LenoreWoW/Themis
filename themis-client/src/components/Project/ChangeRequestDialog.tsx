@@ -34,21 +34,13 @@ import { DatePicker as MuiDatePicker, LocalizationProvider } from '@mui/x-date-p
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import CloseIcon from '@mui/icons-material/Close';
 import { Project, User } from '../../types';
+import { ChangeRequestType, ChangeRequestStatus, ChangeRequest } from '../../types/change-request';
 import { useAuth } from '../../context/AuthContext';
 import WorkflowForm, { WorkflowAction } from '../shared/WorkflowForm';
 import { ApprovalStatus } from '../../context/AuthContext';
 import api from '../../services/api';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
-
-export enum ChangeRequestType {
-  SCHEDULE = 'SCHEDULE',
-  SCOPE = 'SCOPE',
-  BUDGET = 'BUDGET',
-  RESOURCE = 'RESOURCE',
-  CLOSURE = 'CLOSURE',
-  OTHER = 'OTHER',
-}
 
 // Simple hook to fetch users
 const useFetchAllUsers = () => {

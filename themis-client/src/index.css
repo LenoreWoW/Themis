@@ -222,3 +222,50 @@ button {
   border-radius: 4px;
   cursor: pointer;
 }
+
+/* RTL styling */
+html[dir="rtl"] body {
+  font-family: 'Cairo', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+}
+
+body.rtl {
+  font-family: 'Cairo', sans-serif;
+}
+
+/* Fix for Material-UI input text alignment */
+html[dir="rtl"] .MuiInputBase-input {
+  text-align: right;
+}
+
+html[dir="rtl"] .MuiFormLabel-root {
+  right: 0;
+  left: auto;
+  transform-origin: top right;
+}
+
+/* Fix for Table column alignments */
+html[dir="rtl"] .MuiTableCell-root {
+  text-align: right;
+}
+
+/* Fix for Dialog content */
+html[dir="rtl"] .MuiDialogContent-root {
+  direction: rtl;
+}
+
+/* Fix for Menu items */
+html[dir="rtl"] .MuiMenuItem-root {
+  text-align: right;
+}
+
+/* Fix for ListItem elements */
+html[dir="rtl"] .MuiListItem-root {
+  text-align: right;
+}
+
+/* Fix for Drawer components */
+html[dir="rtl"] .MuiDrawer-paper {
+  direction: rtl;
+}

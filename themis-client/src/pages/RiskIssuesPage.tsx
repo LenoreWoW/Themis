@@ -37,6 +37,9 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { Risk, RiskStatus, RiskImpact, Issue, IssueStatus, Project } from '../types';
 import api from '../services/api';
+import { useTranslation } from 'react-i18next';
+import { TranslatedButton } from '../components/common';
+import useTranslatedLabels from '../hooks/useTranslatedLabels';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -72,6 +75,8 @@ function a11yProps(index: number) {
 }
 
 const RiskIssuesPage: React.FC = () => {
+  const { t } = useTranslation();
+  const labels = useTranslatedLabels();
   const [tabValue, setTabValue] = useState(0);
   const { user, token } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
@@ -421,21 +426,21 @@ const RiskIssuesPage: React.FC = () => {
     <Box>
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" component="h1">
-          Risks & Issues
+          {t('navigation.risksIssues')}
         </Typography>
         <Typography variant="body1" color="text.secondary">
-          Track and manage project risks and issues
+          {t('risks.pageDescription', 'Track and manage project risks and issues')}
         </Typography>
       </Box>
       
       <Box sx={{ mb: 3 }}>
         <FormControl sx={{ minWidth: 300 }}>
-          <InputLabel id="project-select-label">Project</InputLabel>
+          <InputLabel id="project-select-label">{t('project.title')}</InputLabel>
           <Select
             labelId="project-select-label"
             id="project-select"
             value={selectedProjectId}
-            label="Project"
+            label={t('project.title')}
             onChange={handleProjectChange}
           >
             {projects.map((project) => (
@@ -450,8 +455,8 @@ const RiskIssuesPage: React.FC = () => {
       <Paper sx={{ width: '100%' }}>
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="risks and issues tabs">
-            <Tab label="Risks" {...a11yProps(0)} />
-            <Tab label="Issues" {...a11yProps(1)} />
+            <Tab label={t('risks.risks', 'Risks')} {...a11yProps(0)} />
+            <Tab label={t('risks.issues', 'Issues')} {...a11yProps(1)} />
           </Tabs>
         </Box>
         
@@ -462,37 +467,36 @@ const RiskIssuesPage: React.FC = () => {
             </Box>
           ) : !selectedProjectId ? (
             <Alert severity="info">
-              <AlertTitle>No Project Selected</AlertTitle>
-              Please select a project to view or manage risks.
+              <AlertTitle>{t('risks.noProjectSelected', 'No Project Selected')}</AlertTitle>
+              {t('risks.selectProject', 'Please select a project to view or manage risks.')}
             </Alert>
           ) : (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                <Button
+                <TranslatedButton
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenRiskDialog()}
-                >
-                  Add Risk
-                </Button>
+                  text={t('risks.addRisk', 'Add Risk')}
+                />
               </Box>
               
               {risks.length === 0 ? (
                 <Alert severity="info">
-                  <AlertTitle>No Risks Found</AlertTitle>
-                  No risks have been added to this project yet. Click the "Add Risk" button to create a new risk.
+                  <AlertTitle>{t('risks.noRisksFound', 'No Risks Found')}</AlertTitle>
+                  {t('risks.noRisksDescription', 'No risks have been added to this project yet. Click the "Add Risk" button to create a new risk.')}
                 </Alert>
               ) : (
                 <TableContainer>
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Title</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Impact</TableCell>
-                        <TableCell>Probability</TableCell>
-                        <TableCell>Owner</TableCell>
-                        <TableCell>Actions</TableCell>
+                        <TableCell>{t('risks.title', 'Title')}</TableCell>
+                        <TableCell>{t('risks.status', 'Status')}</TableCell>
+                        <TableCell>{t('risks.impact', 'Impact')}</TableCell>
+                        <TableCell>{t('risks.probability', 'Probability')}</TableCell>
+                        <TableCell>{t('risks.owner', 'Owner')}</TableCell>
+                        <TableCell>{t('common.actions')}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -504,10 +508,10 @@ const RiskIssuesPage: React.FC = () => {
                           <TableCell>{risk.probability}%</TableCell>
                           <TableCell>{risk.owner?.firstName} {risk.owner?.lastName}</TableCell>
                           <TableCell>
-                            <IconButton size="small" onClick={() => handleOpenRiskDialog(risk)} title="Edit">
+                            <IconButton size="small" onClick={() => handleOpenRiskDialog(risk)} title={t('common.edit')}>
                               <EditIcon fontSize="small" />
                             </IconButton>
-                            <IconButton size="small" onClick={() => handleDeleteConfirm(risk.id, 'risk')} title="Delete">
+                            <IconButton size="small" onClick={() => handleDeleteConfirm(risk.id, 'risk')} title={t('common.delete')}>
                               <DeleteIcon fontSize="small" />
                             </IconButton>
                           </TableCell>
@@ -528,36 +532,35 @@ const RiskIssuesPage: React.FC = () => {
             </Box>
           ) : !selectedProjectId ? (
             <Alert severity="info">
-              <AlertTitle>No Project Selected</AlertTitle>
-              Please select a project to view or manage issues.
+              <AlertTitle>{t('risks.noProjectSelected', 'No Project Selected')}</AlertTitle>
+              {t('risks.selectProjectIssues', 'Please select a project to view or manage issues.')}
             </Alert>
           ) : (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
-                <Button
+                <TranslatedButton
                   variant="contained"
                   startIcon={<AddIcon />}
                   onClick={() => handleOpenIssueDialog()}
-                >
-                  Add Issue
-                </Button>
+                  text={t('risks.addIssue', 'Add Issue')}
+                />
               </Box>
               
               {issues.length === 0 ? (
                 <Alert severity="info">
-                  <AlertTitle>No Issues Found</AlertTitle>
-                  No issues have been added to this project yet. Click the "Add Issue" button to create a new issue.
+                  <AlertTitle>{t('risks.noIssuesFound', 'No Issues Found')}</AlertTitle>
+                  {t('risks.noIssuesDescription', 'No issues have been added to this project yet. Click the "Add Issue" button to create a new issue.')}
                 </Alert>
               ) : (
                 <TableContainer>
                   <Table>
                     <TableHead>
                       <TableRow>
-                        <TableCell>Title</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Impact</TableCell>
-                        <TableCell>Owner</TableCell>
-                        <TableCell>Actions</TableCell>
+                        <TableCell>{t('risks.title', 'Title')}</TableCell>
+                        <TableCell>{t('risks.status', 'Status')}</TableCell>
+                        <TableCell>{t('risks.impact', 'Impact')}</TableCell>
+                        <TableCell>{t('risks.owner', 'Owner')}</TableCell>
+                        <TableCell>{t('common.actions')}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -568,10 +571,10 @@ const RiskIssuesPage: React.FC = () => {
                           <TableCell>{getImpactChip(issue.impact)}</TableCell>
                           <TableCell>{issue.owner?.firstName} {issue.owner?.lastName}</TableCell>
                           <TableCell>
-                            <IconButton size="small" onClick={() => handleOpenIssueDialog(issue)} title="Edit">
+                            <IconButton size="small" onClick={() => handleOpenIssueDialog(issue)} title={t('common.edit')}>
                               <EditIcon fontSize="small" />
                             </IconButton>
-                            <IconButton size="small" onClick={() => handleDeleteConfirm(issue.id, 'issue')} title="Delete">
+                            <IconButton size="small" onClick={() => handleDeleteConfirm(issue.id, 'issue')} title={t('common.delete')}>
                               <DeleteIcon fontSize="small" />
                             </IconButton>
                           </TableCell>
@@ -588,12 +591,12 @@ const RiskIssuesPage: React.FC = () => {
       
       {/* Risk Dialog */}
       <Dialog open={openRiskDialog} onClose={handleCloseRiskDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{editMode ? 'Edit Risk' : 'Add Risk'}</DialogTitle>
+        <DialogTitle>{editMode ? t('risks.editRisk', 'Edit Risk') : t('risks.addRisk', 'Add Risk')}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <TextField
               fullWidth
-              label="Title"
+              label={t('risks.title', 'Title')}
               name="title"
               value={riskForm.title || ''}
               onChange={handleRiskChange}
@@ -603,7 +606,7 @@ const RiskIssuesPage: React.FC = () => {
             
             <TextField
               fullWidth
-              label="Description"
+              label={t('risks.description', 'Description')}
               name="description"
               value={riskForm.description || ''}
               onChange={handleRiskChange}
@@ -614,38 +617,38 @@ const RiskIssuesPage: React.FC = () => {
             />
             
             <FormControl fullWidth margin="normal">
-              <InputLabel>Status</InputLabel>
+              <InputLabel>{t('risks.status', 'Status')}</InputLabel>
               <Select
                 name="status"
                 value={riskForm.status || RiskStatus.IDENTIFIED}
                 onChange={handleRiskSelectChange}
-                label="Status"
+                label={t('risks.status', 'Status')}
               >
-                <MenuItem value={RiskStatus.IDENTIFIED}>Identified</MenuItem>
-                <MenuItem value={RiskStatus.ASSESSED}>Assessed</MenuItem>
-                <MenuItem value={RiskStatus.MITIGATED}>Mitigated</MenuItem>
-                <MenuItem value={RiskStatus.CLOSED}>Closed</MenuItem>
+                <MenuItem value={RiskStatus.IDENTIFIED}>{t('risks.statusIdentified', 'Identified')}</MenuItem>
+                <MenuItem value={RiskStatus.ASSESSED}>{t('risks.statusAssessed', 'Assessed')}</MenuItem>
+                <MenuItem value={RiskStatus.MITIGATED}>{t('risks.statusMitigated', 'Mitigated')}</MenuItem>
+                <MenuItem value={RiskStatus.CLOSED}>{t('risks.statusClosed', 'Closed')}</MenuItem>
               </Select>
             </FormControl>
             
             <FormControl fullWidth margin="normal">
-              <InputLabel>Impact</InputLabel>
+              <InputLabel>{t('risks.impact', 'Impact')}</InputLabel>
               <Select
                 name="impact"
                 value={riskForm.impact || RiskImpact.MEDIUM}
                 onChange={handleRiskSelectChange}
-                label="Impact"
+                label={t('risks.impact', 'Impact')}
               >
-                <MenuItem value={RiskImpact.LOW}>Low</MenuItem>
-                <MenuItem value={RiskImpact.MEDIUM}>Medium</MenuItem>
-                <MenuItem value={RiskImpact.HIGH}>High</MenuItem>
-                <MenuItem value={RiskImpact.CRITICAL}>Critical</MenuItem>
+                <MenuItem value={RiskImpact.LOW}>{t('priority.low')}</MenuItem>
+                <MenuItem value={RiskImpact.MEDIUM}>{t('priority.medium')}</MenuItem>
+                <MenuItem value={RiskImpact.HIGH}>{t('priority.high')}</MenuItem>
+                <MenuItem value={RiskImpact.CRITICAL}>{t('priority.critical')}</MenuItem>
               </Select>
             </FormControl>
             
             <Box sx={{ mt: 3, mb: 1 }}>
               <Typography id="probability-slider-label" gutterBottom>
-                Probability: {riskForm.probability}%
+                {t('risks.probability', 'Probability')}: {riskForm.probability}%
               </Typography>
               <Slider
                 aria-labelledby="probability-slider-label"
@@ -661,7 +664,7 @@ const RiskIssuesPage: React.FC = () => {
             
             <TextField
               fullWidth
-              label="Mitigation Plan"
+              label={t('risks.mitigationPlan', 'Mitigation Plan')}
               name="mitigation"
               value={riskForm.mitigation || ''}
               onChange={handleRiskChange}
@@ -672,19 +675,21 @@ const RiskIssuesPage: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseRiskDialog}>Cancel</Button>
-          <Button variant="contained" onClick={saveRisk}>Save</Button>
+          <Button onClick={handleCloseRiskDialog}>{t('common.cancel')}</Button>
+          <Button onClick={saveRisk} variant="contained" color="primary">
+            {editMode ? t('common.update') : t('common.save')}
+          </Button>
         </DialogActions>
       </Dialog>
       
       {/* Issue Dialog */}
       <Dialog open={openIssueDialog} onClose={handleCloseIssueDialog} maxWidth="md" fullWidth>
-        <DialogTitle>{editMode ? 'Edit Issue' : 'Add Issue'}</DialogTitle>
+        <DialogTitle>{editMode ? t('risks.editIssue', 'Edit Issue') : t('risks.addIssue', 'Add Issue')}</DialogTitle>
         <DialogContent>
           <Box sx={{ mt: 2 }}>
             <TextField
               fullWidth
-              label="Title"
+              label={t('risks.title', 'Title')}
               name="title"
               value={issueForm.title || ''}
               onChange={handleIssueChange}
@@ -694,7 +699,7 @@ const RiskIssuesPage: React.FC = () => {
             
             <TextField
               fullWidth
-              label="Description"
+              label={t('risks.description', 'Description')}
               name="description"
               value={issueForm.description || ''}
               onChange={handleIssueChange}
@@ -705,38 +710,38 @@ const RiskIssuesPage: React.FC = () => {
             />
             
             <FormControl fullWidth margin="normal">
-              <InputLabel>Status</InputLabel>
+              <InputLabel>{t('risks.status', 'Status')}</InputLabel>
               <Select
                 name="status"
                 value={issueForm.status || IssueStatus.OPEN}
                 onChange={handleIssueSelectChange}
-                label="Status"
+                label={t('risks.status', 'Status')}
               >
-                <MenuItem value={IssueStatus.OPEN}>Open</MenuItem>
-                <MenuItem value={IssueStatus.IN_PROGRESS}>In Progress</MenuItem>
-                <MenuItem value={IssueStatus.RESOLVED}>Resolved</MenuItem>
-                <MenuItem value={IssueStatus.CLOSED}>Closed</MenuItem>
+                <MenuItem value={IssueStatus.OPEN}>{t('risks.statusOpen', 'Open')}</MenuItem>
+                <MenuItem value={IssueStatus.IN_PROGRESS}>{t('status.inProgress')}</MenuItem>
+                <MenuItem value={IssueStatus.RESOLVED}>{t('risks.statusResolved', 'Resolved')}</MenuItem>
+                <MenuItem value={IssueStatus.CLOSED}>{t('risks.statusClosed', 'Closed')}</MenuItem>
               </Select>
             </FormControl>
             
             <FormControl fullWidth margin="normal">
-              <InputLabel>Impact</InputLabel>
+              <InputLabel>{t('risks.impact', 'Impact')}</InputLabel>
               <Select
                 name="impact"
                 value={issueForm.impact || RiskImpact.MEDIUM}
                 onChange={handleIssueSelectChange}
-                label="Impact"
+                label={t('risks.impact', 'Impact')}
               >
-                <MenuItem value={RiskImpact.LOW}>Low</MenuItem>
-                <MenuItem value={RiskImpact.MEDIUM}>Medium</MenuItem>
-                <MenuItem value={RiskImpact.HIGH}>High</MenuItem>
-                <MenuItem value={RiskImpact.CRITICAL}>Critical</MenuItem>
+                <MenuItem value={RiskImpact.LOW}>{t('priority.low')}</MenuItem>
+                <MenuItem value={RiskImpact.MEDIUM}>{t('priority.medium')}</MenuItem>
+                <MenuItem value={RiskImpact.HIGH}>{t('priority.high')}</MenuItem>
+                <MenuItem value={RiskImpact.CRITICAL}>{t('priority.critical')}</MenuItem>
               </Select>
             </FormControl>
             
             <TextField
               fullWidth
-              label="Resolution Summary"
+              label={t('risks.resolutionSummary', 'Resolution Summary')}
               name="resolutionSummary"
               value={issueForm.resolutionSummary || ''}
               onChange={handleIssueChange}
@@ -747,20 +752,26 @@ const RiskIssuesPage: React.FC = () => {
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseIssueDialog}>Cancel</Button>
-          <Button variant="contained" onClick={saveIssue}>Save</Button>
+          <Button onClick={handleCloseIssueDialog}>{t('common.cancel')}</Button>
+          <Button onClick={saveIssue} variant="contained" color="primary">
+            {editMode ? t('common.update') : t('common.save')}
+          </Button>
         </DialogActions>
       </Dialog>
       
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirmDialog} onClose={() => setDeleteConfirmDialog(false)}>
-        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogTitle>{t('common.confirmDelete', 'Confirm Delete')}</DialogTitle>
         <DialogContent>
-          Are you sure you want to delete this {itemToDelete?.type}? This action cannot be undone.
+          <Typography>
+            {itemToDelete?.type === 'risk' 
+              ? t('risks.confirmDeleteRisk', 'Are you sure you want to delete this risk? This action cannot be undone.')
+              : t('risks.confirmDeleteIssue', 'Are you sure you want to delete this issue? This action cannot be undone.')}
+          </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDeleteConfirmDialog(false)}>Cancel</Button>
-          <Button variant="contained" color="error" onClick={handleDelete}>Delete</Button>
+          <Button onClick={() => setDeleteConfirmDialog(false)}>{t('common.cancel')}</Button>
+          <Button onClick={handleDelete} color="error">{t('common.delete')}</Button>
         </DialogActions>
       </Dialog>
     </Box>

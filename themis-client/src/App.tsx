@@ -7,7 +7,7 @@ import { ProjectProvider } from './context/ProjectContext';
 import { TaskProvider } from './context/TaskContext';
 import { TaskRequestProvider } from './context/TaskRequestContext';
 import { NotificationProvider } from './context/NotificationContext';
-import { ThemeProvider, useThemeMode } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -55,25 +55,43 @@ const ltrCache = createCache({
 
 // AppContent component separated to use theme context
 const AppContent: React.FC = () => {
-  const { i18n } = useTranslation();
-  const { mode } = useThemeMode();
-  const [direction, setDirection] = useState<Direction>('ltr');
-  const [currentTheme, setCurrentTheme] = useState(theme);
+  const { i18n, t } = useTranslation();
+  const { themeMode: mode } = useTheme();
+  
+  // Get saved language from localStorage
+  const savedLanguage = localStorage.getItem('themisLanguage') || 'en';
+  const initialDirection = savedLanguage === 'ar' ? 'rtl' : 'ltr';
+  
+  const [direction, setDirection] = useState<Direction>(initialDirection);
+  const [currentTheme, setCurrentTheme] = useState(createAppTheme(initialDirection, mode));
+
+  // Force language initialization on first render
+  useEffect(() => {
+    if (i18n.language !== savedLanguage) {
+      console.log('Forcing language change to:', savedLanguage);
+      i18n.changeLanguage(savedLanguage);
+    }
+  }, []);
 
   // Update direction and theme when language changes or theme mode changes
   useEffect(() => {
     const currentLang = i18n.language;
     const newDirection = currentLang === 'ar' ? 'rtl' : 'ltr';
+    
+    console.log('Language changed to:', currentLang, 'Direction:', newDirection);
+    
     setDirection(newDirection);
     setCurrentTheme(createAppTheme(newDirection, mode));
     
     // Set document dir attribute
+    document.documentElement.dir = newDirection;
     document.dir = newDirection;
     
     // Add appropriate font for Arabic
-    if (newDirection === 'rtl') {
+    if (newDirection === 'rtl' && !document.getElementById('arabic-font')) {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
+      link.id = 'arabic-font';
       link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap';
       document.head.appendChild(link);
     }

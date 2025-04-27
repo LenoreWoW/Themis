@@ -123,9 +123,20 @@ export const getEntityTypeName = (entityType: string): string => {
  * @returns Filtered array of audit logs
  */
 export const filterLogsByDateRange = (logs: AuditLog[], startDate: Date, endDate: Date): AuditLog[] => {
+  if (!Array.isArray(logs)) {
+    console.warn('Expected an array in filterLogsByDateRange but received:', logs);
+    return [];
+  }
+  
   return logs.filter(log => {
-    const logDate = new Date(log.timestamp);
-    return logDate >= startDate && logDate <= endDate;
+    if (!log || !log.timestamp) return false;
+    try {
+      const logDate = new Date(log.timestamp);
+      return logDate >= startDate && logDate <= endDate;
+    } catch (err) {
+      console.error('Error parsing date:', log.timestamp, err);
+      return false;
+    }
   });
 };
 
@@ -136,7 +147,12 @@ export const filterLogsByDateRange = (logs: AuditLog[], startDate: Date, endDate
  * @returns Filtered array of audit logs
  */
 export const filterLogsByUser = (logs: AuditLog[], userId: string): AuditLog[] => {
-  return logs.filter(log => log.userId === userId);
+  if (!Array.isArray(logs)) {
+    console.warn('Expected an array in filterLogsByUser but received:', logs);
+    return [];
+  }
+  
+  return logs.filter(log => log && log.userId === userId);
 };
 
 /**
@@ -146,7 +162,12 @@ export const filterLogsByUser = (logs: AuditLog[], userId: string): AuditLog[] =
  * @returns Filtered array of audit logs
  */
 export const filterLogsByAction = (logs: AuditLog[], action: AuditAction): AuditLog[] => {
-  return logs.filter(log => log.action === action);
+  if (!Array.isArray(logs)) {
+    console.warn('Expected an array in filterLogsByAction but received:', logs);
+    return [];
+  }
+  
+  return logs.filter(log => log && log.action === action);
 };
 
 /**
@@ -156,7 +177,12 @@ export const filterLogsByAction = (logs: AuditLog[], action: AuditAction): Audit
  * @returns Filtered array of audit logs
  */
 export const filterLogsByEntityType = (logs: AuditLog[], entityType: string): AuditLog[] => {
-  return logs.filter(log => log.entityType === entityType);
+  if (!Array.isArray(logs)) {
+    console.warn('Expected an array in filterLogsByEntityType but received:', logs);
+    return [];
+  }
+  
+  return logs.filter(log => log && log.entityType === entityType);
 };
 
 /**
@@ -166,14 +192,22 @@ export const filterLogsByEntityType = (logs: AuditLog[], entityType: string): Au
  * @returns Filtered array of audit logs
  */
 export const searchLogs = (logs: AuditLog[], query: string): AuditLog[] => {
+  if (!Array.isArray(logs)) {
+    console.warn('Expected an array in searchLogs but received:', logs);
+    return [];
+  }
+  
   const lowerCaseQuery = query.toLowerCase();
   
   return logs.filter(log => 
-    log.username.toLowerCase().includes(lowerCaseQuery) ||
-    log.action.toLowerCase().includes(lowerCaseQuery) ||
-    log.entityType.toLowerCase().includes(lowerCaseQuery) ||
-    log.entityId.toLowerCase().includes(lowerCaseQuery) ||
-    log.details.toLowerCase().includes(lowerCaseQuery)
+    log && 
+    (
+      (log.username && log.username.toLowerCase().includes(lowerCaseQuery)) ||
+      (log.action && log.action.toLowerCase().includes(lowerCaseQuery)) ||
+      (log.entityType && log.entityType.toLowerCase().includes(lowerCaseQuery)) ||
+      (log.entityId && log.entityId.toLowerCase().includes(lowerCaseQuery)) ||
+      (log.details && log.details.toLowerCase().includes(lowerCaseQuery))
+    )
   );
 };
 
@@ -224,26 +258,30 @@ export const fetchAuditLogsWithFilters = async (
     // Only pass the token parameter since the API doesn't support queryParams yet
     const logs = await api.auditLogs.getAuditLogs(token);
     
-    // Apply the filters in memory for now
-    let filteredLogs = logs as AuditLog[];
+    // Make sure logs is an array before applying filters
+    let filteredLogs: AuditLog[] = Array.isArray(logs) ? logs : [];
     
-    if (filters.startDate && filters.endDate) {
+    if (!Array.isArray(logs)) {
+      console.warn('Expected an array of audit logs, but received:', logs);
+    }
+    
+    if (filters.startDate && filters.endDate && filteredLogs.length > 0) {
       filteredLogs = filterLogsByDateRange(filteredLogs, filters.startDate, filters.endDate);
     }
     
-    if (filters.userId) {
+    if (filters.userId && filteredLogs.length > 0) {
       filteredLogs = filterLogsByUser(filteredLogs, filters.userId);
     }
     
-    if (filters.action) {
+    if (filters.action && filteredLogs.length > 0) {
       filteredLogs = filterLogsByAction(filteredLogs, filters.action);
     }
     
-    if (filters.entityType) {
+    if (filters.entityType && filteredLogs.length > 0) {
       filteredLogs = filterLogsByEntityType(filteredLogs, filters.entityType);
     }
     
-    if (filters.search) {
+    if (filters.search && filteredLogs.length > 0) {
       filteredLogs = searchLogs(filteredLogs, filters.search);
     }
     

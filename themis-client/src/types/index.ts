@@ -283,8 +283,7 @@ export enum ChangeRequestType {
 export enum ChangeRequestStatus {
   PENDING = 'PENDING',
   APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED',
-  IMPLEMENTED = 'IMPLEMENTED'
+  REJECTED = 'REJECTED'
 }
 
 export interface ChangeRequest {
@@ -294,32 +293,24 @@ export interface ChangeRequest {
   description: string;
   type: ChangeRequestType;
   status: ChangeRequestStatus;
-  createdBy: string;
-  createdAt: string;
-  updatedAt: string;
+  submittedBy: string;
+  submittedDate: Date;
   reviewedBy?: string;
+  reviewedDate?: Date;
   reviewNotes?: string;
-  attachments?: string[];
-  // Additional fields based on type
-  schedule?: {
-    currentEndDate: string;
-    proposedEndDate: string;
-    justification: string;
-  };
-  budget?: {
-    currentBudget: number;
-    proposedBudget: number;
-    justification: string;
-  };
-  scope?: {
-    currentScope: string;
-    proposedScope: string;
-    justification: string;
-  };
-  resource?: {
-    requiredResources: string;
-    justification: string;
-  };
+  
+  // Type-specific fields
+  newEndDate?: Date;           // For SCHEDULE type
+  additionalBudget?: number;   // For BUDGET type
+  currentBudget?: number;      // For BUDGET type
+  newBudget?: number;          // For BUDGET type
+  scopeDetails?: string;       // For SCOPE type
+  resourceDetails?: string;    // For RESOURCE type
+  closureDetails?: string;     // For CLOSURE type
+  otherDetails?: string;       // For OTHER type
+  
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Financial types
@@ -546,4 +537,7 @@ export interface ReviewComment {
     email?: string;
   };
   action: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES' | 'SUBMIT';
-} 
+}
+
+export * from './project-closure';
+export * from './change-request'; 

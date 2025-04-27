@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   MenuItem, 
   ListItemText,
@@ -10,6 +10,7 @@ import {
 } from '@mui/icons-material';
 import { useTranslation } from 'react-i18next';
 import { Direction } from '@mui/material/styles';
+import { useAuth } from '../context/AuthContext';
 
 interface LanguageSwitcherProps {
   onDirectionChange: (direction: Direction) => void;
@@ -18,6 +19,7 @@ interface LanguageSwitcherProps {
 const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onDirectionChange }) => {
   const { i18n, t } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const auth = useAuth();
   
   const currentLanguage = i18n.language;
   
@@ -25,6 +27,17 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onDirectionChange }
     { code: 'en', name: t('language.english'), dir: 'ltr' },
     { code: 'ar', name: t('language.arabic'), dir: 'rtl' }
   ];
+
+  // Initialize language from localStorage on component mount
+  useEffect(() => {
+    const savedLanguage = localStorage.getItem('themisLanguage');
+    if (savedLanguage && savedLanguage !== i18n.language) {
+      const langDirection = savedLanguage === 'ar' ? 'rtl' : 'ltr';
+      i18n.changeLanguage(savedLanguage);
+      onDirectionChange(langDirection as Direction);
+      console.log('Initialized language from localStorage:', savedLanguage, langDirection);
+    }
+  }, []);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -39,6 +52,20 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onDirectionChange }
     localStorage.setItem('themisLanguage', langCode);
     onDirectionChange(direction);
     handleClose();
+    
+    // Preserve auth state when changing language
+    if (auth.isAuthenticated && auth.user) {
+      // Save minimal auth data to sessionStorage (temporary storage)
+      const authState = {
+        isPreserved: true,
+        userId: auth.user.id,
+        username: auth.user.username
+      };
+      sessionStorage.setItem('themis_preserve_auth', JSON.stringify(authState));
+    }
+    
+    // Force a page reload to ensure all components update with the new language
+    window.location.reload();
   };
 
   return (

@@ -1,11 +1,11 @@
 import React from 'react';
 import { IconButton, Tooltip } from '@mui/material';
 import { Brightness4 as DarkIcon, Brightness7 as LightIcon } from '@mui/icons-material';
-import { useThemeMode } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
 import { useTranslation } from 'react-i18next';
 
 const ThemeToggle: React.FC = () => {
-  const { mode, toggleTheme } = useThemeMode();
+  const { themeMode: mode, toggleThemeMode: toggleTheme } = useTheme();
   const { t } = useTranslation();
 
   return (

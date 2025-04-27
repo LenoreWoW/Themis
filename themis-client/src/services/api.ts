@@ -201,7 +201,7 @@ export const apiRequest = async (
   token?: string, 
   isFormData?: boolean
 ): Promise<any> => {
-  const USE_MOCK_DATA = true; // Set to true for development without backend
+  const USE_MOCK_DATA = false; // Set to false to use the real backend API
   
   try {
     // Set up the full URL
@@ -1777,7 +1777,10 @@ const apiRoutes = {
       apiRequest(`/api/change-requests/${requestId}/approve`, 'POST', { reviewNotes }, token),
       
     rejectChangeRequest: (requestId: string, reviewNotes: string, token: string) =>
-      apiRequest(`/api/change-requests/${requestId}/reject`, 'POST', { reviewNotes }, token)
+      apiRequest(`/api/change-requests/${requestId}/reject`, 'POST', { reviewNotes }, token),
+      
+    getAllChangeRequests: (token: string) =>
+      apiRequest('/api/change-requests', 'GET', undefined, token)
   },
 };
 

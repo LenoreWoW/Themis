@@ -5,6 +5,9 @@ import Backend from "i18next-http-backend";
 import { arTranslations } from "./ar";
 import { enTranslations } from "./en";
 
+// Get saved language preference from localStorage
+const savedLanguage = localStorage.getItem('themisLanguage') || 'en';
+
 // Initialize i18next
 i18n
   .use(Backend)
@@ -19,6 +22,7 @@ i18n
         translation: arTranslations
       }
     },
+    lng: savedLanguage, // Use the saved language or default to fallbackLng
     fallbackLng: "en",
     debug: process.env.NODE_ENV === "development",
     
@@ -47,6 +51,11 @@ i18n
     }
   });
 
+// Apply the correct direction immediately
+const currentLang = i18n.language || savedLanguage;
+document.documentElement.lang = currentLang;
+document.documentElement.dir = currentLang === "ar" ? "rtl" : "ltr";
+
 // Add RTL support
 i18n.on("languageChanged", (lng) => {
   document.documentElement.lang = lng;
@@ -57,10 +66,22 @@ i18n.on("languageChanged", (lng) => {
   if (lng === "ar") {
     body.classList.add("rtl");
     body.classList.remove("ltr");
+    
+    // Load Arabic font
+    if (!document.getElementById('arabic-font')) {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap';
+      link.id = 'arabic-font';
+      document.head.appendChild(link);
+    }
   } else {
     body.classList.add("ltr");
     body.classList.remove("rtl");
   }
+  
+  // Store the language preference
+  localStorage.setItem('themisLanguage', lng);
 });
 
 export default i18n;

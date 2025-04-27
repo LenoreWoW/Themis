@@ -1,0 +1,21 @@
+[Unit]
+Description=Themis Project Management API Service
+After=network.target postgresql.service
+
+[Service]
+WorkingDirectory=/opt/themis/Themis.API
+ExecStart=/usr/bin/dotnet run --urls="http://localhost:5065"
+Restart=always
+RestartSec=10
+SyslogIdentifier=themis-api
+User=www-data
+Environment=ASPNETCORE_ENVIRONMENT=Production
+Environment=DOTNET_PRINT_TELEMETRY_MESSAGE=false
+
+# Security hardening
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target 

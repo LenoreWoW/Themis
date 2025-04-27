@@ -3,10 +3,25 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import './index.css';
 import './styles/easterEgg.css';
+import './i18n';
 import App from './App';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
 import { EasterEggProvider } from './context/EasterEggContext';
+
+// Set initial direction before app renders
+const savedLanguage = localStorage.getItem('themisLanguage');
+if (savedLanguage === 'ar') {
+  document.documentElement.dir = 'rtl';
+  document.dir = 'rtl';
+  
+  // Load Arabic font
+  const link = document.createElement('link');
+  link.rel = 'stylesheet';
+  link.id = 'arabic-font';
+  link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap';
+  document.head.appendChild(link);
+}
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
