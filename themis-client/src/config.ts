@@ -3,7 +3,7 @@ export const API_BASE_URL = 'http://localhost:5065';
 
 // Feature flags
 export const FEATURES = {
-  OFFLINE_MODE: false,
+  OFFLINE_MODE: true,
   ENABLE_NOTIFICATIONS: true,
   ENABLE_AUDIT_LOGS: true,
   ENABLE_ANALYTICS: false

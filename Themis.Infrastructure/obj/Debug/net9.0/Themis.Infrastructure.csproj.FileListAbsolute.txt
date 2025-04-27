@@ -13,3 +13,4 @@
 /Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/refint/Themis.Infrastructure.dll
 /Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.pdb
 /Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/ref/Themis.Infrastructure.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.Infrastructure/obj/Debug/net9.0/Themis.Infrastructure.sourcelink.json

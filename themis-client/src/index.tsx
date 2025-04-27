@@ -9,6 +9,12 @@ import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
 import { EasterEggProvider } from './context/EasterEggContext';
 
+// Clear localStorage in development mode to fix DOM rendering issues
+if (process.env.NODE_ENV === 'development') {
+  console.log('Clearing localStorage in development mode to prevent DOM errors');
+  localStorage.clear();
+}
+
 // Set initial direction before app renders
 const savedLanguage = localStorage.getItem('themisLanguage');
 if (savedLanguage === 'ar') {

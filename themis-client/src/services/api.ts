@@ -201,7 +201,7 @@ export const apiRequest = async (
   token?: string, 
   isFormData?: boolean
 ): Promise<any> => {
-  const USE_MOCK_DATA = false; // Set to false to use the real backend API
+  const USE_MOCK_DATA = true; // Set to true for development without backend
   
   try {
     // Set up the full URL

@@ -1,104 +1,152 @@
 # Themis Deployment Checklist
 
-Use this checklist to ensure a successful deployment of the Themis Project Management System. Check off each item as you complete it.
+Use this checklist to track the deployment progress and ensure nothing is missed.
 
-## Pre-Deployment Preparation
+## Pre-Deployment
 
-- [ ] Server requirements confirmed (2+ CPU cores, 4GB+ RAM, 20GB+ storage)
-- [ ] Domain name configured to point to server IP address
-- [ ] SSH access to server verified
-- [ ] Required ports opened (80, 443, 22)
-- [ ] Latest code pulled from repository
-- [ ] Configuration values prepared:
-  - [ ] Database credentials
-  - [ ] JWT secret key
-  - [ ] SMTP settings (if email notifications enabled)
+- [ ] Server provisioned with at least 2 CPU cores and 4GB RAM
+- [ ] Domain/subdomain configured to point to server IP
+- [ ] SSH access configured
+- [ ] Firewall configured to allow SSH (port 22)
 
-## Deployment Process
+## Base Installation
 
-### 1. Initial Setup
-- [ ] Server updated (`sudo apt update && sudo apt upgrade -y`)
-- [ ] Basic dependencies installed (`git`, `curl`, etc.)
-- [ ] Repository cloned to `/opt/themis`
+- [ ] Server updated with latest packages
+  ```bash
+  sudo apt update && sudo apt upgrade -y
+  ```
+- [ ] Git installed
+  ```bash
+  sudo apt install -y git
+  ```
+- [ ] Repository cloned
+  ```bash
+  git clone https://your-repository-url.git /opt/themis
+  ```
 - [ ] Deployment scripts made executable
+  ```bash
+  cd /opt/themis/deployment
+  chmod +x *.sh
+  ```
 
-### 2. Main Deployment
-- [ ] Run main deployment script (`sudo ./deployment/deploy_themis.sh`)
-- [ ] Environment variables configured in `.env` file
-- [ ] Database setup completed successfully
-- [ ] Nginx web server configured
-- [ ] API service set up
+## Database Setup
 
-### 3. Frontend Deployment
-- [ ] API URL configured in `config.ts`
-- [ ] Dependencies installed (`npm install`)
-- [ ] Frontend built successfully (`npm run build`)
-- [ ] Built files copied to web server directory
+- [ ] PostgreSQL installed
+  ```bash
+  ./install_postgres.sh
+  ```
+- [ ] Database created
+  ```bash
+  ./setup_database.sh
+  ```
+- [ ] Admin user created
+  ```bash
+  ./create_admin_user.sh
+  ```
+- [ ] Backup script set up
+  ```bash
+  chmod +x backup_db.sh
+  ```
 
-### 4. Backend Deployment
-- [ ] Dependencies restored (`dotnet restore`)
-- [ ] Backend built successfully (`dotnet build`)
-- [ ] API service installed and started
-- [ ] API health check endpoint verified
+## Node.js Environment
 
-### 5. SSL/TLS Setup
-- [ ] Certbot installed
-- [ ] SSL certificate obtained
-- [ ] Nginx configured to use HTTPS
-- [ ] HTTP to HTTPS redirect configured
+- [ ] Node.js and npm installed
+  ```bash
+  ./setup_nodejs.sh
+  ```
+- [ ] Environment variables configured (check .env file)
+- [ ] PM2 installed
+  ```bash
+  sudo npm install -g pm2
+  ```
+
+## Web Server Setup
+
+- [ ] Nginx installed and configured
+  ```bash
+  ./setup_nginx.sh
+  ```
+- [ ] Server name updated in configuration
+  ```bash
+  sudo nano /etc/nginx/sites-available/themis
+  ```
+- [ ] SSL certificate obtained and configured
+  ```bash
+  sudo certbot --nginx -d your-domain.com
+  ```
+- [ ] Nginx restarted
+  ```bash
+  sudo systemctl restart nginx
+  ```
+
+## Application Deployment
+
+- [ ] Frontend built
+  ```bash
+  cd /opt/themis/themis-client
+  npm install
+  npm run build
+  ```
+- [ ] Backend dependencies installed
+  ```bash
+  cd /opt/themis/server
+  npm install
+  npm install knex pg dotenv
+  npm install --save-dev @types/node @types/pg
+  ```
+- [ ] Backend built
+  ```bash
+  npm run build
+  ```
+- [ ] Application started with PM2
+  ```bash
+  pm2 start dist/index.js --name themis
+  pm2 save
+  pm2 startup
+  ```
 
 ## Post-Deployment Verification
 
-### 1. Access Check
-- [ ] Frontend accessible via domain name (https://your-domain.com)
-- [ ] API endpoints accessible (https://your-domain.com/api/health)
-- [ ] Successfully logged in with admin account
-- [ ] Changed admin account default password
+- [ ] Application accessible via https://your-domain.com
+- [ ] Login works with admin user
+- [ ] All features tested and working correctly
+- [ ] Logs checked for errors
+  ```bash
+  pm2 logs themis
+  ```
 
-### 2. Functionality Check
-- [ ] User creation works
-- [ ] Project creation works
-- [ ] Task management works
-- [ ] Database persistence confirmed (data remains after restart)
+## Security Hardening
 
-### 3. Security Check
-- [ ] Admin password changed from default
-- [ ] JWT secret key changed from default
-- [ ] Firewall enabled and configured
-- [ ] Sensitive files and directories have proper permissions
+- [ ] Default admin password changed
+- [ ] JWT secret updated to a strong random value
+- [ ] Firewall configured
+  ```bash
+  sudo ufw allow ssh
+  sudo ufw allow 'Nginx Full'
+  sudo ufw enable
+  ```
+- [ ] Database backups scheduled
+  ```bash
+  sudo crontab -e
+  # Add: 0 2 * * * /opt/themis/deployment/backup_db.sh
+  ```
 
-### 4. System Check
-- [ ] All services running (check `systemctl status`)
-  - [ ] Nginx (`systemctl status nginx`)
-  - [ ] PostgreSQL (`systemctl status postgresql`)
-  - [ ] API service (`systemctl status themis-api`)
-- [ ] Memory usage acceptable
-- [ ] CPU usage acceptable
-- [ ] Disk space sufficient
+## Monitoring and Maintenance
 
-### 5. Backup and Recovery
-- [ ] Database backup procedure tested
-- [ ] Backup script scheduled via cron
-- [ ] Restore procedure documented
+- [ ] PM2 monitoring set up
+  ```bash
+  pm2 install pm2-logrotate
+  ```
+- [ ] System monitoring configured (optional)
+  ```bash
+  # Install monitoring tool of your choice
+  # Example: Install Netdata
+  bash <(curl -Ss https://my-netdata.io/kickstart.sh)
+  ```
+- [ ] Update procedure documented and tested
 
-## Common Issues and Solutions
+## Documentation
 
-- **Problem**: Frontend displays network error
-  - **Solution**: Check API service is running (`systemctl status themis-api`)
-
-- **Problem**: API can't connect to database
-  - **Solution**: Check database credentials in `.env` file and verify PostgreSQL is running
-
-- **Problem**: SSL certificate errors
-  - **Solution**: Run `sudo certbot --nginx -d your-domain.com` again
-
-- **Problem**: Missing permissions for file uploads
-  - **Solution**: Check directory permissions (`chmod -R 755 /var/www/themis/uploads`)
-
-## Contact Information
-
-If you encounter issues not covered in this checklist or the README:
-
-- Development Team: team@themis-support.com
-- DevOps Support: devops@themis-support.com
-- Emergency Contact: on-call@themis-support.com 
+- [ ] Admin credentials securely shared with administrators
+- [ ] Deployment documentation finalized
+- [ ] Maintenance procedures documented 

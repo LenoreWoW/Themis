@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Themis.Core")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d2cb52d444bcea3d206e39fdb035b6d02d1ff2c9")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d210e6f22ac4a6117ca47c7f73d400b68060782d")]
 [assembly: System.Reflection.AssemblyProductAttribute("Themis.Core")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Themis.Core")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
