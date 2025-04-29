@@ -1,57 +1,112 @@
-# Themis Project Collector
+# Project Collector
 
-A separate application designed to be deployed before the main Themis system to allow users to input their current projects for later import.
+A standalone data-entry web application designed to facilitate the migration from legacy systems to Themis.
 
 ## Purpose
 
-This standalone application serves as a data collection tool to:
-- Allow users to register their existing legacy projects
-- Build a repository of project data before Themis goes live
-- Ensure a smooth transition to the full Themis platform
-- Reduce the initial data entry burden when onboarding to the main system
+Project Collector serves as a bridge between existing legacy systems and Themis by:
+- Providing a simple interface for manual project data entry
+- Ensuring complete coverage of all legacy projects
+- Creating a clean, structured dataset ready for import into Themis
+- Eliminating the need for manual re-entry when Themis goes live
 
 ## Features
 
-- **Simple Authentication**: Users can log in with their organization credentials
-- **Project Entry**: Form-based interface for entering project details
-- **Project List**: View and manage previously entered projects
-- **Basic File Attachments**: Upload key project documents
-- **Export/Import**: Tools to facilitate migration to the main Themis system
+- Simple, focused data entry interface
+- Project data validation and verification
+- Export functionality for Themis import
+- User authentication and access control
+- Data integrity checks
+- Progress tracking
 
-## Technical Details
+## Setup
 
-This application is intentionally separate from Themis but designed for compatibility:
-- Uses a compatible database schema (subset relevant to projects)
-- API endpoints follow the same patterns as planned for Themis
-- Authentication system works with the same user credentials
-- Stores data in a separate database that will be exported and imported into Themis
+### Prerequisites
+- Node.js v18.x
+- Access to the legacy system for data reference
+- API access to Themis for data export
+
+### Installation
+
+1. Clone the repository:
+```bash
+git clone [repository-url]
+cd project-collector
+```
+
+2. Install dependencies:
+```bash
+npm install
+```
+
+3. Set up environment variables:
+```bash
+REACT_APP_API_URL=https://api.pmo.projects.mod.qa/api
+REACT_APP_ENVIRONMENT=production
+REACT_APP_BASE_URL=https://collector.pmo.projects.mod.qa
+```
+
+4. Start the development server:
+```bash
+npm start
+```
+
+## Data Entry Process
+
+1. **Project Information**
+   - Basic project details
+   - Project status and timeline
+   - Team members and roles
+   - Project goals and objectives
+
+2. **Validation**
+   - Required fields check
+   - Data format verification
+   - Duplicate detection
+   - Legacy system cross-reference
+
+3. **Verification**
+   - Data accuracy confirmation
+   - Missing information flagging
+   - Inconsistency resolution
+
+## Export Process
+
+1. **Data Preparation**
+   - Format conversion
+   - Data cleaning
+   - Validation checks
+
+2. **Export Options**
+   - Full database export
+   - Selective project export
+   - Custom field mapping
+
+3. **Import to Themis**
+   - Automated import process
+   - Data mapping verification
+   - Import confirmation
 
 ## Deployment
 
-The Project Collector will be deployed before the main Themis system, with its own infrastructure and database.
+The application is deployed on Netlify for easy access and updates.
 
-## How It Works
+### Production URL
+https://collector.pmo.projects.mod.qa
 
-1. Users access the Project Collector application
-2. They authenticate using their organizational credentials
-3. They can create, view, and update their project data
-4. When Themis launches, administrators will export all collected project data
-5. The exported data will then be imported into the main Themis system
+### Staging URL
+https://collector-staging.netlify.app
 
-## Data Schema
+## Support
 
-The project collector uses a simplified version of the Themis data schema focusing on:
+For assistance with:
+- Data entry issues
+- Export problems
+- Technical support
+- Feature requests
 
-- Project Details (name, description, dates, status)
-- Basic Team Information
-- Document Attachments
-- Department Associations
+Contact: [Support Contact Information]
 
-## Migration Strategy
+## License
 
-When Themis is ready for launch:
-1. Export data from Project Collector database
-2. Transform data if necessary to match final Themis schema
-3. Import into Themis database
-4. Verify data integrity
-5. Notify users that their projects are now available in the main system 
+[License Information] 
