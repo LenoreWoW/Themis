@@ -1,11 +1,11 @@
 import React from 'react';
-import { useForm, UseFormReturn, FieldValues } from 'react-hook-form';
+import { useForm, UseFormReturn, FieldValues, DefaultValues } from 'react-hook-form';
 import { Box } from '@mui/material';
 
 interface FormWithValidationProps<T extends FieldValues> {
   children: (methods: UseFormReturn<T>) => React.ReactNode;
   onSubmit: (data: T) => void;
-  defaultValues?: T;
+  defaultValues?: DefaultValues<T>;
 }
 
 export const FormWithValidation = <T extends FieldValues>({
@@ -14,7 +14,7 @@ export const FormWithValidation = <T extends FieldValues>({
   defaultValues,
 }: FormWithValidationProps<T>) => {
   const methods = useForm<T>({
-    defaultValues,
+    defaultValues: defaultValues as DefaultValues<T>,
   });
 
   return (
