@@ -654,7 +654,7 @@ namespace Themis.Infrastructure.Services
 - **Budget:** {project.Budget:C}
 - **Actual Cost:** {project.Financial?.ActualCost:C}
 - **Budget Variance:** {(project.Budget - (project.Financial?.ActualCost ?? 0)):C}
-- **Tasks Completed:** {project.Tasks.Count(t => t.Status == TaskStatus.Completed)} of {project.Tasks.Count}
+- **Tasks Completed:** {project.Tasks.Count(t => t.Status == Themis.Core.Enums.TaskStatus.Completed)} of {project.Tasks.Count}
 
 ## Key Accomplishments
 {closure.ClosureSummary}

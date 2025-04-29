@@ -9,6 +9,7 @@ namespace Themis.Core.Entities
         public Guid ProjectId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
+        public RiskIssueType Type { get; set; }
         public RiskSeverity Severity { get; set; }
         public RiskProbability Probability { get; set; }
         public bool IsIssue { get; set; }

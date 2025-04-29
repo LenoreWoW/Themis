@@ -29,6 +29,7 @@ namespace Themis.Infrastructure.Data
         public DbSet<ProjectClosure> ProjectClosures { get; set; }
         public DbSet<ProjectClosureSignOff> ProjectClosureSignOffs { get; set; }
         public DbSet<ProjectClosureAttachment> ProjectClosureAttachments { get; set; }
+        public DbSet<Notification> Notifications { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -177,6 +178,13 @@ namespace Themis.Infrastructure.Data
                 .WithMany()
                 .HasForeignKey(pca => pca.UploadedById)
                 .OnDelete(DeleteBehavior.Restrict);
+                
+            // Notification
+            modelBuilder.Entity<Notification>()
+                .HasOne(n => n.User)
+                .WithMany()
+                .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         }
 
         public override int SaveChanges()

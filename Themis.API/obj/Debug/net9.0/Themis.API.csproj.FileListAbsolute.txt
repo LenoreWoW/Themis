@@ -53,3 +53,4 @@
 /Users/hassanalsahli/Desktop/Themis/Themis.API/obj/Debug/net9.0/Themis.API.pdb
 /Users/hassanalsahli/Desktop/Themis/Themis.API/obj/Debug/net9.0/Themis.API.genruntimeconfig.cache
 /Users/hassanalsahli/Desktop/Themis/Themis.API/obj/Debug/net9.0/ref/Themis.API.dll
+/Users/hassanalsahli/Desktop/Themis/Themis.API/obj/Debug/net9.0/Themis.API.sourcelink.json

@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
-using Themis.Services;
+using Themis.Core.Interfaces;
+using Themis.Infrastructure.Services;
 
 namespace Themis.API.Extensions
 {
