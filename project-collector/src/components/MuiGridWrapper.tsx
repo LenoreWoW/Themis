@@ -1,26 +1,38 @@
 import React from 'react';
-import { Grid, GridProps } from '@mui/material';
+import { Grid, GridTypeMap } from '@mui/material';
+import { OverridableComponent } from '@mui/material/OverridableComponent';
 
-interface GridContainerProps extends GridProps {
+type GridComponent = OverridableComponent<GridTypeMap<{}, 'div'>>;
+
+interface GridContainerProps {
   children: React.ReactNode;
+  spacing?: number;
+  sx?: any;
 }
 
-interface GridItemProps extends GridProps {
+interface GridItemProps {
   children: React.ReactNode;
+  xs?: number;
+  sm?: number;
+  md?: number;
+  lg?: number;
+  sx?: any;
 }
 
-export const GridContainer: React.FC<GridContainerProps> = ({ children, ...props }) => {
+export const GridContainer: React.FC<GridContainerProps> = ({ children, spacing, sx }) => {
+  const GridComponent = Grid as GridComponent;
   return (
-    <Grid container {...props}>
+    <GridComponent container spacing={spacing} sx={sx}>
       {children}
-    </Grid>
+    </GridComponent>
   );
 };
 
-export const GridItem: React.FC<GridItemProps> = ({ children, ...props }) => {
+export const GridItem: React.FC<GridItemProps> = ({ children, xs, sm, md, lg, sx }) => {
+  const GridComponent = Grid as GridComponent;
   return (
-    <Grid item {...props}>
+    <GridComponent item xs={xs} sm={sm} md={md} lg={lg} sx={sx}>
       {children}
-    </Grid>
+    </GridComponent>
   );
 }; 
