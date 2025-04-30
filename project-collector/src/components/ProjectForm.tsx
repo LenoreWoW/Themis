@@ -11,6 +11,7 @@ import {
   Grid,
   Paper,
   Typography,
+  SelectChangeEvent,
 } from '@mui/material';
 import { ProjectFormProps } from '../types';
 
@@ -26,11 +27,19 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
     status: 'draft',
   });
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | { name?: string; value: unknown }>) => {
+  const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name as string]: value,
+      [name]: value,
+    }));
+  };
+
+  const handleSelectChange = (e: SelectChangeEvent) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value,
     }));
   };
 
@@ -54,7 +63,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
               label="Project Name"
               name="name"
               value={formData.name}
-              onChange={handleChange}
+              onChange={handleTextChange}
             />
           </Grid>
           <Grid item xs={12}>
@@ -66,7 +75,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
               label="Description"
               name="description"
               value={formData.description}
-              onChange={handleChange}
+              onChange={handleTextChange}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -75,7 +84,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
               <Select
                 name="department"
                 value={formData.department}
-                onChange={handleChange}
+                onChange={handleSelectChange}
                 label="Department"
               >
                 <MenuItem value="IT">IT</MenuItem>
@@ -93,7 +102,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
               name="budget"
               type="number"
               value={formData.budget}
-              onChange={handleChange}
+              onChange={handleTextChange}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -105,7 +114,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
               type="date"
               InputLabelProps={{ shrink: true }}
               value={formData.startDate}
-              onChange={handleChange}
+              onChange={handleTextChange}
             />
           </Grid>
           <Grid item xs={12} sm={6}>
@@ -117,7 +126,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
               type="date"
               InputLabelProps={{ shrink: true }}
               value={formData.endDate}
-              onChange={handleChange}
+              onChange={handleTextChange}
             />
           </Grid>
           <Grid item xs={12}>
