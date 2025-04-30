@@ -25,7 +25,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, onDelete }) =>
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
 
   const handleEdit = () => {
-    navigate(`/edit/${project.id}`);
+    navigate(`/projects/${project.id}/edit`);
   };
 
   const handleDelete = () => {
@@ -43,7 +43,9 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, onDelete }) =>
       navigate('/projects');
     } catch (error) {
       console.error('Failed to delete project:', error);
-      // You might want to show an error message to the user here
+      // Show error message to user
+      alert('Failed to delete project. Please try again.');
+      setDeleteDialogOpen(false);
     }
   };
 
