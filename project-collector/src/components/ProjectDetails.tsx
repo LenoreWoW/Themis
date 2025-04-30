@@ -13,6 +13,7 @@ import {
   DialogActions,
 } from '@mui/material';
 import { Project } from '../types';
+import { projectService } from '../services/projectService';
 
 interface ProjectDetailsProps {
   project: Project;
@@ -24,19 +25,26 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, onDelete }) =>
   const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
 
   const handleEdit = () => {
-    navigate(`/projects/${project.id}/edit`);
+    navigate(`/edit/${project.id}`);
   };
 
   const handleDelete = () => {
     setDeleteDialogOpen(true);
   };
 
-  const handleDeleteConfirm = () => {
-    if (onDelete) {
-      onDelete(project.id);
+  const handleDeleteConfirm = async () => {
+    try {
+      if (onDelete) {
+        await onDelete(project.id);
+      } else {
+        await projectService.deleteProject(project.id);
+      }
+      setDeleteDialogOpen(false);
+      navigate('/projects');
+    } catch (error) {
+      console.error('Failed to delete project:', error);
+      // You might want to show an error message to the user here
     }
-    setDeleteDialogOpen(false);
-    navigate('/projects');
   };
 
   const handleDeleteCancel = () => {
@@ -111,7 +119,7 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, onDelete }) =>
               Project Manager
             </Typography>
             <Typography>
-              {project.projectManager}
+              {project.projectManager || 'Not assigned'}
             </Typography>
           </Grid>
 
