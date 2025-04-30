@@ -99,10 +99,10 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, onDelete }) =>
 
           <Grid item xs={12} sm={6}>
             <Typography variant="h6" gutterBottom>
-              Client Name
+              Client
             </Typography>
             <Typography>
-              {project.clientName}
+              {project.client || 'Not specified'}
             </Typography>
           </Grid>
 

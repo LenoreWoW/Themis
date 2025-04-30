@@ -7,6 +7,8 @@ export interface Project {
   startDate: string;
   endDate: string;
   status: string;
+  client?: string;
+  projectManager?: string;
 }
 
 export interface ProjectFormProps {
