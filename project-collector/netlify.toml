@@ -1,8 +1,13 @@
 [build]
-  command = "npm run build"
+  command = "npm install && npm run build"
   publish = "build"
+  base = "project-collector"
 
 [[redirects]]
   from = "/*"
   to = "/index.html"
-  status = 200 
+  status = 200
+
+[build.environment]
+  NODE_VERSION = "18.20.8"
+  NPM_VERSION = "10.2.4" 
