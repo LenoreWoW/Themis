@@ -30,7 +30,7 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
     budget: '',
     startDate: '',
     endDate: '',
-    status: 'draft',
+    status: 'in_progress',
     clientName: '',
     projectManager: '',
   });
@@ -172,6 +172,20 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
               value={formData.endDate}
               onChange={handleTextChange}
             />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth required>
+              <InputLabel>Status</InputLabel>
+              <Select
+                name="status"
+                value={formData.status}
+                onChange={handleSelectChange}
+                label="Status"
+              >
+                <MenuItem value="in_progress">In Progress</MenuItem>
+                <MenuItem value="completed">Completed</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
           <Grid item xs={12}>
             <Button
