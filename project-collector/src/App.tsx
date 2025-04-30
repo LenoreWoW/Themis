@@ -24,6 +24,18 @@ const theme = createTheme({
   },
 });
 
+// Project Details Wrapper Component
+const ProjectDetailsWrapper: React.FC<{ projects: Project[] }> = ({ projects }) => {
+  const { id } = useParams();
+  const project = projects.find(p => p.id === id);
+  
+  if (!project) {
+    return <Typography>Project not found</Typography>;
+  }
+  
+  return <ProjectDetails project={project} />;
+};
+
 function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedTab, setSelectedTab] = useState(0);
@@ -42,12 +54,12 @@ function App() {
     navigate('/projects');
   };
 
-  const handleDeleteProject = (projectId: string) => {
-    setProjects(projects.filter(project => project.id !== projectId));
-  };
-
   const handleViewProject = (id: string) => {
     navigate(`/projects/${id}`);
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    setProjects(projects.filter(project => project.id !== projectId));
   };
 
   return (
@@ -85,11 +97,7 @@ function App() {
               />
               <Route
                 path="/projects/:id"
-                element={
-                  <ProjectDetails
-                    project={projects.find(p => p.id === useParams().id)!}
-                  />
-                }
+                element={<ProjectDetailsWrapper projects={projects} />}
               />
               <Route 
                 path="/" 
