@@ -1,5 +1,4 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
 import {
   Table,
   TableBody,
@@ -20,8 +19,6 @@ interface ProjectListProps {
 }
 
 const ProjectList: React.FC<ProjectListProps> = ({ projects, onViewProject }) => {
-  const navigate = useNavigate();
-
   return (
     <Box sx={{ mt: 3 }}>
       <Typography variant="h5" gutterBottom>
