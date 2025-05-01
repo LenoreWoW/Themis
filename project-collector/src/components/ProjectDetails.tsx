@@ -43,8 +43,15 @@ const ProjectDetails: React.FC<ProjectDetailsProps> = ({ project, onDelete }) =>
       navigate('/projects');
     } catch (error) {
       console.error('Failed to delete project:', error);
-      // Show error message to user
-      alert('Failed to delete project. Please try again.');
+      if (error instanceof Error) {
+        if (error.message.includes('Failed to fetch')) {
+          alert('Unable to connect to the server. Please check your internet connection and try again.');
+        } else {
+          alert(`Failed to delete project: ${error.message}`);
+        }
+      } else {
+        alert('An unexpected error occurred while deleting the project.');
+      }
       setDeleteDialogOpen(false);
     }
   };

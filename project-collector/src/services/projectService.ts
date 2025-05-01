@@ -1,10 +1,10 @@
 import { Project } from '../types';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5095/api';
+const API_BASE_URL = 'http://localhost:5095';
 
 class ProjectService {
   async getProjects(): Promise<Project[]> {
-    const response = await fetch(`${API_BASE_URL}/projects`);
+    const response = await fetch(`${API_BASE_URL}/api/projects`);
     if (!response.ok) {
       throw new Error('Failed to fetch projects');
     }
@@ -12,7 +12,7 @@ class ProjectService {
   }
 
   async getProjectById(id: string): Promise<Project> {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`);
+    const response = await fetch(`${API_BASE_URL}/api/projects/${id}`);
     if (!response.ok) {
       throw new Error('Failed to fetch project');
     }
@@ -20,7 +20,7 @@ class ProjectService {
   }
 
   async createProject(project: Omit<Project, 'id'>): Promise<Project> {
-    const response = await fetch(`${API_BASE_URL}/projects`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -34,7 +34,7 @@ class ProjectService {
   }
 
   async updateProject(id: string, project: Partial<Project>): Promise<Project> {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -48,9 +48,13 @@ class ProjectService {
   }
 
   async deleteProject(id: string): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/projects/${id}`, {
+    const response = await fetch(`${API_BASE_URL}/api/projects/${id}`, {
       method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
+
     if (!response.ok) {
       throw new Error('Failed to delete project');
     }

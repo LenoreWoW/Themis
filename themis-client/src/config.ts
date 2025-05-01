@@ -1,5 +1,5 @@
 // API Configuration
-export const API_BASE_URL = 'http://localhost:5065';
+export const API_BASE_URL = 'http://localhost:3000/api';
 
 // Feature flags
 export const FEATURES = {

@@ -25,7 +25,10 @@ const theme = createTheme({
 });
 
 // Project Details Wrapper Component
-const ProjectDetailsWrapper: React.FC<{ projects: Project[] }> = ({ projects }) => {
+const ProjectDetailsWrapper: React.FC<{ 
+  projects: Project[],
+  onDeleteProject: (id: string) => void 
+}> = ({ projects, onDeleteProject }) => {
   const { id } = useParams();
   const project = projects.find(p => p.id === id);
   
@@ -33,7 +36,23 @@ const ProjectDetailsWrapper: React.FC<{ projects: Project[] }> = ({ projects }) 
     return <Typography>Project not found</Typography>;
   }
   
-  return <ProjectDetails project={project} />;
+  // At this point, project is guaranteed to be defined
+  return <ProjectDetails project={project as Project} onDelete={onDeleteProject} />;
+};
+
+// Project Edit Form Wrapper Component
+const ProjectEditWrapper: React.FC<{ 
+  projects: Project[],
+  onUpdateProject: (updatedProject: Omit<Project, 'id'> & { id?: string }) => void 
+}> = ({ projects, onUpdateProject }) => {
+  const { id } = useParams();
+  const project = projects.find(p => p.id === id);
+  
+  if (!project) {
+    return <Typography>Project not found</Typography>;
+  }
+  
+  return <ProjectForm onSubmit={onUpdateProject} project={project} />;
 };
 
 function App() {
@@ -51,6 +70,18 @@ function App() {
       id: Date.now().toString(),
     };
     setProjects([...projects, project]);
+    navigate('/projects');
+  };
+
+  const handleUpdateProject = (updatedProject: Omit<Project, 'id'> & { id?: string }) => {
+    if (!updatedProject.id) {
+      // This should never happen in this context, but handle it just in case
+      return;
+    }
+    
+    setProjects(projects.map(project => 
+      project.id === updatedProject.id ? { ...updatedProject, id: project.id } : project
+    ));
     navigate('/projects');
   };
 
@@ -97,7 +128,11 @@ function App() {
               />
               <Route
                 path="/projects/:id"
-                element={<ProjectDetailsWrapper projects={projects} />}
+                element={<ProjectDetailsWrapper projects={projects} onDeleteProject={handleDeleteProject} />}
+              />
+              <Route
+                path="/projects/:id/edit"
+                element={<ProjectEditWrapper projects={projects} onUpdateProject={handleUpdateProject} />}
               />
               <Route 
                 path="/" 

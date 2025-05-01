@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -21,7 +21,7 @@ import { ProjectFormProps } from '../types';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 
-const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
+const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit, project }) => {
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: '',
@@ -33,8 +33,26 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
     status: 'in_progress',
     clientName: '',
     projectManager: '',
+    tags: '',
   });
   const [attachments, setAttachments] = useState<File[]>([]);
+
+  useEffect(() => {
+    if (project) {
+      setFormData({
+        name: project.title || '',
+        description: project.description || '',
+        department: project.department || '',
+        budget: project.budget ? project.budget.toString() : '',
+        startDate: project.startDate || '',
+        endDate: project.endDate || '',
+        status: project.status || 'planning',
+        clientName: project.clientName || '',
+        projectManager: project.projectManager || '',
+        tags: Array.isArray(project.tags) ? project.tags.join(', ') : '',
+      });
+    }
+  }, [project]);
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -65,12 +83,41 @@ const ProjectForm: React.FC<ProjectFormProps> = ({ onSubmit }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const formDataWithAttachments = {
-      ...formData,
-      attachments,
+    
+    if (!validateForm()) {
+      return;
+    }
+    
+    const tags = formData.tags ? formData.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [];
+    
+    const processedData = {
+      name: formData.name,
+      description: formData.description,
+      department: formData.department,
+      budget: formData.budget ? Number(formData.budget) : 0,
+      startDate: formData.startDate,
+      endDate: formData.endDate,
+      status: formData.status,
+      clientName: formData.clientName,
+      projectManager: formData.projectManager,
+      tags
     };
-    onSubmit(formDataWithAttachments);
-    navigate('/');
+    
+    // If editing, maintain the ID, otherwise create a new one
+    const submissionData = project 
+      ? { ...processedData, id: project.id } 
+      : { 
+          ...processedData, 
+          createdAt: new Date().toISOString(), 
+          updatedAt: new Date().toISOString() 
+        };
+    
+    onSubmit(submissionData);
+  };
+
+  const validateForm = () => {
+    // Implement form validation logic here
+    return true; // Placeholder return, actual implementation needed
   };
 
   return (

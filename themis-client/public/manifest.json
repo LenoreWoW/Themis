@@ -3,14 +3,9 @@
   "name": "Themis Project Management",
   "icons": [
     {
-      "src": "assets/images/LogoClickUP.png",
-      "sizes": "177x285",
-      "type": "image/png"
-    },
-    {
-      "src": "assets/images/LogoClickUP.png",
-      "type": "image/png",
-      "sizes": "177x285"
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
     },
     {
       "src": "assets/images/LogoClickUP.png",
