@@ -1,0 +1,39 @@
+# Dependencies
+/node_modules
+/node_modules/.cache
+/node_modules/cache
+/node_modules/**/.cache
+/node_modules/**/*.pack
+
+# Cache files specifically causing GitHub file size issues
+/node_modules/.cache/default-development/*.pack
+/node_modules/.cache/default-development/4.pack
+/node_modules/.cache/default-development/0.pack
+/node_modules/.cache/default-development/11.pack
+/node_modules/.cache/default-development/16.pack
+
+# Builds
+/build
+/dist
+/.netlify
+
+# Environment
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw? 
