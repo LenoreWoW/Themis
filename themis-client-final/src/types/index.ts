@@ -156,6 +156,9 @@ export interface Project {
   lastReviewedBy?: User;
   lastReviewedAt?: string;
   progress?: number;
+  // Project dependencies
+  dependsOnProjects?: string[]; // IDs of projects this one depends on
+  projectsDependingOnThis?: string[]; // IDs of projects depending on this one
   // Legacy project properties
   legacyImport?: boolean;
   isDraft?: boolean;

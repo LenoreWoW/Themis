@@ -61,7 +61,11 @@
     "eject": "react-scripts eject",
     "setup-supabase": "./setup-supabase.sh",
     "migrate-data": "npx ts-node src/scripts/migrate-data.ts",
-    "compile-migrate-script": "npx esbuild src/scripts/migrate-data.ts --bundle --platform=node --outfile=dist/migrate-data.js"
+    "compile-migrate-script": "npx esbuild src/scripts/migrate-data.ts --bundle --platform=node --outfile=dist/migrate-data.js",
+    "netlify": "netlify",
+    "netlify:deploy": "./netlify-deploy.sh",
+    "netlify:deploy:prod": "./netlify-deploy.sh --prod",
+    "netlify:dev": "netlify dev"
   },
   "eslintConfig": {
     "extends": [
@@ -98,6 +102,7 @@
     "css-loader": "^6.10.0",
     "esbuild": "^0.20.2",
     "html-webpack-plugin": "^5.6.0",
+    "netlify-cli": "^17.38.1",
     "nth-check": "^2.1.1",
     "postcss-flexbugs-fixes": "^5.0.2",
     "postcss-normalize": "^10.0.1",

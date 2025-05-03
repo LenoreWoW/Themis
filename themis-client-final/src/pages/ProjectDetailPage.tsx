@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import ProjectDependencies from '../components/Project/ProjectDependencies';
 import { 
   Box, 
   Typography,
@@ -416,7 +417,13 @@ interface RequestTaskDialogProps {
 }
 
 // Function to convert ProjectWithTeamData to a full Project with proper types
-const convertToFullProject = (data: ProjectWithTeamData): Project => {
+// Extended Project interface with dependencies
+interface ProjectWithDependencies extends Project {
+  dependsOnProjects?: string[];
+  projectsDependingOnThis?: string[];
+}
+
+const convertToFullProject = (data: ProjectWithTeamData): ProjectWithDependencies => {
   // Set the project manager
   const projectManager: User = {
     id: data.projectManager.id,
@@ -444,7 +451,7 @@ const convertToFullProject = (data: ProjectWithTeamData): Project => {
     updatedAt: data.updatedAt
   };
 
-  // Create and return a complete Project object
+  // Create and return a complete Project object with dependencies
   return {
     id: data.id,
     name: data.name,
@@ -460,7 +467,10 @@ const convertToFullProject = (data: ProjectWithTeamData): Project => {
     actualCost: data.actualCost,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
-    templateType: ProjectTemplateType.DEFAULT
+    templateType: ProjectTemplateType.DEFAULT,
+    // Mock dependency data for demonstration purposes
+    dependsOnProjects: ['project-1', 'project-2'],
+    projectsDependingOnThis: ['project-3', 'project-4']
   };
 };
 
@@ -1264,65 +1274,70 @@ const ProjectDetailPage: React.FC = () => {
         </Box>
         
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-            <Box sx={{ flex: '1 1 400px' }}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>Project Overview</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Stack spacing={2}>
-                    <Box>
-                      <Typography variant="subtitle2" color="text.secondary">Budget</Typography>
-                      <Typography variant="body1">${mockProject.budget.toLocaleString()}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="subtitle2" color="text.secondary">Actual Cost</Typography>
-                      <Typography variant="body1">${mockProject.actualCost.toLocaleString()}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="subtitle2" color="text.secondary">Remaining</Typography>
-                      <Typography variant="body1">${(mockProject.budget - mockProject.actualCost).toLocaleString()}</Typography>
-                    </Box>
-                    <Box>
-                      <Typography variant="subtitle2" color="text.secondary">Days Remaining</Typography>
-                      <Typography variant="body1">{daysRemaining} days</Typography>
-                    </Box>
-                  </Stack>
-                </CardContent>
-              </Card>
-            </Box>
-            <Box sx={{ flex: '1 1 400px' }}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>Recent Tasks</Typography>
-                  <Divider sx={{ mb: 2 }} />
-                  <Stack spacing={2}>
-                    {mockTasks.slice(0, 3).map(task => (
-                      <Box key={task.id}>
-                        <Typography variant="subtitle2">{task.title}</Typography>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <Typography variant="body2" color="text.secondary">
-                            Assigned to: {task.assignee}
-                          </Typography>
-                          <Chip 
-                            label={task.status.replace('_', ' ')} 
-                            size="small"
-                            color={
-                              task.dueDate && new Date(task.dueDate) < new Date() 
-                                ? 'error' 
-                                : task.status === 'DONE' 
-                                  ? 'success' 
-                                  : task.status === 'IN_PROGRESS' 
-                                    ? 'primary' 
-                                    : 'default'
-                            }
-                          />
-                        </Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Add the ProjectDependencies component */}
+            <ProjectDependencies project={convertToFullProject(mockProject)} />
+            
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+              <Box sx={{ flex: '1 1 400px' }}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>Project Overview</Typography>
+                    <Divider sx={{ mb: 2 }} />
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Budget</Typography>
+                        <Typography variant="body1">${mockProject.budget.toLocaleString()}</Typography>
                       </Box>
-                    ))}
-                  </Stack>
-                </CardContent>
-              </Card>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Actual Cost</Typography>
+                        <Typography variant="body1">${mockProject.actualCost.toLocaleString()}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Remaining</Typography>
+                        <Typography variant="body1">${(mockProject.budget - mockProject.actualCost).toLocaleString()}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Days Remaining</Typography>
+                        <Typography variant="body1">{daysRemaining} days</Typography>
+                      </Box>
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Box>
+              <Box sx={{ flex: '1 1 400px' }}>
+                <Card>
+                  <CardContent>
+                    <Typography variant="h6" gutterBottom>Recent Tasks</Typography>
+                    <Divider sx={{ mb: 2 }} />
+                    <Stack spacing={2}>
+                      {mockTasks.slice(0, 3).map(task => (
+                        <Box key={task.id}>
+                          <Typography variant="subtitle2">{task.title}</Typography>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="body2" color="text.secondary">
+                              Assigned to: {task.assignee}
+                            </Typography>
+                            <Chip 
+                              label={task.status.replace('_', ' ')} 
+                              size="small"
+                              color={
+                                task.dueDate && new Date(task.dueDate) < new Date() 
+                                  ? 'error' 
+                                  : task.status === 'DONE' 
+                                    ? 'success' 
+                                    : task.status === 'IN_PROGRESS' 
+                                      ? 'primary' 
+                                      : 'default'
+                              }
+                            />
+                          </Box>
+                        </Box>
+                      ))}
+                    </Stack>
+                  </CardContent>
+                </Card>
+              </Box>
             </Box>
           </Box>
         </TabPanel>
