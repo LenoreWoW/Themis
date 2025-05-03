@@ -14,6 +14,10 @@ import {
   MenuItem,
   Stack,
   Typography,
+  OutlinedInput,
+  Checkbox,
+  ListItemText,
+  Chip,
 } from '@mui/material';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -101,6 +105,74 @@ export const FormSelect: React.FC<FormFieldProps & {
           {options.map((option) => (
             <MenuItem key={option.value} value={option.value}>
               {option.label}
+            </MenuItem>
+          ))}
+        </Select>
+        {errors[name] && <FormHelperText>{errors[name]?.message}</FormHelperText>}
+      </FormControl>
+    )}
+  />
+);
+
+// Multiple Select Field Component
+export const FormMultiSelect: React.FC<FormFieldProps & { 
+  options: { value: string | number; label: string }[];
+  startIcon?: React.ReactNode;
+}> = ({ 
+  name, 
+  label, 
+  control, 
+  errors = {}, 
+  options, 
+  disabled = false, 
+  required = false,
+  startIcon
+}) => (
+  <Controller
+    name={name}
+    control={control}
+    render={({ field }) => (
+      <FormControl 
+        fullWidth 
+        required={required}
+        error={!!errors[name]}
+        disabled={disabled}
+      >
+        <InputLabel>{label}</InputLabel>
+        <Select
+          {...field}
+          multiple
+          label={label}
+          sx={{ borderRadius: 1.5 }}
+          startAdornment={startIcon}
+          input={<OutlinedInput label={label} />}
+          renderValue={(selected) => (
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+              {(selected as (string | number)[]).map((value) => {
+                const option = options.find(opt => opt.value === value);
+                return (
+                  <Chip 
+                    key={value} 
+                    label={option ? option.label : value} 
+                    size="small" 
+                  />
+                );
+              })}
+            </Box>
+          )}
+          MenuProps={{
+            PaperProps: {
+              style: {
+                maxHeight: 224,
+                width: 250,
+              },
+            },
+          }}
+        >
+          {options.map((option) => (
+            <MenuItem key={option.value} value={option.value}>
+              <Checkbox checked={(field.value as (string | number)[]).indexOf(option.value) > -1} />
+              <ListItemText primary={option.label} />
             </MenuItem>
           ))}
         </Select>
@@ -218,7 +290,8 @@ function FormWithValidation<T extends FieldValues>({
                 const isCustomFormComponent = 
                   childType === FormTextField || 
                   childType === FormSelect || 
-                  childType === FormDatePicker;
+                  childType === FormDatePicker ||
+                  childType === FormMultiSelect;
                 
                 if (isCustomFormComponent) {
                   // These are our form components, add control and errors
@@ -246,7 +319,8 @@ function FormWithValidation<T extends FieldValues>({
                         const isNestedFormComponent = 
                           nestedChildType === FormTextField || 
                           nestedChildType === FormSelect || 
-                          nestedChildType === FormDatePicker;
+                          nestedChildType === FormDatePicker ||
+                          nestedChildType === FormMultiSelect;
                         
                         if (isNestedFormComponent) {
                           return React.cloneElement(nestedChild, { 

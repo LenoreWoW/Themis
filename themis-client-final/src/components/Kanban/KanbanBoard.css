@@ -1,0 +1,48 @@
+.kanban-board {
+  height: 100%;
+  padding: 16px 0;
+}
+
+.kanban-column {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.kanban-tasks {
+  flex-grow: 1;
+  min-height: 500px;
+}
+
+/* Custom scrollbar for better UX */
+.kanban-tasks::-webkit-scrollbar {
+  width: 6px;
+}
+
+.kanban-tasks::-webkit-scrollbar-track {
+  background-color: transparent;
+}
+
+.kanban-tasks::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+}
+
+.kanban-tasks::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Animation for drag */
+.task-dragging {
+  transition: transform 0.2s ease-in-out;
+}
+
+@media (max-width: 600px) {
+  .kanban-board {
+    padding: 8px 0;
+  }
+  
+  .kanban-tasks {
+    min-height: 300px;
+  }
+} 

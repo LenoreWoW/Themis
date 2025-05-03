@@ -1,10 +1,8 @@
 #!/bin/bash
 
-# Navigate to the client directory
-cd /Users/hassanalsahli/Desktop/Themis/themis-client
+# CD to themis client directory
+cd themis-client-final
 
-# Port 3000 might be in use, set to always use 3000
-export PORT=3000
-
-# Start the React app
-npm start 
+# Start a static server to serve the production build
+echo "Starting Themis Client on port 3000..."
+npx serve -s build 

@@ -519,10 +519,16 @@ export interface Goal {
   startDate: string;
   endDate: string;
   assignedTo: string;
-  linkedProjects: string[];
+  linkedProjects: ProjectWeight[];
   isProgressAutoCalculated: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+// Define an interface for weighted project links
+export interface ProjectWeight {
+  projectId: string;
+  weight: number; // Weight as a percentage (0-100)
 }
 
 // Add a new interface for review comments

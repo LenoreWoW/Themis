@@ -1,24 +1,12 @@
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
-import * as XLSX from 'xlsx';
+import Excel from 'exceljs';
 import { Project, Task, Risk, Issue, FinancialEntry, KPI, User } from '../types';
 
 // Extend jsPDF type to include autoTable plugin and internal properties
-interface CustomJsPDF extends jsPDF {
-  autoTable: (options: any) => CustomJsPDF;
-  internal: {
-    pageSize: {
-      width: number;
-      height: number;
-      getWidth: () => number;
-      getHeight: () => number;
-    };
-    pages: any[];
-    events: any;
-    scaleFactor: number;
-    getNumberOfPages: () => number;
-    getEncryptor: (objectId: number) => (data: string) => string;
-  };
+interface ExtendedJsPDF extends jsPDF {
+  autoTable: (options: any) => void;
+  internal: any;
 }
 
 /**
@@ -47,7 +35,7 @@ const formatCurrency = (amount: number): string => {
 /**
  * Add company header to PDF document
  */
-const addCompanyHeader = (doc: CustomJsPDF, title: string): void => {
+const addCompanyHeader = (doc: ExtendedJsPDF, title: string): void => {
   // Add logo
   // doc.addImage(logo, 'PNG', 14, 10, 30, 30);
   
@@ -71,7 +59,7 @@ const addCompanyHeader = (doc: CustomJsPDF, title: string): void => {
  * Export projects to PDF
  */
 export const exportProjectsToPdf = (projects: Project[], title = 'Projects Report'): void => {
-  const doc = new jsPDF() as CustomJsPDF;
+  const doc = new jsPDF() as ExtendedJsPDF;
   
   addCompanyHeader(doc, title);
   
@@ -132,7 +120,7 @@ export const exportProjectDetailsToPdf = (
   financials: FinancialEntry[],
   kpis: KPI[]
 ): void => {
-  const doc = new jsPDF() as CustomJsPDF;
+  const doc = new jsPDF() as ExtendedJsPDF;
   const title = `Project Details: ${project.name}`;
   
   addCompanyHeader(doc, title);
@@ -301,22 +289,68 @@ export const exportProjectDetailsToPdf = (
 /**
  * Export data to Excel
  */
-export const exportToExcel = <T extends Record<string, any>>(
-  data: T[],
-  fileName: string,
-  sheetName: string = 'Sheet1'
-): void => {
-  const worksheet = XLSX.utils.json_to_sheet(data);
-  const workbook = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
-  XLSX.writeFile(workbook, `${fileName}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+export const exportToExcel = async (data: any[], columns: any[], title: string): Promise<void> => {
+  // Create a new workbook
+  const workbook = new Excel.Workbook();
+  const worksheet = workbook.addWorksheet(title);
+  
+  // Add headers
+  worksheet.columns = columns.map(col => ({
+    header: col.headerName,
+    key: col.field,
+    width: 20
+  }));
+  
+  // Add data rows
+  data.forEach(item => {
+    const row: any = {};
+    columns.forEach(col => {
+      // Format dates if needed
+      if (typeof item[col.field] === 'object' && item[col.field] instanceof Date) {
+        row[col.field] = formatDate(item[col.field]);
+      } else {
+        row[col.field] = item[col.field];
+      }
+    });
+    worksheet.addRow(row);
+  });
+  
+  // Style the header row
+  const headerRow = worksheet.getRow(1);
+  headerRow.eachCell(cell => {
+    cell.fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: '2196F3' }
+    };
+    cell.font = {
+      bold: true,
+      color: { argb: 'FFFFFF' }
+    };
+  });
+  
+  // Generate the Excel file
+  const buffer = await workbook.xlsx.writeBuffer();
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+  const url = URL.createObjectURL(blob);
+  
+  // Create download link and trigger click
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${title.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.xlsx`;
+  document.body.appendChild(a);
+  a.click();
+  
+  // Clean up
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 };
 
 /**
  * Export project charter to PDF
  */
 export const exportProjectCharterToPdf = (project: Project, charter: any): void => {
-  const doc = new jsPDF() as CustomJsPDF;
+  const doc = new jsPDF() as ExtendedJsPDF;
   const title = `Project Charter: ${project.name}`;
   
   addCompanyHeader(doc, title);
@@ -366,7 +400,7 @@ export const exportProjectCharterToPdf = (project: Project, charter: any): void 
     align: 'justify'
   });
   
-  yPos += calculateTextHeight(doc as CustomJsPDF, charter.description || project.description || 'No description available.', doc.internal.pageSize.width - 28) + 10;
+  yPos += calculateTextHeight(doc as ExtendedJsPDF, charter.description || project.description || 'No description available.', doc.internal.pageSize.width - 28) + 10;
   
   if (yPos > doc.internal.pageSize.height - 70) {
     doc.addPage();
@@ -393,7 +427,7 @@ export const exportProjectCharterToPdf = (project: Project, charter: any): void 
       align: 'left'
     });
     
-    yPos += calculateTextHeight(doc as CustomJsPDF, objectiveText, doc.internal.pageSize.width - 28) + 10;
+    yPos += calculateTextHeight(doc as ExtendedJsPDF, objectiveText, doc.internal.pageSize.width - 28) + 10;
   } else {
     doc.text('No objectives defined.', 14, yPos);
     yPos += 10;
@@ -475,7 +509,7 @@ export const exportProjectCharterToPdf = (project: Project, charter: any): void 
 };
 
 // Helper function to calculate text height
-function calculateTextHeight(doc: CustomJsPDF, text: string, maxWidth: number): number {
+function calculateTextHeight(doc: ExtendedJsPDF, text: string, maxWidth: number): number {
   const textLines = doc.splitTextToSize(text, maxWidth);
   return textLines.length * doc.getTextDimensions('Text').h * 1.2;
 } 

@@ -1,0 +1,8 @@
+# Sound Effect Credits
+
+The sound effects used in this application are free to use with attribution:
+
+- `powerup.mp3`: Add the powerup sound file to play when 8-bit mode is activated
+  - Source: Please download a suitable 8-bit powerup sound from a royalty-free source
+  - License: Creative Commons 0 (CC0) or similar
+  - Attribution may be required depending on source 

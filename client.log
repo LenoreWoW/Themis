@@ -1,0 +1,60 @@
+Starting Themis Client on port 3000...
+ INFO  Accepting connections at http://localhost:52408 
+ INFO  Gracefully shutting down. Please wait...
+ 5/3/2025 4:27:09 PM 127.0.0.1 Returned 200 in 12 ms
+ HTTP  5/3/2025 4:27:47 PM ::1 GET /
+ HTTP  5/3/2025 4:27:47 PM ::1 Returned 200 in 2 ms
+ HTTP  5/3/2025 4:27:47 PM ::1 GET /static/js/main.ab4be2fc.js
+ HTTP  5/3/2025 4:27:47 PM ::1 GET /static/css/main.a66a80ed.css
+ HTTP  5/3/2025 4:27:47 PM ::1 Returned 304 in 2 ms
+ HTTP  5/3/2025 4:27:47 PM ::1 Returned 200 in 8 ms
+ HTTP  5/3/2025 4:27:47 PM ::1 GET /logo512.png
+ HTTP  5/3/2025 4:27:47 PM ::1 GET /assets/images/LogoClickUP.png
+ HTTP  5/3/2025 4:27:47 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:27:47 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:27:47 PM ::1 GET /manifest.json
+ HTTP  5/3/2025 4:27:47 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:30:02 PM ::1 GET /tasks
+ HTTP  5/3/2025 4:30:02 PM ::1 Returned 200 in 3 ms
+ HTTP  5/3/2025 4:30:02 PM ::1 GET /static/css/main.a66a80ed.css
+ HTTP  5/3/2025 4:30:02 PM ::1 Returned 304 in 2 ms
+ HTTP  5/3/2025 4:30:02 PM ::1 GET /static/js/main.ab4be2fc.js
+ HTTP  5/3/2025 4:30:02 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:30:02 PM ::1 GET /logo512.png
+ HTTP  5/3/2025 4:30:02 PM ::1 GET /assets/images/LogoClickUP.png
+ HTTP  5/3/2025 4:30:02 PM ::1 Returned 304 in 3 ms
+ HTTP  5/3/2025 4:30:02 PM ::1 Returned 304 in 3 ms
+ HTTP  5/3/2025 4:30:03 PM ::1 GET /assets/images/LogoClickUP.png
+ HTTP  5/3/2025 4:30:03 PM ::1 Returned 304 in 2 ms
+ HTTP  5/3/2025 4:30:03 PM ::1 GET /manifest.json
+ HTTP  5/3/2025 4:30:03 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:31:24 PM ::1 GET /dashboard?tab=analytics
+ HTTP  5/3/2025 4:31:24 PM ::1 Returned 200 in 2 ms
+ HTTP  5/3/2025 4:31:24 PM ::1 GET /static/js/main.ab4be2fc.js
+ HTTP  5/3/2025 4:31:24 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:31:24 PM ::1 GET /static/css/main.a66a80ed.css
+ HTTP  5/3/2025 4:31:24 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:31:24 PM ::1 GET /logo512.png
+ HTTP  5/3/2025 4:31:24 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:31:24 PM ::1 GET /assets/images/LogoClickUP.png
+ HTTP  5/3/2025 4:31:24 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:31:24 PM ::1 GET /assets/images/LogoClickUP.png
+ HTTP  5/3/2025 4:31:24 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:31:24 PM ::1 GET /manifest.json
+ HTTP  5/3/2025 4:31:24 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:34:06 PM ::1 GET /users
+ HTTP  5/3/2025 4:34:06 PM ::1 Returned 200 in 2 ms
+ HTTP  5/3/2025 4:34:06 PM ::1 GET /static/js/main.ab4be2fc.js
+ HTTP  5/3/2025 4:34:06 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:34:06 PM ::1 GET /static/css/main.a66a80ed.css
+ HTTP  5/3/2025 4:34:06 PM ::1 Returned 304 in 0 ms
+ HTTP  5/3/2025 4:34:06 PM ::1 GET /logo512.png
+ HTTP  5/3/2025 4:34:06 PM ::1 GET /assets/images/LogoClickUP.png
+ HTTP  5/3/2025 4:34:06 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:34:06 PM ::1 Returned 304 in 3 ms
+ HTTP  5/3/2025 4:34:06 PM ::1 GET /assets/images/LogoClickUP.png
+ HTTP  5/3/2025 4:34:06 PM ::1 Returned 304 in 1 ms
+ HTTP  5/3/2025 4:34:06 PM ::1 GET /manifest.json
+ HTTP  5/3/2025 4:34:06 PM ::1 Returned 304 in 1 ms
+
+ INFO  Gracefully shutting down. Please wait...

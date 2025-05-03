@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 function Settings() {
+  const { t } = useTranslation();
+  
   const [settings, setSettings] = useState({
     notifications: true,
     darkMode: false,
-    language: 'English'
+    language: t('language.english')
   });
 
   const handleToggleChange = (setting) => {
@@ -23,9 +26,9 @@ function Settings() {
 
   return (
     <div className="settings">
-      <h2>Settings</h2>
+      <h2>{t('settings.title')}</h2>
       <div className="settings-section">
-        <h3>Preferences</h3>
+        <h3>{t('settings.preferences')}</h3>
         <div className="setting-item">
           <label>
             <input 
@@ -33,7 +36,7 @@ function Settings() {
               checked={settings.notifications} 
               onChange={() => handleToggleChange('notifications')}
             />
-            Enable Notifications
+            {t('settings.enableNotifications')}
           </label>
         </div>
         <div className="setting-item">
@@ -43,17 +46,15 @@ function Settings() {
               checked={settings.darkMode} 
               onChange={() => handleToggleChange('darkMode')}
             />
-            Dark Mode
+            {t('settings.darkMode')}
           </label>
         </div>
         <div className="setting-item">
           <label>
-            Language:
+            {t('settings.language')}:
             <select value={settings.language} onChange={handleLanguageChange}>
-              <option value="English">English</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
-              <option value="German">German</option>
+              <option value={t('language.english')}>{t('language.english')}</option>
+              <option value={t('language.arabic')}>{t('language.arabic')}</option>
             </select>
           </label>
         </div>

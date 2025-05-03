@@ -1,1 +1,37 @@
- 
+[build]
+  base = "themis-client"
+  command = "npm run build"
+  publish = "build"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/api/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production.environment]
+  REACT_APP_API_URL = "/.netlify/functions/api"
+  REACT_APP_ENVIRONMENT = "production"
+  REACT_APP_BASE_URL = "https://themis.netlify.app"
+  # Database and authentication environment variables will be set in Netlify UI
+  # DATABASE_URL
+  # JWT_SECRET
+
+[context.deploy-preview.environment]
+  REACT_APP_API_URL = "/.netlify/functions/api"
+  REACT_APP_ENVIRONMENT = "staging"
+  REACT_APP_BASE_URL = "https://deploy-preview-${PR_NUMBER}--themis.netlify.app"
+
+[context.branch-deploy.environment]
+  REACT_APP_API_URL = "/.netlify/functions/api"
+  REACT_APP_ENVIRONMENT = "staging"
+  REACT_APP_BASE_URL = "https://${BRANCH}--themis.netlify.app" 

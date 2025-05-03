@@ -26,6 +26,7 @@ export interface Meeting {
   isActive?: boolean;
   meetingLink?: string;
   projectId?: string;
+  status?: string;
   createdAt: string;
   updatedAt: string;
 }

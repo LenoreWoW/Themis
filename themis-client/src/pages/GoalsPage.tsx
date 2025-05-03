@@ -66,10 +66,15 @@ interface GoalInterface {
   startDate: string;
   endDate: string;
   assignedTo: string;
-  linkedProjects: string[];
+  linkedProjects: ProjectWeight[];
   isProgressAutoCalculated: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+interface ProjectWeight {
+  projectId: string;
+  weight: number; // Weight as a percentage (0-100)
 }
 
 interface Project {
@@ -79,8 +84,8 @@ interface Project {
   progress: number;
 }
 
-// Initial strategy goals with linked projects
-const initialStrategicGoals = [
+// Export the initial goals for use in other components
+export const initialStrategicGoals = [
   {
     id: '1',
     title: 'Improve Project Completion Rate',
@@ -92,7 +97,10 @@ const initialStrategicGoals = [
     startDate: '2023-01-01',
     endDate: '2025-12-31',
     assignedTo: 'Department A',
-    linkedProjects: ['p1', 'p4'],
+    linkedProjects: [
+      { projectId: 'p1', weight: 60 },
+      { projectId: 'p4', weight: 40 }
+    ],
     isProgressAutoCalculated: true,
     createdAt: '2023-01-01',
     updatedAt: '2023-01-01'
@@ -115,8 +123,8 @@ const initialStrategicGoals = [
   },
 ];
 
-// Initial annual goals with linked projects
-const initialAnnualGoals = [
+// Export the initial annual goals
+export const initialAnnualGoals = [
   {
     id: '3',
     title: 'Client Satisfaction',
@@ -128,7 +136,10 @@ const initialAnnualGoals = [
     startDate: '2023-01-15',
     endDate: '2023-12-31',
     assignedTo: 'All Departments',
-    linkedProjects: ['p2', 'p3'],
+    linkedProjects: [
+      { projectId: 'p2', weight: 50 },
+      { projectId: 'p3', weight: 50 }
+    ],
     isProgressAutoCalculated: true,
     createdAt: '2023-01-15',
     updatedAt: '2023-12-15'
@@ -191,6 +202,7 @@ const GoalsPage: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(false);
+  const [projectWeights, setProjectWeights] = useState<{ [key: string]: number }>({});
 
   // Fetch projects when component mounts
   useEffect(() => {
@@ -212,15 +224,22 @@ const GoalsPage: React.FC = () => {
   }, []);
 
   // Calculate a goal's progress based on the progress of its linked projects
-  const calculateGoalProgressFromProjects = (linkedProjectIds: string[]): number => {
-    if (!linkedProjectIds.length) return 0;
+  const calculateGoalProgressFromProjects = (linkedProjectWeights: ProjectWeight[]): number => {
+    if (linkedProjectWeights.length === 0) return 0;
     
-    const linkedProjects = projects.filter(p => linkedProjectIds.includes(p.id));
-    if (!linkedProjects.length) return 0;
+    let weightedProgress = 0;
+    let totalWeight = 0;
     
-    // Calculate the average progress of all linked projects
-    const totalProgress = linkedProjects.reduce((sum, project) => sum + project.progress, 0);
-    return Math.round(totalProgress / linkedProjects.length);
+    linkedProjectWeights.forEach(projectWeight => {
+      const project = projects.find(p => p.id === projectWeight.projectId);
+      if (project) {
+        weightedProgress += (project.progress * projectWeight.weight);
+        totalWeight += projectWeight.weight;
+      }
+    });
+    
+    // Return weighted average, or 0 if no valid projects were found
+    return totalWeight > 0 ? Math.round(weightedProgress / totalWeight) : 0;
   };
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
@@ -228,23 +247,38 @@ const GoalsPage: React.FC = () => {
   };
 
   const handleOpenDialog = (goal: GoalInterface | null = null, editing = false) => {
-    setCurrentGoal(goal ? { ...goal } : {
-      id: crypto.randomUUID(),
-      title: '',
-      description: '',
-      type: tabValue === 0 ? GoalType.STRATEGIC : GoalType.ANNUAL,
-      category: GoalCategory.PERFORMANCE,
-      status: GoalStatus.NOT_STARTED,
-      progress: 0,
-      startDate: '',
-      endDate: '',
-      assignedTo: '',
-      linkedProjects: [],
-      isProgressAutoCalculated: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    } as GoalInterface);
     setIsEditing(editing);
+    
+    if (goal) {
+      setCurrentGoal(goal);
+      
+      // Initialize project weights from existing linked projects
+      const weights: { [key: string]: number } = {};
+      goal.linkedProjects.forEach(link => {
+        weights[link.projectId] = link.weight;
+      });
+      setProjectWeights(weights);
+    } else {
+      // Create a new goal with default values
+      setCurrentGoal({
+        id: Date.now().toString(),
+        title: '',
+        description: '',
+        type: tabValue === 0 ? GoalType.STRATEGIC : GoalType.ANNUAL,
+        category: GoalCategory.PERFORMANCE,
+        status: GoalStatus.NOT_STARTED,
+        progress: 0,
+        startDate: new Date().toISOString().split('T')[0],
+        endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
+        assignedTo: '',
+        linkedProjects: [],
+        isProgressAutoCalculated: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+      setProjectWeights({});
+    }
+    
     setOpenDialog(true);
   };
 
@@ -252,6 +286,7 @@ const GoalsPage: React.FC = () => {
     setOpenDialog(false);
     setCurrentGoal(null);
     setIsEditing(false);
+    setProjectWeights({});
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -275,19 +310,40 @@ const GoalsPage: React.FC = () => {
   };
 
   const handleLinkedProjectsChange = (event: SelectChangeEvent<string[]>) => {
-    const selectedProjects = event.target.value as string[];
+    if (!currentGoal) return;
     
-    setCurrentGoal(prevGoal => {
-      if (!prevGoal) return null;
-      
-      const updatedGoal = { ...prevGoal, linkedProjects: selectedProjects };
-      
-      // If auto-calculation is enabled, update the progress based on linked projects
-      if (updatedGoal.isProgressAutoCalculated) {
-        updatedGoal.progress = calculateGoalProgressFromProjects(selectedProjects);
+    const selectedProjectIds = event.target.value as string[];
+    
+    // Initialize weights for newly selected projects
+    const updatedWeights = { ...projectWeights };
+    
+    selectedProjectIds.forEach(projectId => {
+      // If this is a newly selected project, initialize its weight to a default value
+      if (!updatedWeights[projectId]) {
+        updatedWeights[projectId] = 100 / selectedProjectIds.length; // Default to equal weights
       }
-      
-      return updatedGoal;
+    });
+    
+    // Remove weights for projects that are no longer selected
+    Object.keys(updatedWeights).forEach(projectId => {
+      if (!selectedProjectIds.includes(projectId)) {
+        delete updatedWeights[projectId];
+      }
+    });
+    
+    // Normalize weights to ensure they sum to 100%
+    normalizeWeights(updatedWeights);
+    setProjectWeights(updatedWeights);
+    
+    // Update the linked projects with new weights
+    const updatedLinkedProjects = selectedProjectIds.map(projectId => ({
+      projectId,
+      weight: updatedWeights[projectId]
+    }));
+    
+    setCurrentGoal({
+      ...currentGoal,
+      linkedProjects: updatedLinkedProjects
     });
   };
 
@@ -301,10 +357,33 @@ const GoalsPage: React.FC = () => {
       
       // If enabling auto-calculation, update the progress based on linked projects
       if (isAutoCalculated) {
-        updatedGoal.progress = calculateGoalProgressFromProjects(prevGoal.linkedProjects);
+        updatedGoal.progress = calculateGoalProgressFromProjects(prevGoal.linkedProjects.map(p => p));
       }
       
       return updatedGoal;
+    });
+  };
+
+  const handleWeightChange = (projectId: string, newWeight: number) => {
+    if (!currentGoal) return;
+    
+    const updatedWeights = { ...projectWeights };
+    updatedWeights[projectId] = newWeight;
+    
+    // Ensure weights sum to 100%
+    normalizeWeights(updatedWeights);
+    setProjectWeights(updatedWeights);
+    
+    // Update linked projects with new weights
+    const updatedLinkedProjects = currentGoal.linkedProjects.map(project => 
+      project.projectId === projectId 
+        ? { ...project, weight: newWeight }
+        : { ...project, weight: updatedWeights[project.projectId] }
+    );
+    
+    setCurrentGoal({
+      ...currentGoal,
+      linkedProjects: updatedLinkedProjects
     });
   };
 
@@ -312,32 +391,42 @@ const GoalsPage: React.FC = () => {
     event.preventDefault();
     if (!currentGoal) return;
     
-    // Before saving, update the progress if auto-calculation is enabled
-    if (currentGoal.isProgressAutoCalculated) {
-      currentGoal.progress = calculateGoalProgressFromProjects(currentGoal.linkedProjects);
-    }
+    // Ensure project weights are properly set before saving
+    const finalLinkedProjects = currentGoal.linkedProjects.map(project => ({
+      projectId: project.projectId,
+      weight: projectWeights[project.projectId] || 0
+    }));
     
-    // Update updatedAt timestamp
-    currentGoal.updatedAt = new Date().toISOString();
+    const finalGoal = {
+      ...currentGoal,
+      linkedProjects: finalLinkedProjects,
+      updatedAt: new Date().toISOString()
+    };
     
+    // Save the goal
     if (isEditing) {
-      if (tabValue === 0) {
-        setStrategicGoals(prevGoals => 
-          prevGoals.map(goal => goal.id === currentGoal.id ? currentGoal : goal)
+      // Update existing goal
+      if (currentGoal.type === GoalType.STRATEGIC) {
+        setStrategicGoals(prevGoals =>
+          prevGoals.map(goal => goal.id === currentGoal.id ? finalGoal : goal)
         );
       } else {
-        setAnnualGoals(prevGoals => 
-          prevGoals.map(goal => goal.id === currentGoal.id ? currentGoal : goal)
+        setAnnualGoals(prevGoals =>
+          prevGoals.map(goal => goal.id === currentGoal.id ? finalGoal : goal)
         );
       }
     } else {
-      if (tabValue === 0) {
-        setStrategicGoals(prevGoals => [...prevGoals, currentGoal]);
+      // Add new goal
+      if (finalGoal.type === GoalType.STRATEGIC) {
+        setStrategicGoals(prevGoals => [...prevGoals, finalGoal]);
       } else {
-        setAnnualGoals(prevGoals => [...prevGoals, currentGoal]);
+        setAnnualGoals(prevGoals => [...prevGoals, finalGoal]);
       }
     }
-    handleCloseDialog();
+    
+    setOpenDialog(false);
+    setCurrentGoal(null);
+    setProjectWeights({});
   };
 
   const handleDeleteGoal = (id: string) => {
@@ -387,87 +476,130 @@ const GoalsPage: React.FC = () => {
   const renderGoalCards = (goals: GoalInterface[]) => (
     <GridContainer spacing={3}>
       {goals.map(goal => (
-        <GridItem xs={12} md={6} key={goal.id}>
-          <Paper sx={{ p: 3, position: 'relative', height: '100%' }}>
-            <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Typography variant="h6">{goal.title}</Typography>
-              <Box>
-                <IconButton size="small" onClick={() => handleOpenDialog(goal, true)}>
-                  <EditIcon />
-                </IconButton>
-                <IconButton size="small" color="error" onClick={() => handleDeleteGoal(goal.id)}>
-                  <DeleteIcon />
-                </IconButton>
-              </Box>
+        <GridItem key={goal.id} xs={12} md={6} lg={4}>
+          <Paper 
+            elevation={2} 
+            sx={{ 
+              p: 2, 
+              height: '100%', 
+              display: 'flex', 
+              flexDirection: 'column',
+              position: 'relative'
+            }}
+          >
+            <Box sx={{ 
+              position: 'absolute', 
+              top: 10, 
+              right: 10,
+              display: 'flex'
+            }}>
+              <IconButton 
+                size="small" 
+                onClick={() => handleOpenDialog(goal, true)}
+                sx={{ mr: 1 }}
+              >
+                <EditIcon fontSize="small" />
+              </IconButton>
+              <IconButton 
+                size="small" 
+                onClick={() => handleDeleteGoal(goal.id)}
+              >
+                <DeleteIcon fontSize="small" />
+              </IconButton>
             </Box>
             
-            <Typography variant="body2" color="text.secondary" paragraph>
+            <Typography variant="h6" gutterBottom>
+              {goal.title}
+            </Typography>
+
+            <Typography 
+              variant="body2" 
+              color="text.secondary" 
+              sx={{ mb: 2, minHeight: '40px' }}
+            >
               {goal.description}
             </Typography>
             
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-              <Chip
-                label={getTranslatedCategory(goal.category)}
+            <Box sx={{ mb: 2 }}>
+              <Chip 
+                label={getTranslatedStatus(goal.status)} 
+                size="small" 
+                sx={{ mr: 1, mb: 1 }}
+                color={getStatusColor(goal.status)}
+              />
+              <Chip 
+                label={getTranslatedCategory(goal.category)} 
                 size="small"
-                color="primary"
+                sx={{ mb: 1 }}
                 variant="outlined"
               />
-              <Chip
-                label={getTranslatedStatus(goal.status)}
-                size="small"
-                color={getStatusColor(goal.status) as any}
-              />
-              {goal.isProgressAutoCalculated && (
-                <Chip
-                  label={t('goals.autoCalculated')}
-                  size="small"
-                  color="secondary"
-                  icon={<LinkIcon />}
-                />
-              )}
             </Box>
             
-            <Box sx={{ mb: 2 }}>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 0.5 }}>
-                {t('project.progress')}: {goal.progress}%
+            <Box sx={{ mb: 1 }}>
+              <Typography variant="body2" display="flex" alignItems="center">
+                <Box component="span" sx={{ width: '50%', fontWeight: 'bold', mr: 1 }}>
+                  {t('goals.progress')}:
+                </Box>
+                <Box component="span" sx={{ width: '50%' }}>
+                  {goal.progress}%
+                </Box>
               </Typography>
-              <LinearProgress
-                variant="determinate"
-                value={goal.progress}
-                sx={{
-                  height: 8,
-                  borderRadius: 4,
-                }}
+              <LinearProgress 
+                variant="determinate" 
+                value={goal.progress} 
+                sx={{ mt: 1, mb: 1 }}
               />
+              <Typography variant="caption" color="text.secondary">
+                <FormControlLabel
+                  control={<Checkbox checked={goal.isProgressAutoCalculated} size="small" disabled />}
+                  label={t('goals.autoCalculated')}
+                  sx={{ '& .MuiFormControlLabel-label': { fontSize: '0.75rem' } }}
+                />
+              </Typography>
             </Box>
             
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              {t('goals.assignedTo')}: {goal.assignedTo}
-            </Typography>
+            <Box sx={{ mb: 1 }}>
+              <Typography variant="body2" sx={{ fontWeight: 'bold' }}>
+                {t('timeline')}:
+              </Typography>
+              <Typography variant="body2">
+                {new Date(goal.startDate).toLocaleDateString()} - {new Date(goal.endDate).toLocaleDateString()}
+              </Typography>
+            </Box>
             
-            <Typography variant="body2" sx={{ mb: 1 }}>
-              {t('common.timeline')}: {goal.startDate} {t('common.to')} {goal.endDate}
-            </Typography>
+            <Box sx={{ mt: 'auto', pt: 1 }}>
+              <Typography variant="body2">
+                {t('goals.assignedTo')}: {goal.assignedTo}
+              </Typography>
+            </Box>
             
             {goal.linkedProjects.length > 0 && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
                   {t('goals.linkedProjects')}:
                 </Typography>
-                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                  {goal.linkedProjects.map(projectId => {
-                    const project = projects.find(p => p.id === projectId);
-                    return (
+                {goal.linkedProjects.map((projectWeight) => {
+                  const project = projects.find(p => p.id === projectWeight.projectId);
+                  return (
+                    <Box key={projectWeight.projectId} sx={{ 
+                      display: 'flex', 
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      mb: 0.5 
+                    }}>
                       <Chip
-                        key={projectId}
-                        label={project ? project.name : projectId}
+                        icon={<LinkIcon fontSize="small" />}
+                        label={project ? project.name : projectWeight.projectId}
                         size="small"
-                        color="info"
                         variant="outlined"
+                        sx={{ mr: 1 }}
                       />
-                    );
-                  })}
-                </Box>
+                      <Typography variant="caption" sx={{ fontWeight: 'medium' }}>
+                        {projectWeight.weight}%
+                      </Typography>
+                    </Box>
+                  );
+                })}
               </Box>
             )}
           </Paper>
@@ -475,6 +607,28 @@ const GoalsPage: React.FC = () => {
       ))}
     </GridContainer>
   );
+
+  // Function to normalize weights to sum to 100%
+  const normalizeWeights = (weights: { [key: string]: number }) => {
+    const projectIds = Object.keys(weights);
+    if (projectIds.length === 0) return;
+    
+    // Calculate the total of all weights
+    const total = projectIds.reduce((sum, id) => sum + weights[id], 0);
+    
+    // If the total is not 100, normalize
+    if (total !== 100 && total !== 0) {
+      projectIds.forEach(id => {
+        weights[id] = Math.round((weights[id] / total) * 100);
+      });
+      
+      // Handle any rounding errors to ensure the sum is exactly 100
+      const newTotal = projectIds.reduce((sum, id) => sum + weights[id], 0);
+      if (newTotal !== 100) {
+        weights[projectIds[0]] += (100 - newTotal);
+      }
+    }
+  };
 
   return (
     <Box sx={{ p: 3 }}>
@@ -606,37 +760,41 @@ const GoalsPage: React.FC = () => {
             </GridItem>
             
             <GridItem xs={12}>
-              <FormControl fullWidth>
+              <FormControl fullWidth margin="normal">
                 <InputLabel id="linked-projects-label">{t('goals.linkedProjects')}</InputLabel>
                 <Select
                   labelId="linked-projects-label"
-                  id="linked-projects"
                   multiple
-                  value={currentGoal?.linkedProjects || []}
+                  value={currentGoal?.linkedProjects.map(p => p.projectId) || []}
                   onChange={handleLinkedProjectsChange}
                   input={<OutlinedInput label={t('goals.linkedProjects')} />}
                   renderValue={(selected) => (
                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {(selected as string[]).map((projectId) => {
-                        const project = projects.find(p => p.id === projectId);
+                      {selected.map((value) => {
+                        const project = projects.find(p => p.id === value);
                         return (
                           <Chip 
-                            key={projectId} 
-                            label={project ? project.name : projectId} 
+                            key={value} 
+                            label={project ? project.name : value} 
                             size="small" 
                           />
                         );
                       })}
                     </Box>
                   )}
+                  MenuProps={{
+                    PaperProps: {
+                      style: {
+                        maxHeight: 224,
+                        width: 250,
+                      },
+                    },
+                  }}
                 >
                   {projects.map((project) => (
                     <MenuItem key={project.id} value={project.id}>
-                      <Checkbox checked={(currentGoal?.linkedProjects || []).indexOf(project.id) > -1} />
-                      <ListItemText 
-                        primary={project.name}
-                        secondary={`${project.status} - ${project.progress}% complete`}
-                      />
+                      <Checkbox checked={currentGoal?.linkedProjects.some(p => p.projectId === project.id) || false} />
+                      <ListItemText primary={project.name} />
                     </MenuItem>
                   ))}
                 </Select>
@@ -675,6 +833,44 @@ const GoalsPage: React.FC = () => {
                   max={100}
                 />
               </GridItem>
+            )}
+            
+            {/* Project Weights Section */}
+            {currentGoal?.linkedProjects.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2" gutterBottom>
+                  {t('Project Weights')}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" paragraph>
+                  {t('Adjust the weight of each project\'s contribution to this goal. Weights will automatically balance to 100%.')}
+                </Typography>
+                
+                {currentGoal.linkedProjects.map((projectLink) => {
+                  const project = projects.find(p => p.id === projectLink.projectId);
+                  return (
+                    <Box key={projectLink.projectId} sx={{ mb: 2 }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2">
+                          {project ? project.name : projectLink.projectId}
+                        </Typography>
+                        <Typography variant="body2" fontWeight="medium">
+                          {projectWeights[projectLink.projectId] || projectLink.weight}%
+                        </Typography>
+                      </Box>
+                      <Slider
+                        value={projectWeights[projectLink.projectId] || projectLink.weight}
+                        onChange={(_, newValue) => handleWeightChange(projectLink.projectId, newValue as number)}
+                        aria-labelledby="project-weight-slider"
+                        valueLabelDisplay="auto"
+                        step={5}
+                        marks
+                        min={5}
+                        max={100}
+                      />
+                    </Box>
+                  );
+                })}
+              </Box>
             )}
           </GridContainer>
         </DialogContent>

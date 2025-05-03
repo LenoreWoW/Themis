@@ -1,0 +1,101 @@
+diff --git a/node_modules/nth-check/package.json b/node_modules/nth-check/package.json
+index 7ad170a..0aaa815 100644
+--- a/node_modules/nth-check/package.json
++++ b/node_modules/nth-check/package.json
+@@ -1,6 +1,6 @@
+ {
+   "name": "nth-check",
+-  "version": "1.0.2",
++  "version": "2.0.1",
+   "description": "Parses and compiles CSS nth-checks",
+   "keywords": [
+     "nth-check",
+@@ -17,10 +17,10 @@
+     "compile": "npm run compile:cjs && npm test",
+     "compile:cjs": "tsc -p tsconfig.cjs.json",
+     "prepublishOnly": "npm run compile",
+-    "test": "node ./index.js"
++    "test": "node ./lib/index.js"
+   },
+   "devDependencies": {
+     "@types/boolbase": "^1.0.1",
+-    "typescript": "^4.0.2"
++    "typescript": "^4.3.2"
+   }
+ }
+
+diff --git a/node_modules/nth-check/lib/index.js b/node_modules/nth-check/lib/index.js
+index 1b1b7fe..5cb4d9c 100644
+--- a/node_modules/nth-check/lib/index.js
++++ b/node_modules/nth-check/lib/index.js
+@@ -36,13 +36,13 @@ function parse(formula) {
+     }
+     return [a, b];
+ }
+-var RE_NTH = /^([+-]?\d*n)?\s*(?:([+-]?)\s*(\d+))?$/;
++var RE_NTH_ELEMENT = /^([+-]?\d*)?n(?:\s*([+-]?\s*\d+))?$/;
++var RE_DIGIT = /^([+-]?\d+)$/;
+ /**
+  * Parses an expression.
+  *
+  * @throws An `Error` if parsing fails.
+- * @returns An array containing `a` and `b`.
+- * @example nthCheck.parse("2n+3"); // [2, 3]
++ * @returns An array containing `a` and `b`, as numeric values.
+  */
+ function parse(expr) {
+     var _a, _b;
+@@ -50,34 +50,32 @@ function parse(expr) {
+     if (expr === "even") {
+         return [2, 0];
+     }
+-    else if (expr === "odd") {
++    if (expr === "odd") {
+         return [2, 1];
+     }
+-    // Parse[ +-]?\d*n[ +-]\d*|[ +-]?\d+
+-    var parsed = (_a = expr.trim().toLowerCase().match(RE_NTH)) !== null && _a !== void 0 ? _a : [];
+-    var a = ((_b = parsed[1]) === null || _b === void 0 ? void 0 : _b.replace(/\s+/g, "")) || undefined;
+-    // Extract sign for b
+-    var sign = parsed[2] || "";
+-    // Extract b
+-    var b = parsed[3] || "0";
+-    if (!a) {
+-        return sign ? [0, parseInt(sign + b, 10)] : [0, parseInt(b, 10)];
++    var digitMatch = expr.match(RE_DIGIT);
++    if (digitMatch) {
++        return [0, parseInt(digitMatch[1], 10)];
+     }
+-    // a
+-    a = a.replace(/\D/g, "");
+-    // Eg. +n, -n
+-    if (a === "n") {
+-        return [sign === "-" ? -1 : 1, parseInt(b, 10)];
++    var elementMatch = expr.match(RE_NTH_ELEMENT);
++    if (elementMatch) {
++        var a = (_a = elementMatch[1]) !== null && _a !== void 0 ? _a : "";
++        if (a === "+") {
++            a = "1";
++        }
++        else if (a === "-") {
++            a = "-1";
++        }
++        var aNum = a === "" ? 1 : parseInt(a, 10);
++        var bStr = (_b = elementMatch[2]) !== null && _b !== void 0 ? _b : "0";
++        var bNum = parseInt(bStr.replace(/\s+/g, ""), 10);
++        return [aNum, bNum];
+     }
+-    // Eg. 2n, 3n, 4n ...
+-    if (a === "") {
+-        return [1, parseInt(sign + b, 10)];
+-    }
+-    // Eg. 2n+1, 3n-20, 4n+3 ...
+-    return [parseInt((parsed[1] || "").charAt(0) === "-" ? "-" + a : a, 10), parseInt(sign + b, 10)];
++    throw new Error("n-th rule couldn't be parsed ('" + expr + "')");
+ }
+ exports.parse = parse;
+ 
++
+ /**
+  * Calculates a predicate function.
+  */ 

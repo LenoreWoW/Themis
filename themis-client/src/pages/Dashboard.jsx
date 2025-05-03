@@ -1,6 +1,33 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import './Dashboard.css';
+import { 
+  Box, 
+  Typography, 
+  Container, 
+  Grid, 
+  Paper, 
+  Card, 
+  CardContent, 
+  CardHeader,
+  Divider,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText
+} from '@mui/material';
+import { useTranslation } from 'react-i18next';
+import { useTestAuth } from '../context/TestAuthContext';
+import UserRoleBadge from '../components/UserRoleBadge';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import FolderSpecialIcon from '@mui/icons-material/FolderSpecial';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import PeopleIcon from '@mui/icons-material/People';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import SettingsIcon from '@mui/icons-material/Settings';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import BilingualContentDisplay from '../components/BilingualContentDisplay';
 
 // Mock data for the dashboard
 const mockTasks = [
@@ -35,6 +62,22 @@ const mockTimelineEvents = [
 ];
 
 function Dashboard() {
+  const { t } = useTranslation();
+  const { 
+    testUser, 
+    canCreateProjects, 
+    canEditProjects, 
+    canApproveProjects, 
+    canViewAllProjects,
+    canCreateTasks,
+    canAssignTasks,
+    canReviewTasks,
+    canManageUsers,
+    canViewReports,
+    canManageSettings,
+    canAccessAdminPanel
+  } = useTestAuth();
+
   const [selectedView, setSelectedView] = useState('overview');
   
   // Calculate task statistics
@@ -68,260 +111,238 @@ function Dashboard() {
     }
   };
   
+  // Example metric data
+  const metrics = {
+    totalProjects: 12,
+    inProgress: 5,
+    completed: 4,
+    overdue: 3,
+    openTasks: 28,
+    upcomingDeadlines: 7
+  };
+
+  // Check if user is authenticated
+  if (!testUser) {
+    return (
+      <Container maxWidth="md" sx={{ py: 8, textAlign: 'center' }}>
+        <Typography variant="h4" gutterBottom>
+          {t('Please log in to access the dashboard')}
+        </Typography>
+      </Container>
+    );
+  }
+
   return (
-    <div className="dashboard-container">
-      <div className="dashboard-header">
-        <div className="dashboard-title">
-          <h1>Dashboard</h1>
-          <span className="dashboard-date">{new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</span>
-        </div>
-        <div className="dashboard-views">
-          <button 
-            className={selectedView === 'overview' ? 'active' : ''} 
-            onClick={() => setSelectedView('overview')}
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Grid container spacing={3}>
+        {/* Welcome Section */}
+        <Grid item xs={12}>
+          <Paper 
+            elevation={3} 
+            sx={{ 
+              p: 3, 
+              display: 'flex', 
+              flexDirection: { xs: 'column', md: 'row' },
+              alignItems: { xs: 'flex-start', md: 'center' },
+              justifyContent: 'space-between',
+              mb: 3
+            }}
           >
-            Overview
-          </button>
-          <button 
-            className={selectedView === 'projects' ? 'active' : ''} 
-            onClick={() => setSelectedView('projects')}
-          >
-            Projects
-          </button>
-          <button 
-            className={selectedView === 'team' ? 'active' : ''} 
-            onClick={() => setSelectedView('team')}
-          >
-            Team
-          </button>
-          <button 
-            className={selectedView === 'timeline' ? 'active' : ''} 
-            onClick={() => setSelectedView('timeline')}
-          >
-            Timeline
-          </button>
-        </div>
-      </div>
-      
-      {selectedView === 'overview' && (
-        <div className="dashboard-overview">
-          <div className="dashboard-stats">
-            <div className="stat-card">
-              <div className="stat-title">Total Tasks</div>
-              <div className="stat-value">{totalTasks}</div>
-              <div className="stat-footer">
-                <div className="stat-progress" style={{ width: '100%' }}></div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-title">To Do</div>
-              <div className="stat-value">{todoTasks}</div>
-              <div className="stat-footer">
-                <div className="stat-progress status-todo" style={{ width: `${(todoTasks / totalTasks) * 100}%` }}></div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-title">In Progress</div>
-              <div className="stat-value">{inProgressTasks}</div>
-              <div className="stat-footer">
-                <div className="stat-progress status-progress" style={{ width: `${(inProgressTasks / totalTasks) * 100}%` }}></div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-title">Review</div>
-              <div className="stat-value">{reviewTasks}</div>
-              <div className="stat-footer">
-                <div className="stat-progress status-review" style={{ width: `${(reviewTasks / totalTasks) * 100}%` }}></div>
-              </div>
-            </div>
-            <div className="stat-card">
-              <div className="stat-title">Completed</div>
-              <div className="stat-value">{completedTasks}</div>
-              <div className="stat-footer">
-                <div className="stat-progress status-done" style={{ width: `${(completedTasks / totalTasks) * 100}%` }}></div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="dashboard-row">
-            <div className="dashboard-priorities">
-              <div className="section-header">
-                <h2>Task Priorities</h2>
-              </div>
-              <div className="priority-chart">
-                <div className="priority-bar">
-                  <div className="priority-label">High</div>
-                  <div className="priority-bar-container">
-                    <div className="priority-bar-fill priority-high" style={{ width: `${(highPriorityTasks / totalTasks) * 100}%` }}></div>
-                  </div>
-                  <div className="priority-count">{highPriorityTasks}</div>
-                </div>
-                <div className="priority-bar">
-                  <div className="priority-label">Medium</div>
-                  <div className="priority-bar-container">
-                    <div className="priority-bar-fill priority-medium" style={{ width: `${(mediumPriorityTasks / totalTasks) * 100}%` }}></div>
-                  </div>
-                  <div className="priority-count">{mediumPriorityTasks}</div>
-                </div>
-                <div className="priority-bar">
-                  <div className="priority-label">Low</div>
-                  <div className="priority-bar-container">
-                    <div className="priority-bar-fill priority-low" style={{ width: `${(lowPriorityTasks / totalTasks) * 100}%` }}></div>
-                  </div>
-                  <div className="priority-count">{lowPriorityTasks}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div className="dashboard-recent-tasks">
-              <div className="section-header">
-                <h2>Recent Tasks</h2>
-                <Link to="/tasks" className="view-all">View All</Link>
-              </div>
-              <div className="recent-tasks-list">
-                {mockTasks.slice(0, 5).map(task => (
-                  <div key={task.id} className="task-item">
-                    <div className={`task-status ${getStatusClass(task.status)}`}></div>
-                    <div className="task-details">
-                      <div className="task-title">{task.title}</div>
-                      <div className="task-meta">
-                        <span className={`task-priority ${getPriorityClass(task.priority)}`}>
-                          {task.priority.charAt(0).toUpperCase() + task.priority.slice(1)}
-                        </span>
-                        <span className="task-assignee">{task.assignee}</span>
-                        <span className="task-due-date">Due: {task.dueDate}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-          
-          <div className="dashboard-projects-preview">
-            <div className="section-header">
-              <h2>Project Progress</h2>
-              <Link to="/projects" className="view-all">View All Projects</Link>
-            </div>
-            <div className="projects-preview-list">
-              {mockProjects.map(project => (
-                <div key={project.id} className="project-preview-item">
-                  <div className="project-preview-header">
-                    <div className="project-preview-name">{project.name}</div>
-                    <div className="project-preview-progress">{project.progress}%</div>
-                  </div>
-                  <div className="project-preview-progress-bar">
-                    <div className="project-preview-progress-fill" style={{ width: `${project.progress}%` }}></div>
-                  </div>
-                  <div className="project-preview-footer">
-                    <div className="project-preview-tasks">{project.completedTasks} / {project.tasks} tasks completed</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-      
-      {selectedView === 'projects' && (
-        <div className="dashboard-projects">
-          <div className="section-header">
-            <h2>All Projects</h2>
-            <button className="add-button">+ Add Project</button>
-          </div>
-          <div className="projects-list">
-            {mockProjects.map(project => (
-              <div key={project.id} className="project-card">
-                <div className="project-card-header">
-                  <h3>{project.name}</h3>
-                  <div className="project-progress-badge">{project.progress}%</div>
-                </div>
-                <div className="project-progress-bar">
-                  <div className="project-progress-fill" style={{ width: `${project.progress}%` }}></div>
-                </div>
-                <div className="project-stats">
-                  <div className="project-stat">
-                    <div className="project-stat-label">Tasks</div>
-                    <div className="project-stat-value">{project.tasks}</div>
-                  </div>
-                  <div className="project-stat">
-                    <div className="project-stat-label">Completed</div>
-                    <div className="project-stat-value">{project.completedTasks}</div>
-                  </div>
-                  <div className="project-stat">
-                    <div className="project-stat-label">Pending</div>
-                    <div className="project-stat-value">{project.tasks - project.completedTasks}</div>
-                  </div>
-                </div>
-                <div className="project-card-actions">
-                  <button className="project-action-button">View Details</button>
-                  <button className="project-action-button">Edit</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {selectedView === 'team' && (
-        <div className="dashboard-team">
-          <div className="section-header">
-            <h2>Team Members</h2>
-            <button className="add-button">+ Add Member</button>
-          </div>
-          <div className="team-list">
-            {mockTeamMembers.map(member => (
-              <div key={member.id} className="team-member-card">
-                <div className="team-member-avatar">{member.avatar}</div>
-                <div className="team-member-info">
-                  <div className="team-member-name">{member.name}</div>
-                  <div className="team-member-role">{member.role}</div>
-                </div>
-                <div className="team-member-stats">
-                  <div className="team-member-stat">
-                    <div className="team-member-stat-value">{member.tasks}</div>
-                    <div className="team-member-stat-label">Tasks</div>
-                  </div>
-                  <div className="team-member-stat">
-                    <div className="team-member-stat-value">{member.completedTasks}</div>
-                    <div className="team-member-stat-label">Completed</div>
-                  </div>
-                  <div className="team-member-stat">
-                    <div className="team-member-stat-value">{Math.round((member.completedTasks / member.tasks) * 100)}%</div>
-                    <div className="team-member-stat-label">Efficiency</div>
-                  </div>
-                </div>
-                <div className="team-member-progress">
-                  <div className="team-member-progress-fill" style={{ width: `${(member.completedTasks / member.tasks) * 100}%` }}></div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      
-      {selectedView === 'timeline' && (
-        <div className="dashboard-timeline">
-          <div className="section-header">
-            <h2>Project Timeline</h2>
-            <button className="add-button">+ Add Event</button>
-          </div>
-          <div className="timeline-container">
-            <div className="timeline-line"></div>
-            {mockTimelineEvents.map(event => (
-              <div key={event.id} className={`timeline-event event-${event.type}`}>
-                <div className="timeline-event-date">{event.date}</div>
-                <div className="timeline-event-content">
-                  <div className="timeline-event-type">{event.type.charAt(0).toUpperCase() + event.type.slice(1)}</div>
-                  <div className="timeline-event-title">{event.title}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
+            <Box>
+              <Typography variant="h4" gutterBottom>
+                {t('common.welcome')}, {testUser.name}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Typography variant="subtitle1" sx={{ mr: 1 }}>
+                  {t('Your role')}:
+                </Typography>
+                <UserRoleBadge showTooltip />
+              </Box>
+              <Typography variant="body1" color="text.secondary">
+                {t('dashboard.title')} - {new Date().toLocaleDateString()}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* Your Role and Permissions */}
+        <Grid item xs={12} md={6}>
+          <Card elevation={2}>
+            <CardHeader 
+              title={t('Role Permissions')}
+              subheader={t('These are the actions you can perform')}
+            />
+            <Divider />
+            <CardContent>
+              <List dense>
+                <PermissionListItem 
+                  has={canCreateProjects()}
+                  label={t('Create Projects')}
+                  icon={<FolderSpecialIcon />}
+                />
+                <PermissionListItem 
+                  has={canEditProjects()}
+                  label={t('Edit Projects')}
+                  icon={<FolderSpecialIcon />}
+                />
+                <PermissionListItem 
+                  has={canApproveProjects()}
+                  label={t('Approve Projects')}
+                  icon={<FolderSpecialIcon />}
+                />
+                <PermissionListItem 
+                  has={canViewAllProjects()}
+                  label={t('View All Projects')}
+                  icon={<FolderSpecialIcon />}
+                />
+                <PermissionListItem 
+                  has={canCreateTasks()}
+                  label={t('Create Tasks')}
+                  icon={<AssignmentIcon />}
+                />
+                <PermissionListItem 
+                  has={canAssignTasks()}
+                  label={t('Assign Tasks')}
+                  icon={<AssignmentIcon />}
+                />
+                <PermissionListItem 
+                  has={canReviewTasks()}
+                  label={t('Review Tasks')}
+                  icon={<AssignmentIcon />}
+                />
+                <PermissionListItem 
+                  has={canManageUsers()}
+                  label={t('Manage Users')}
+                  icon={<PeopleIcon />}
+                />
+                <PermissionListItem 
+                  has={canViewReports()}
+                  label={t('View Reports')}
+                  icon={<AssessmentIcon />}
+                />
+                <PermissionListItem 
+                  has={canManageSettings()}
+                  label={t('Manage Settings')}
+                  icon={<SettingsIcon />}
+                />
+                <PermissionListItem 
+                  has={canAccessAdminPanel()}
+                  label={t('Access Admin Panel')}
+                  icon={<AdminPanelSettingsIcon />}
+                />
+              </List>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* KPIs / Metrics */}
+        <Grid item xs={12} md={6}>
+          <Card elevation={2}>
+            <CardHeader 
+              title={<BilingualContentDisplay content={t('dashboard.kpi')} />}
+              subheader={<BilingualContentDisplay content={t('dashboard.metrics')} />}
+            />
+            <Divider />
+            <CardContent>
+              <Grid container spacing={2}>
+                <KpiItem 
+                  title={t('dashboard.totalProjects')}
+                  value={metrics.totalProjects}
+                  color="primary"
+                />
+                <KpiItem 
+                  title={t('dashboard.inProgress')}
+                  value={metrics.inProgress}
+                  color="info"
+                />
+                <KpiItem 
+                  title={t('dashboard.completed')}
+                  value={metrics.completed}
+                  color="success"
+                />
+                <KpiItem 
+                  title={t('dashboard.overdue')}
+                  value={metrics.overdue}
+                  color="error"
+                />
+                <KpiItem 
+                  title={t('dashboard.tasks')}
+                  value={metrics.openTasks}
+                  color="secondary"
+                />
+                <KpiItem 
+                  title={t('dashboard.approachingDeadline')}
+                  value={metrics.upcomingDeadlines}
+                  color="warning"
+                />
+              </Grid>
+            </CardContent>
+          </Card>
+        </Grid>
+
+        {/* Project Workflow Explanation */}
+        <Grid item xs={12}>
+          <Paper sx={{ p: 3, mt: 3 }}>
+            <Typography variant="h5" gutterBottom>
+              {t('Project Workflow')}
+            </Typography>
+            <Typography variant="body1" paragraph>
+              This is a test environment where you can explore different user roles and permissions. 
+              Based on your current role as <strong>{testUser.permissions.name}</strong>, you have 
+              specific permissions that determine what actions you can perform in the system.
+            </Typography>
+            <Typography variant="body1" paragraph>
+              Try changing roles on the login page to see how the user experience differs based on permissions.
+            </Typography>
+          </Paper>
+        </Grid>
+      </Grid>
+    </Container>
   );
 }
+
+// Helper component for permission list items
+const PermissionListItem = ({ has, label, icon }) => (
+  <ListItem>
+    <ListItemIcon>
+      {has ? (
+        <CheckCircleIcon color="success" />
+      ) : (
+        <CancelIcon color="disabled" />
+      )}
+    </ListItemIcon>
+    <ListItemIcon>
+      {icon}
+    </ListItemIcon>
+    <ListItemText 
+      primary={label}
+      sx={{ color: has ? 'text.primary' : 'text.disabled' }}
+    />
+  </ListItem>
+);
+
+// Helper component for KPI items
+const KpiItem = ({ title, value, color }) => (
+  <Grid item xs={6}>
+    <Box sx={{ 
+      p: 2, 
+      bgcolor: `${color}.lighter`, 
+      color: `${color}.darker`,
+      borderRadius: 1,
+      height: '100%',
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      justifyContent: 'center'
+    }}>
+      <Typography variant="h4" component="div" sx={{ fontWeight: 'bold' }}>
+        {value}
+      </Typography>
+      <Typography variant="body2" component="div" sx={{ textAlign: 'center' }}>
+        {title}
+      </Typography>
+    </Box>
+  </Grid>
+);
 
 export default Dashboard; 
