@@ -11,7 +11,6 @@ import {
   Chip,
   Stack,
   Avatar,
-  AvatarGroup,
   Card,
   CardContent,
   Divider,
@@ -45,12 +44,10 @@ import {
   TableHead,
   TableRow,
   TablePagination,
-  LinearProgress,
   Menu,
   InputAdornment,
   ToggleButton,
   ToggleButtonGroup,
-  Grid,
   ListItemAvatar
 } from '@mui/material';
 import {
@@ -73,22 +70,15 @@ import {
   FactCheck as LogIcon,
   Download as DownloadIcon,
   Edit as EditIcon,
-  Person as PersonIcon,
   Folder as FolderIcon,
   Refresh as RefreshIcon,
-  MoreVert as MoreVertIcon,
   ChangeCircle as ChangeCircleIcon,
   Event as EventIcon,
-  AttachMoney as AttachMoneyIcon,
-  Subject as SubjectIcon,
-  MoreHoriz as MoreHorizIcon,
-  Close as CloseIcon,
   TaskAlt as TaskAltIcon,
   ZoomOutMap as ZoomOutMapIcon,
   AccountBalanceWallet as AccountBalanceWalletIcon,
   People as PeopleIcon,
   Category as CategoryIcon,
-  KeyboardArrowRight,
   Comment as CommentIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
@@ -962,7 +952,7 @@ const ProjectDetailPage: React.FC<{}> = () => {
         console.log('ProjectDetail: No change in tasks, skipping state update');
       }
     }
-  }, [contextTasks, id]);
+  }, [contextTasks, id, tasks]);
 
   // Debug tasks whenever they change
   useEffect(() => {

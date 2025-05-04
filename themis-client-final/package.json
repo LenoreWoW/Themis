@@ -2,7 +2,7 @@
   "name": "themis-client",
   "version": "0.1.0",
   "private": true,
-  "homepage": ".",
+  "homepage": "./",
   "dependencies": {
     "@devexpress/dx-react-chart": "^4.0.10",
     "@devexpress/dx-react-chart-material-ui": "^4.0.10",
