@@ -71,6 +71,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
   const location = useLocation();
   const { user } = useAuth();
   const isDark = theme.palette.mode === 'dark';
+  const isRtl = theme.direction === 'rtl';
 
   const handleDrawerToggle = () => {
     setIsOpen(!isOpen);
@@ -156,8 +157,8 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
           </Box>
         )}
         <IconButton onClick={handleDrawerToggle}>
-          {!isOpen ? <ChevronRightIcon /> : 
-            theme.direction === 'rtl' ? <ChevronRightIcon /> : <ChevronLeftIcon />}
+          {!isOpen ? (isRtl ? <ChevronLeftIcon /> : <ChevronRightIcon />) : 
+            (isRtl ? <ChevronRightIcon /> : <ChevronLeftIcon />)}
         </IconButton>
       </DrawerHeader>
       <Divider sx={{ borderColor: alpha(qatarMaroon.main, 0.2) }} />
@@ -263,7 +264,8 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                                 borderRadius: 4,
                                 backgroundColor: qatarMaroon.main,
                                 position: 'absolute',
-                                right: 0,
+                                right: isRtl ? 'auto' : 0,
+                                left: isRtl ? 0 : 'auto',
                               }}
                             />
                           )}
@@ -274,7 +276,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                 </Collapse>
               </React.Fragment>
             ) : (
-              <Tooltip title={item.text} placement="right" key={item.text}>
+              <Tooltip title={item.text} placement={isRtl ? "left" : "right"} key={item.text}>
                 <ListItem 
                   component="div"
                   onClick={handleSettingsClick}
@@ -309,7 +311,8 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                         borderRadius: 4,
                         backgroundColor: qatarMaroon.main,
                         position: 'absolute',
-                        right: 0,
+                        right: isRtl ? 'auto' : 0,
+                        left: isRtl ? 0 : 'auto',
                       }}
                     />
                   )}
@@ -359,16 +362,17 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                     borderRadius: 4,
                     backgroundColor: qatarMaroon.main,
                     position: 'absolute',
-                    right: 0,
+                    right: isRtl ? 'auto' : 0,
+                    left: isRtl ? 0 : 'auto',
                   }}
                 />
               )}
             </ListItem>
           ) : (
-            <Tooltip title={item.text} placement="right" key={item.text}>
+            <Tooltip title={item.text} placement={isRtl ? "left" : "right"} key={item.text}>
               <ListItem 
-                component="div"
-                onClick={handleSettingsClick}
+                component={NavLink}
+                to={item.path}
                 sx={{
                   justifyContent: 'center',
                   borderRadius: 2,
@@ -383,7 +387,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                       : alpha(theme.palette.action.hover, 0.8),
                   },
                   transition: 'all 0.3s ease',
-                  cursor: 'pointer',
                 }}
               >
                 <ListItemIcon sx={{ 
@@ -400,7 +403,8 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                       borderRadius: 4,
                       backgroundColor: qatarMaroon.main,
                       position: 'absolute',
-                      right: 0,
+                      right: isRtl ? 'auto' : 0,
+                      left: isRtl ? 0 : 'auto',
                     }}
                   />
                 )}

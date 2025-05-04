@@ -2,8 +2,9 @@ import i18n from "i18next";
 import { initReactI18next } from "react-i18next";
 import LanguageDetector from "i18next-browser-languagedetector";
 import Backend from "i18next-http-backend";
-import { arTranslations } from "./ar";
-import { enTranslations } from "./en";
+// Import JSON translations directly
+import enTranslation from "./locales/en/translation.json";
+import arTranslation from "./locales/ar/translation.json";
 
 // Get saved language preference from localStorage
 const savedLanguage = localStorage.getItem('themisLanguage') || 'en';
@@ -16,10 +17,10 @@ i18n
   .init({
     resources: {
       en: {
-        translation: enTranslations
+        translation: enTranslation
       },
       ar: {
-        translation: arTranslations
+        translation: arTranslation
       }
     },
     lng: savedLanguage, // Use the saved language or default to fallbackLng
@@ -43,8 +44,9 @@ i18n
     returnNull: false,       // Return key instead of null when key is missing
     returnEmptyString: false,// Return key instead of empty string when value is empty
     returnObjects: true,     // Allows returning objects
-    saveMissing: false,      // Don't save missing keys
+    saveMissing: true,       // Save missing keys
     missingKeyHandler: (lng, ns, key) => {
+      console.warn(`Missing translation key: ${key} for language: ${lng}`);
       // For missing keys, return the last part after the dot
       // This way "navigation.projects" will display as "projects" when missing
       return key.split('.').pop() || key;

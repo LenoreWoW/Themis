@@ -30,9 +30,10 @@ const DRAWER_WIDTH = 240;
 
 interface LayoutProps {
   direction?: Direction;
+  onDirectionChange: (direction: Direction) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ direction = 'ltr' }) => {
+const Layout: React.FC<LayoutProps> = ({ direction = 'ltr', onDirectionChange }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
   const { t } = useTranslation();
@@ -84,9 +85,7 @@ const Layout: React.FC<LayoutProps> = ({ direction = 'ltr' }) => {
             </Box>
             
             <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-              <LanguageSwitcher onDirectionChange={() => {
-                // The parent App component already handles direction changes based on i18n
-              }} />
+              <LanguageSwitcher onDirectionChange={onDirectionChange} />
               
               <ThemeToggle />
               

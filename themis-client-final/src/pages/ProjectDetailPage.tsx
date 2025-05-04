@@ -668,6 +668,10 @@ const ProjectDetailPage: React.FC<{}> = () => {
   const [selectedUpdateId, setSelectedUpdateId] = useState<string | null>(null);
   const [updateFiles, setUpdateFiles] = useState<File[]>([]);
   const updateFileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isTaskDetailDialogOpen, setIsTaskDetailDialogOpen] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string>(new Date().toISOString());
+  const [isDeleteTaskDialogOpen, setIsDeleteTaskDialogOpen] = useState(false);
 
   // Run audit on page load to verify compliance with ClientTerms
   useEffect(() => {
@@ -690,231 +694,266 @@ const ProjectDetailPage: React.FC<{}> = () => {
       setIsLoading(true);
       setError(null);
       
-      // Try to find the project in the projects context first
-      const foundProject = projects.find(p => p.id === id);
+      // First check localStorage for the most up-to-date project data
+      let projectWithTeam: ProjectWithTeamData | null = null;
+      const projectDataJson = localStorage.getItem(`project_${id}`);
       
-      if (foundProject) {
-        console.log('Found project in context:', foundProject);
-        
-        // Ensure we have all required properties for ProjectWithTeamData
-        const projectWithTeam: ProjectWithTeamData = {
-          id: foundProject.id,
-          name: foundProject.name,
-          description: foundProject.description,
-          status: foundProject.status,
-          priority: foundProject.priority,
-          startDate: foundProject.startDate,
-          endDate: foundProject.endDate,
-          projectManager: foundProject.projectManager || {
-            id: '1',
-            firstName: 'Default',
-            lastName: 'Manager'
-          },
-          department: foundProject.department,
-          team: [], // Initialize with empty team
-          attachments: [], // Initialize with empty attachments
-          budget: foundProject.budget,
-          actualCost: foundProject.actualCost,
-          progress: foundProject.progress,
-          createdAt: foundProject.createdAt || new Date().toISOString(),
-          updatedAt: foundProject.updatedAt || new Date().toISOString()
-        };
-        
-        // Try to get project team data
+      if (projectDataJson) {
         try {
-          // Get team members from localStorage if available
-          const teamJson = localStorage.getItem(`project_${id}_team`) || sessionStorage.getItem(`project_${id}_team`);
-          if (teamJson) {
-            const teamData = JSON.parse(teamJson);
-            projectWithTeam.team = Array.isArray(teamData) ? teamData : [];
-          } else {
-            // Project manager only - but ensure we include the project manager
-            projectWithTeam.team = [];
-            
-            // Save to localStorage for future use
-            localStorage.setItem(`project_${id}_team`, JSON.stringify([]));
+          const localProject = JSON.parse(projectDataJson);
+          console.log('Found project in localStorage:', localProject);
+          
+          // If it has all the required data, use it directly
+          if (localProject.name && localProject.status) {
+            console.log('Using complete project from localStorage');
+            projectWithTeam = localProject as ProjectWithTeamData;
+          }
+        } catch (e) {
+          console.error('Error parsing project from localStorage:', e);
+        }
+      }
+      
+      // If we don't have a complete project from localStorage, try to find it in context
+      if (!projectWithTeam) {
+        const foundProject = projects.find(p => p.id === id);
+        
+        if (foundProject) {
+          console.log('Found project in context:', foundProject);
+          
+          // If we have partial data in localStorage, merge it with context data
+          if (projectDataJson) {
+            try {
+              const localProject = JSON.parse(projectDataJson);
+              if (localProject.status) {
+                console.log('Using status from localStorage:', localProject.status);
+                foundProject.status = localProject.status;
+              }
+              if (localProject.actualCost !== undefined) {
+                console.log('Using actualCost from localStorage:', localProject.actualCost);
+                foundProject.actualCost = localProject.actualCost;
+              }
+            } catch (e) {
+              console.error('Error merging localStorage data:', e);
+            }
           }
           
-          // Also update the availableUsers state for team member selection
-          setAvailableUsers(importedMockUsers);
-        } catch (err) {
-          console.error('Error fetching team members:', err);
+          // Ensure we have all required properties for ProjectWithTeamData
+          projectWithTeam = {
+            id: foundProject.id,
+            name: foundProject.name,
+            description: foundProject.description,
+            status: foundProject.status,
+            priority: foundProject.priority,
+            startDate: foundProject.startDate,
+            endDate: foundProject.endDate,
+            projectManager: foundProject.projectManager || {
+              id: '1',
+              firstName: 'Default',
+              lastName: 'Manager'
+            },
+            department: foundProject.department,
+            team: [], // Initialize with empty team
+            attachments: [], // Initialize with empty attachments
+            budget: foundProject.budget,
+            actualCost: foundProject.actualCost,
+            progress: foundProject.progress,
+            createdAt: foundProject.createdAt || new Date().toISOString(),
+            updatedAt: foundProject.updatedAt || new Date().toISOString()
+          };
+        } else {
+          console.warn(`Project with ID ${id} not found in context, using mock data.`);
+          // If project not found in the context, use the mock data as fallback
+          // but with the correct ID
+          const mockWithCorrectId = {
+            ...mockProject,
+            id: id
+          };
+          projectWithTeam = mockWithCorrectId;
+        }
+      }
+      
+      // Try to get project team data
+      try {
+        // Get team members from localStorage if available
+        const teamJson = localStorage.getItem(`project_${id}_team`) || sessionStorage.getItem(`project_${id}_team`);
+        if (teamJson) {
+          const teamData = JSON.parse(teamJson);
+          projectWithTeam.team = Array.isArray(teamData) ? teamData : [];
+        } else {
+          // Project manager only - but ensure we include the project manager
           projectWithTeam.team = [];
+          
+          // Save to localStorage for future use
+          localStorage.setItem(`project_${id}_team`, JSON.stringify([]));
         }
         
-        // Try to get project attachments data
-        try {
-          // Get attachments from localStorage if available
-          const attachmentsJson = localStorage.getItem(`project_${id}_attachments`) || sessionStorage.getItem(`project_${id}_attachments`);
-          if (attachmentsJson) {
-            const attachmentsData = JSON.parse(attachmentsJson);
-            projectWithTeam.attachments = Array.isArray(attachmentsData) ? attachmentsData : [];
-            setProjectAttachments(projectWithTeam.attachments);
-          } else {
-            // Initialize with empty attachments - no random ones
-            projectWithTeam.attachments = [];
-            setProjectAttachments([]);
-            
-            // Save to localStorage for future use
-            localStorage.setItem(`project_${id}_attachments`, JSON.stringify([]));
-          }
-        } catch (err) {
-          console.error('Error fetching attachments:', err);
+        // Also update the availableUsers state for team member selection
+        setAvailableUsers(importedMockUsers);
+      } catch (err) {
+        console.error('Error fetching team members:', err);
+        projectWithTeam.team = [];
+      }
+      
+      // Try to get project attachments data
+      try {
+        // Get attachments from localStorage if available
+        const attachmentsJson = localStorage.getItem(`project_${id}_attachments`) || sessionStorage.getItem(`project_${id}_attachments`);
+        if (attachmentsJson) {
+          const attachmentsData = JSON.parse(attachmentsJson);
+          projectWithTeam.attachments = Array.isArray(attachmentsData) ? attachmentsData : [];
+          setProjectAttachments(projectWithTeam.attachments);
+        } else {
+          // Initialize with empty attachments - no random ones
           projectWithTeam.attachments = [];
           setProjectAttachments([]);
+          
+          // Save to localStorage for future use
+          localStorage.setItem(`project_${id}_attachments`, JSON.stringify([]));
         }
-        
-        // Try to get project logs
-        try {
-          // Get logs from localStorage if available
-          const logsJson = localStorage.getItem(`project_${id}_logs`) || sessionStorage.getItem(`project_${id}_logs`);
-          if (logsJson) {
-            const logsData = JSON.parse(logsJson);
-            setProjectLogs(Array.isArray(logsData) ? logsData : []);
-          } else {
-            // Generate project logs that match the actual project data
-            const generatedLogs: ProjectLog[] = [
-              {
-                id: `log-${Date.now()}-1`,
-                action: AuditAction.CREATE,
-                details: `Project "${projectWithTeam.name}" created`,
-                timestamp: projectWithTeam.createdAt,
-                user: {
-                  id: projectWithTeam.projectManager.id,
-                  firstName: projectWithTeam.projectManager.firstName,
-                  lastName: projectWithTeam.projectManager.lastName
-                }
-              },
-              {
-                id: `log-${Date.now()}-2`,
-                action: AuditAction.UPDATE,
-                details: `Project status set to ${getStatusLabel(projectWithTeam.status)}`,
-                timestamp: new Date(new Date(projectWithTeam.createdAt).getTime() + 86400000).toISOString(),
-                user: {
-                  id: projectWithTeam.projectManager.id,
-                  firstName: projectWithTeam.projectManager.firstName,
-                  lastName: projectWithTeam.projectManager.lastName
-                }
-              }
-            ];
-            
-            // Add team member logs
-            projectWithTeam.team.forEach((member, index) => {
-              generatedLogs.push({
-                id: `log-${Date.now()}-${index + 3}`,
-                action: AuditAction.UPDATE,
-                details: `Team member added: ${member.firstName} ${member.lastName}`,
-                timestamp: new Date(new Date(projectWithTeam.createdAt).getTime() + (86400000 * (index + 1))).toISOString(),
-                user: {
-                  id: projectWithTeam.projectManager.id,
-                  firstName: projectWithTeam.projectManager.firstName,
-                  lastName: projectWithTeam.projectManager.lastName
-                }
-              });
-            });
-            
-            // Add attachment logs
-            projectWithTeam.attachments.forEach((attachment, index) => {
-              generatedLogs.push({
-                id: `log-${Date.now()}-${index + projectWithTeam.team.length + 3}`,
-                action: AuditAction.UPDATE,
-                details: `File uploaded: ${attachment.name}`,
-                timestamp: attachment.createdAt,
-                user: {
-                  id: attachment.uploadedBy.id,
-                  firstName: attachment.uploadedBy.firstName,
-                  lastName: attachment.uploadedBy.lastName
-                }
-              });
-            });
-            
-            // Sort logs by timestamp (newest first)
-            generatedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-            
-            setProjectLogs(generatedLogs);
-            
-            // Save to localStorage for future use
-            localStorage.setItem(`project_${id}_logs`, JSON.stringify(generatedLogs));
-          }
-        } catch (err) {
-          console.error('Error fetching project logs:', err);
-          setProjectLogs([]);
-        }
-        
-        // Add this to the fetchProjectData function after the logs section
-        // Try to get weekly updates
-        try {
-          // Get weekly updates from localStorage if available
-          const updatesJson = localStorage.getItem(`project_${id}_weekly_updates`) || sessionStorage.getItem(`project_${id}_weekly_updates`);
-          if (updatesJson) {
-            const updatesData = JSON.parse(updatesJson);
-            setWeeklyUpdates(Array.isArray(updatesData) ? updatesData : []);
-          } else {
-            // Generate weekly updates based on project data
-            const startDate = new Date(projectWithTeam.startDate);
-            const now = new Date();
-            const weekCount = Math.min(
-              3,
-              Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)))
-            );
-            
-            const updates = Array.from({ length: weekCount }, (_, i) => {
-              const weekDate = new Date(now.getTime() - (i * 7 * 24 * 60 * 60 * 1000));
-              const progressValue = Math.min(100, Math.max(5, Math.round(projectWithTeam.progress - (i * 15))));
-              const budgetValue = Math.min(projectWithTeam.budget, Math.max(0, Math.round(projectWithTeam.actualCost - (i * projectWithTeam.budget / 10))));
-              const budgetPercent = Math.round((budgetValue / projectWithTeam.budget) * 100);
-              
-              // Calculate remaining days as of this update
-              const endDate = new Date(projectWithTeam.endDate);
-              const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - weekDate.getTime()) / (24 * 60 * 60 * 1000)));
-              
-              return {
-                id: `weekly-update-${i + 1}`,
-                week: `Week of ${weekDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
-                progressUpdate: `${progressValue}% complete. ${
-                  progressValue < 30 
-                    ? 'Project is in early stages.' 
-                    : progressValue < 60 
-                      ? 'Project is progressing as planned.' 
-                      : progressValue < 90 
-                        ? 'Project is nearing completion.' 
-                        : 'Project is in final stages.'
-                }`,
-                budgetUpdate: `$${budgetValue.toLocaleString()} spent of $${projectWithTeam.budget.toLocaleString()} budget (${budgetPercent}% of budget used).`,
-                timeline: `${daysRemaining} days remaining until project deadline.`,
-                createdAt: weekDate.toISOString(),
-                comments: [],
-                attachments: []
-              };
-            });
-            
-            // Sort updates by date (newest first)
-            updates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            
-            setWeeklyUpdates(updates);
-            
-            // Save to localStorage for future use
-            localStorage.setItem(`project_${id}_weekly_updates`, JSON.stringify(updates));
-          }
-        } catch (err) {
-          console.error('Error generating weekly updates:', err);
-          setWeeklyUpdates([]);
-        }
-        
-        setProject(projectWithTeam);
-      } else {
-        console.warn(`Project with ID ${id} not found in context, using mock data.`);
-        // If project not found in the context, use the mock data as fallback
-        // but with the correct ID
-        const mockWithCorrectId = {
-          ...mockProject,
-          id: id
-        };
-        setProject(mockWithCorrectId);
-        setProjectAttachments(mockAttachments);
-        setAvailableUsers(mockUsers);
-        setProjectLogs(mockProjectLogs);
+      } catch (err) {
+        console.error('Error fetching attachments:', err);
+        projectWithTeam.attachments = [];
+        setProjectAttachments([]);
       }
+      
+      // Try to get project logs
+      try {
+        // Get logs from localStorage if available
+        const logsJson = localStorage.getItem(`project_${id}_logs`) || sessionStorage.getItem(`project_${id}_logs`);
+        if (logsJson) {
+          const logsData = JSON.parse(logsJson);
+          setProjectLogs(Array.isArray(logsData) ? logsData : []);
+        } else {
+          // Generate project logs that match the actual project data
+          const generatedLogs: ProjectLog[] = [
+            {
+              id: `log-${Date.now()}-1`,
+              action: AuditAction.CREATE,
+              details: `Project "${projectWithTeam.name}" created`,
+              timestamp: projectWithTeam.createdAt,
+              user: {
+                id: projectWithTeam.projectManager.id,
+                firstName: projectWithTeam.projectManager.firstName,
+                lastName: projectWithTeam.projectManager.lastName
+              }
+            },
+            {
+              id: `log-${Date.now()}-2`,
+              action: AuditAction.UPDATE,
+              details: `Project status set to ${getStatusLabel(projectWithTeam.status)}`,
+              timestamp: new Date(new Date(projectWithTeam.createdAt).getTime() + 86400000).toISOString(),
+              user: {
+                id: projectWithTeam.projectManager.id,
+                firstName: projectWithTeam.projectManager.firstName,
+                lastName: projectWithTeam.projectManager.lastName
+              }
+            }
+          ];
+          
+          // Add team member logs
+          projectWithTeam.team.forEach((member, index) => {
+            generatedLogs.push({
+              id: `log-${Date.now()}-${index + 3}`,
+              action: AuditAction.UPDATE,
+              details: `Team member added: ${member.firstName} ${member.lastName}`,
+              timestamp: new Date(new Date(projectWithTeam.createdAt).getTime() + (86400000 * (index + 1))).toISOString(),
+              user: {
+                id: projectWithTeam.projectManager.id,
+                firstName: projectWithTeam.projectManager.firstName,
+                lastName: projectWithTeam.projectManager.lastName
+              }
+            });
+          });
+          
+          // Add attachment logs
+          projectWithTeam.attachments.forEach((attachment, index) => {
+            generatedLogs.push({
+              id: `log-${Date.now()}-${index + projectWithTeam.team.length + 3}`,
+              action: AuditAction.UPDATE,
+              details: `File uploaded: ${attachment.name}`,
+              timestamp: attachment.createdAt,
+              user: {
+                id: attachment.uploadedBy.id,
+                firstName: attachment.uploadedBy.firstName,
+                lastName: attachment.uploadedBy.lastName
+              }
+            });
+          });
+          
+          // Sort logs by timestamp (newest first)
+          generatedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          
+          setProjectLogs(generatedLogs);
+          
+          // Save to localStorage for future use
+          localStorage.setItem(`project_${id}_logs`, JSON.stringify(generatedLogs));
+        }
+      } catch (err) {
+        console.error('Error fetching project logs:', err);
+        setProjectLogs([]);
+      }
+      
+      // Add this to the fetchProjectData function after the logs section
+      // Try to get weekly updates
+      try {
+        // Get weekly updates from localStorage if available
+        const updatesJson = localStorage.getItem(`project_${id}_weekly_updates`) || sessionStorage.getItem(`project_${id}_weekly_updates`);
+        if (updatesJson) {
+          const updatesData = JSON.parse(updatesJson);
+          setWeeklyUpdates(Array.isArray(updatesData) ? updatesData : []);
+        } else {
+          // Generate weekly updates based on project data
+          const startDate = new Date(projectWithTeam.startDate);
+          const now = new Date();
+          const weekCount = Math.min(
+            3,
+            Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)))
+          );
+          
+          const updates = Array.from({ length: weekCount }, (_, i) => {
+            const weekDate = new Date(now.getTime() - (i * 7 * 24 * 60 * 60 * 1000));
+            const progressValue = Math.min(100, Math.max(5, Math.round(projectWithTeam.progress - (i * 15))));
+            const budgetValue = Math.min(projectWithTeam.budget, Math.max(0, Math.round(projectWithTeam.actualCost - (i * projectWithTeam.budget / 10))));
+            const budgetPercent = Math.round((budgetValue / projectWithTeam.budget) * 100);
+            
+            // Calculate remaining days as of this update
+            const endDate = new Date(projectWithTeam.endDate);
+            const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - weekDate.getTime()) / (24 * 60 * 60 * 1000)));
+            
+            return {
+              id: `weekly-update-${i + 1}`,
+              week: `Week of ${weekDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+              progressUpdate: `${progressValue}% complete. ${
+                progressValue < 30 
+                  ? 'Project is in early stages.' 
+                  : progressValue < 60 
+                    ? 'Project is progressing as planned.' 
+                    : progressValue < 90 
+                      ? 'Project is nearing completion.' 
+                      : 'Project is in final stages.'
+              }`,
+              budgetUpdate: `$${budgetValue.toLocaleString()} spent of $${projectWithTeam.budget.toLocaleString()} budget (${budgetPercent}% of budget used).`,
+              timeline: `${daysRemaining} days remaining until project deadline.`,
+              createdAt: weekDate.toISOString(),
+              comments: [],
+              attachments: []
+            };
+          });
+          
+          // Sort updates by date (newest first)
+          updates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          
+          setWeeklyUpdates(updates);
+          
+          // Save to localStorage for future use
+          localStorage.setItem(`project_${id}_weekly_updates`, JSON.stringify(updates));
+        }
+      } catch (err) {
+        console.error('Error generating weekly updates:', err);
+        setWeeklyUpdates([]);
+      }
+      
+      setProject(projectWithTeam);
     } catch (err) {
       console.error('Error fetching project:', err);
       setError('Failed to load project data');
@@ -926,7 +965,7 @@ const ProjectDetailPage: React.FC<{}> = () => {
   // Add back the useEffect that calls fetchProjectData
   useEffect(() => {
     fetchProjectData();
-  }, [fetchProjectData]);
+  }, [fetchProjectData, lastUpdated]);
 
   // Load tasks from context when they change
   useEffect(() => {
@@ -1053,6 +1092,7 @@ const ProjectDetailPage: React.FC<{}> = () => {
   }, [id, user?.token, user?.id, user?.firstName, user?.lastName]);
 
   // Gantt Chart error handling
+  const { t } = useTranslation();
   const [ganttError, setGanttError] = useState<string | null>(null);
   const handleGanttError = (error: Error) => {
     console.error('Gantt chart error:', error);
@@ -1408,112 +1448,166 @@ const ProjectDetailPage: React.FC<{}> = () => {
     return color;
   };
 
-  // Update the handleUpdateProjectStatus function to properly update both the project state and projectData
+  // Helper function to properly update project state and localStorage
+  const updateProjectState = (updatedFields: Partial<ProjectWithTeamData>) => {
+    // Only update if we have a project and ID
+    if (!project || !id) {
+      console.error('Cannot update project: No project or ID available');
+      return;
+    }
+    
+    console.log('Updating project state with fields:', updatedFields);
+    
+    try {
+      // Create a fresh copy of the current project
+      const updatedProject = { ...project, ...updatedFields, updatedAt: new Date().toISOString() };
+      console.log('New project state:', updatedProject);
+      
+      // First update the local component state - make sure to force a new object reference
+      setProject(JSON.parse(JSON.stringify(updatedProject)));
+      
+      // Force a direct update of projectData variable for the UI reference
+      if (updatedFields.actualCost !== undefined) {
+        projectData.actualCost = updatedFields.actualCost;
+        
+        // Force update of DOM elements if they exist
+        setTimeout(() => {
+          const actualCostElement = document.getElementById('actual-cost-display');
+          if (actualCostElement) {
+            actualCostElement.textContent = `$${updatedFields.actualCost.toLocaleString()}`;
+          }
+          
+          const remainingBudgetElement = document.getElementById('remaining-budget-display');
+          if (remainingBudgetElement) {
+            remainingBudgetElement.textContent = `$${(projectData.budget - updatedFields.actualCost).toLocaleString()}`;
+          }
+        }, 100);
+      }
+      
+      if (updatedFields.status !== undefined) {
+        projectData.status = updatedFields.status;
+      }
+      
+      // Then update localStorage - both in the projects array and individual entry
+      try {
+        // Update the individual project entry
+        localStorage.setItem(`project_${id}`, JSON.stringify(updatedProject));
+        
+        // Also update in the projects array if it exists
+        const projectsJson = localStorage.getItem('projects');
+        if (projectsJson) {
+          const allProjects = JSON.parse(projectsJson);
+          const updatedProjects = allProjects.map((p: any) => {
+            if (p.id === id) {
+              return { ...p, ...updatedFields, updatedAt: new Date().toISOString() };
+            }
+            return p;
+          });
+          localStorage.setItem('projects', JSON.stringify(updatedProjects));
+        }
+        
+        console.log('Successfully updated localStorage with new project state');
+      } catch (err) {
+        console.error('Error updating localStorage:', err);
+      }
+      
+      // Force a re-render by updating lastUpdated state
+      const currentTime = new Date().toISOString();
+      setLastUpdated(currentTime);
+    } catch (err) {
+      console.error('Error in updateProjectState:', err);
+    }
+  };
+
+  // Update the handleUpdateProjectStatus function to use the new helper
   const handleUpdateProjectStatus = async () => {
-    if (!id || !updatedStatus || !user?.token) return;
+    // Log the current state for debugging with specific type information
+    console.log('Update status called with status:', updatedStatus, typeof updatedStatus);
+    console.log('Current project status:', project?.status, typeof project?.status);
+    console.log('Project state before update:', project);
+    
+    // Validate required data - removed token check
+    if (!id || !updatedStatus) {
+      console.log('Cannot update: missing data', { id, updatedStatus });
+      return;
+    }
     
     setIsUpdating(true);
     try {
-      // In a real app, you would call your API to update the project
-      // await api.projects.updateStatus(id, updatedStatus);
-      
-      // Create a new log entry
+      // Create a log entry for the change
       const newLog: ProjectLog = {
         id: `log-${Date.now()}`,
         action: AuditAction.UPDATE,
         details: `Project status updated to ${getStatusLabel(updatedStatus as string)}`,
         user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName
+          id: user?.id || 'system',
+          firstName: user?.firstName || 'System',
+          lastName: user?.lastName || 'User'
         },
         timestamp: new Date().toISOString()
       };
       
-      // Update the project locally
-      if (project) {
-        const updatedProject = {
-          ...project,
-          status: updatedStatus
-        };
-        
-        // Update state
-        setProject(updatedProject);
-        
-        // Update projectData in localStorage for persistence
-        const projectDataJson = localStorage.getItem(`project_${id}`);
-        if (projectDataJson) {
-          const projectData = JSON.parse(projectDataJson);
-          projectData.status = updatedStatus;
-          localStorage.setItem(`project_${id}`, JSON.stringify(projectData));
-        }
-        
-        // Update logs state with the new log at the top
-        const updatedLogs = [newLog, ...projectLogs];
-        setProjectLogs(updatedLogs);
-        
-        // Save logs to localStorage for persistence
-        localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
-        
-        showSnackbar(`Project status updated to ${getStatusLabel(updatedStatus as string)}`, 'success');
-      }
+      // Update the project using our helper function
+      updateProjectState({ status: updatedStatus });
+      
+      // Update logs
+      const updatedLogs = [newLog, ...projectLogs];
+      setProjectLogs(updatedLogs);
+      localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
+      
+      // Show success message
+      showSnackbar(`Status updated to ${getStatusLabel(updatedStatus as string)}`, 'success');
     } catch (err) {
-      console.error('Error updating project status:', err);
-      showSnackbar('Failed to update project status', 'error');
+      console.error('Error in status update:', err);
+      showSnackbar('Error updating status', 'error');
     } finally {
+      // Clean up
+      setUpdatedStatus(null);
       setIsUpdating(false);
       setIsEditStatusDialogOpen(false);
+      console.log('Status update finished, dialog closed');
     }
   };
 
-  // Update the handleUpdateProjectCost function to properly update both the project state and projectData
+  // Update the handleUpdateProjectCost function to use the new helper
   const handleUpdateProjectCost = async () => {
-    if (!id || updatedCost === null || !user?.token) return;
+    if (!id || updatedCost === null) return;
+    
+    console.log('Updating project cost from', project?.actualCost, 'to', updatedCost);
     
     setIsUpdating(true);
     try {
-      // In a real app, you would call your API to update the project
-      // await api.projects.updateCost(id, updatedCost);
-      
       // Create a new log entry
       const newLog: ProjectLog = {
         id: `log-${Date.now()}`,
         action: AuditAction.UPDATE,
         details: `Project actual cost updated to $${updatedCost.toLocaleString()}`,
         user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName
+          id: user?.id || 'system',
+          firstName: user?.firstName || 'System',
+          lastName: user?.lastName || 'User'
         },
         timestamp: new Date().toISOString()
       };
       
-      // Update the project directly
-      if (project) {
-        const updatedProject = {
-          ...project,
-          actualCost: updatedCost
-        };
-        
-        // Update state
-        setProject(updatedProject);
-        
-        // Update projectData in localStorage for persistence
-        const projectDataJson = localStorage.getItem(`project_${id}`);
-        if (projectDataJson) {
-          const projectData = JSON.parse(projectDataJson);
-          projectData.actualCost = updatedCost;
-          localStorage.setItem(`project_${id}`, JSON.stringify(projectData));
-        }
-        
-        // Update logs list with the new log at the top
-        setProjectLogs(prevLogs => [newLog, ...prevLogs]);
-        
-        // Save to localStorage for persistence
-        localStorage.setItem(`project_${id}_logs`, JSON.stringify([newLog, ...projectLogs]));
-        
-        showSnackbar(`Project cost updated to $${updatedCost.toLocaleString()}`, 'success');
-      }
+      // Update the project using our helper function
+      updateProjectState({ actualCost: updatedCost });
+      
+      // Update logs list with the new log at the top
+      const updatedLogs = [newLog, ...projectLogs];
+      setProjectLogs(updatedLogs);
+      
+      // Save to localStorage for persistence
+      localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
+      
+      showSnackbar(`Project cost updated to $${updatedCost.toLocaleString()}`, 'success');
+      
+      // Force a re-render
+      setTimeout(() => {
+        const currentTime = new Date().toISOString();
+        setLastUpdated(currentTime);
+        console.log('Forced additional UI refresh for cost update');
+      }, 100);
     } catch (err) {
       console.error('Error updating project cost:', err);
       showSnackbar('Failed to update project cost', 'error');
@@ -1531,7 +1625,7 @@ const ProjectDetailPage: React.FC<{}> = () => {
   
   // Handle adding team members
   const handleAddTeamMembers = async () => {
-    if (!id || !user?.token || selectedTeamMembers.length === 0) return;
+    if (!id || selectedTeamMembers.length === 0) return;
     
     setAddingTeamMembers(true);
     try {
@@ -1562,26 +1656,13 @@ const ProjectDetailPage: React.FC<{}> = () => {
         }
       });
       
-      // Update the project's team in our state
+      // Update the project's team using our helper function
       if (project) {
-        const updatedProject = {
-          ...project,
-          team: [...(project.team || []), ...newTeamMembers]
-        };
+        const updatedTeam = [...(project.team || []), ...newTeamMembers];
+        updateProjectState({ team: updatedTeam });
         
-        // Update state
-        setProject(updatedProject);
-        
-        // Save to localStorage for persistence
-        localStorage.setItem(`project_${id}_team`, JSON.stringify(updatedProject.team));
-        
-        // Update projectData in localStorage for persistence
-        const projectDataJson = localStorage.getItem(`project_${id}`);
-        if (projectDataJson) {
-          const projectData = JSON.parse(projectDataJson);
-          projectData.team = updatedProject.team;
-          localStorage.setItem(`project_${id}`, JSON.stringify(projectData));
-        }
+        // Save directly to localStorage for persistence
+        localStorage.setItem(`project_${id}_team`, JSON.stringify(updatedTeam));
         
         // Add logs for the team member additions
         const newLogs = newTeamMembers.map((member, index) => ({
@@ -1590,9 +1671,9 @@ const ProjectDetailPage: React.FC<{}> = () => {
           details: `Team member added: ${member.firstName} ${member.lastName}`,
           timestamp: new Date().toISOString(),
           user: {
-            id: user.id || '1',
-            firstName: user.firstName || 'System',
-            lastName: user.lastName || 'User'
+            id: user?.id || '1',
+            firstName: user?.firstName || 'System',
+            lastName: user?.lastName || 'User'
           }
         }));
         
@@ -1723,7 +1804,7 @@ const ProjectDetailPage: React.FC<{}> = () => {
 
   // Upload files to the server
   const handleUploadFiles = async () => {
-    if (!selectedFiles.length || !id || !user?.token) {
+    if (!selectedFiles.length || !id) {
       return;
     }
     
@@ -1756,27 +1837,14 @@ const ProjectDetailPage: React.FC<{}> = () => {
       const updatedAttachments = [...projectAttachments, ...newAttachments];
       setProjectAttachments(updatedAttachments);
       
-      // Update project with new attachments if project exists
+      // Update project with new attachments using our helper function
       if (project) {
-        const updatedProject = {
-          ...project,
-          attachments: [...(project.attachments || []), ...newAttachments]
-        };
-        
-        // Update project state
-        setProject(updatedProject);
+        const combinedAttachments = [...(project.attachments || []), ...newAttachments];
+        updateProjectState({ attachments: combinedAttachments });
       }
       
-      // Save to localStorage
+      // Save directly to localStorage
       localStorage.setItem(`project_${id}_attachments`, JSON.stringify(updatedAttachments));
-      
-      // Update projectData in localStorage for persistence
-      const projectDataJson = localStorage.getItem(`project_${id}`);
-      if (projectDataJson) {
-        const projectData = JSON.parse(projectDataJson);
-        projectData.attachments = [...(projectData.attachments || []), ...newAttachments];
-        localStorage.setItem(`project_${id}`, JSON.stringify(projectData));
-      }
       
       // Create new log entries for each upload
       const newLogs: ProjectLog[] = newAttachments.map((attachment, index) => ({
@@ -1785,9 +1853,9 @@ const ProjectDetailPage: React.FC<{}> = () => {
         details: `Attachment uploaded: ${attachment.name}`,
         timestamp: new Date().toISOString(),
         user: {
-          id: user.id,
-          firstName: user.firstName,
-          lastName: user.lastName
+          id: user?.id || '1',
+          firstName: user?.firstName || 'System',
+          lastName: user?.lastName || 'User'
         }
       }));
       
@@ -1861,9 +1929,6 @@ const ProjectDetailPage: React.FC<{}> = () => {
 
   const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
   const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
-  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
-  const [isTaskDetailDialogOpen, setIsTaskDetailDialogOpen] = useState(false);
-  const [isDeleteTaskDialogOpen, setIsDeleteTaskDialogOpen] = useState(false);
   const [selectedTaskForDelete, setSelectedTaskForDelete] = useState<Task | null>(null);
 
   const handleDeleteTaskClick = (taskId: string) => {
@@ -2253,7 +2318,15 @@ const ProjectDetailPage: React.FC<{}> = () => {
                         size="small"
                         color="primary"
                         onClick={() => {
-                          setUpdatedStatus(projectData.status);
+                          // Make sure we're setting the status from the project object
+                          // which is our source of truth
+                          const currentStatus = project?.status || ProjectStatus.PLANNING;
+                          console.log('Setting initial status for dialog:', currentStatus);
+                          
+                          // Force status update by using the current status value
+                          setUpdatedStatus(currentStatus);
+                          
+                          // Open the dialog
                           setIsEditStatusDialogOpen(true);
                         }}
                       >
@@ -2276,7 +2349,7 @@ const ProjectDetailPage: React.FC<{}> = () => {
                       <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                         Actual Cost
                       </Typography>
-                      <Typography variant="body1">${projectData.actualCost.toLocaleString()}</Typography>
+                      <Typography variant="body1" id="actual-cost-display">${projectData.actualCost.toLocaleString()}</Typography>
                     </Box>
                     {userCanManageProjects && (
                       <IconButton 
@@ -2297,7 +2370,7 @@ const ProjectDetailPage: React.FC<{}> = () => {
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>
                       Remaining
                     </Typography>
-                    <Typography variant="body1">${(projectData.budget - projectData.actualCost).toLocaleString()}</Typography>
+                    <Typography variant="body1" id="remaining-budget-display">${(projectData.budget - projectData.actualCost).toLocaleString()}</Typography>
                   </Box>
                   
                   {/* Days Remaining */}
@@ -2535,58 +2608,37 @@ const ProjectDetailPage: React.FC<{}> = () => {
                     Manage tasks by dragging them between the columns to update their status.
                   </Typography>
                   
-                  <DragDropContext
-                    onDragEnd={(result: DropResult) => {
-                      const { destination, source, draggableId } = result;
-                      
-                      // Dropped outside the list
-                      if (!destination) {
-                        return;
-                      }
-                      
-                      // Dropped in the same place
-                      if (
-                        destination.droppableId === source.droppableId &&
-                        destination.index === source.index
-                      ) {
-                        return;
-                      }
-                      
-                      // Handle the status change
-                      if (destination.droppableId !== source.droppableId) {
-                        const newStatus = destination.droppableId as TaskStatus;
-                        handleMoveTask(draggableId, newStatus);
+                  {/* Remove the DragDropContext here and let KanbanBoard handle it internally */}
+                  <KanbanBoard
+                    project={convertToFullProject(projectData)}
+                    tasks={projectTasks}
+                    onTaskUpdate={(taskId, newStatus) => {
+                      console.log(`Task ${taskId} moved to ${newStatus}`);
+                      return handleMoveTask(taskId, newStatus);
+                    }}
+                    onTaskClick={(taskId) => {
+                      const task = projectTasks.find(t => t.id === taskId);
+                      if (task) {
+                        setSelectedTask(task);
+                        setIsTaskDetailDialogOpen(true);
                       }
                     }}
-                  >
-                    <KanbanBoard
-                      project={convertToFullProject(projectData)}
-                      tasks={projectTasks}
-                      onTaskUpdate={handleMoveTask}
-                      onTaskClick={(taskId) => {
-                        const task = projectTasks.find(t => t.id === taskId);
-                        if (task) {
-                          setSelectedTask(task);
-                          setIsTaskDetailDialogOpen(true);
-                        }
-                      }}
-                      onAddComment={async (taskId, comment) => {
-                        console.log('Adding comment to task:', taskId, comment);
-                        return Promise.resolve();
-                      }}
-                      onUpdateProgress={(taskId, progress, newStatus) => {
-                        handleMoveTask(taskId, newStatus);
-                      }}
-                      onAddTask={userCanAddTasks ? () => handleAddTaskOpen() : undefined}
-                      onRequestTask={userCanRequestTasks ? handleRequestTask : undefined}
-                      onEdit={userCanAddTasks ? handleEditTask : undefined}
-                      onDelete={userCanAddTasks ? handleDeleteTaskClick : undefined}
-                      onAttach={(taskId) => {
-                        console.log('Attach files to task:', taskId);
-                        // In a real app, you would open a file picker dialog here
-                      }}
-                    />
-                  </DragDropContext>
+                    onAddComment={async (taskId, comment) => {
+                      console.log('Adding comment to task:', taskId, comment);
+                      return Promise.resolve();
+                    }}
+                    onUpdateProgress={(taskId, progress, newStatus) => {
+                      handleMoveTask(taskId, newStatus);
+                    }}
+                    onAddTask={userCanAddTasks ? () => handleAddTaskOpen() : undefined}
+                    onRequestTask={userCanRequestTasks ? handleRequestTask : undefined}
+                    onEdit={userCanAddTasks ? handleEditTask : undefined}
+                    onDelete={userCanAddTasks ? handleDeleteTaskClick : undefined}
+                    onAttach={(taskId) => {
+                      console.log('Attach files to task:', taskId);
+                      // In a real app, you would open a file picker dialog here
+                    }}
+                  />
                 </>
               )}
 
@@ -3300,7 +3352,10 @@ const ProjectDetailPage: React.FC<{}> = () => {
                 labelId="update-status-label"
                 value={updatedStatus || ''}
                 label="Status"
-                onChange={(e) => setUpdatedStatus(e.target.value as ProjectStatus)}
+                onChange={(e) => {
+                  console.log('Select onChange called with value:', e.target.value);
+                  setUpdatedStatus(e.target.value as ProjectStatus);
+                }}
                 disabled={isUpdating}
               >
                 {Object.values(ProjectStatus).map((status) => (
@@ -3323,9 +3378,23 @@ const ProjectDetailPage: React.FC<{}> = () => {
             Cancel
           </Button>
           <Button 
-            onClick={handleUpdateProjectStatus} 
+            onClick={() => {
+              console.log('Update Status button clicked with status:', updatedStatus);
+              console.log('Current project status:', project?.status);
+              console.log('Button state - isUpdating:', isUpdating, 'updatedStatus exists:', !!updatedStatus);
+              
+              // Call the handler if we have a status
+              if (updatedStatus) {
+                console.log('About to call handleUpdateProjectStatus');
+                handleUpdateProjectStatus();
+                console.log('Called handleUpdateProjectStatus');
+              } else {
+                console.error('No status selected');
+              }
+            }}
             variant="contained"
-            disabled={isUpdating || !updatedStatus || (project && updatedStatus === project.status)}
+            color="primary"
+            disabled={isUpdating || !updatedStatus}
             startIcon={isUpdating ? <CircularProgress size={20} /> : null}
           >
             {isUpdating ? 'Updating...' : 'Update Status'}
@@ -3348,12 +3417,26 @@ const ProjectDetailPage: React.FC<{}> = () => {
               type="number"
               fullWidth
               value={updatedCost || ''}
-              onChange={(e) => setUpdatedCost(Number(e.target.value))}
+              onChange={(e) => {
+                // Parse as number, ensuring valid number input
+                const value = parseFloat(e.target.value);
+                if (!isNaN(value) && value >= 0) {
+                  setUpdatedCost(value);
+                } else if (e.target.value === '') {
+                  // Allow clearing the field
+                  setUpdatedCost(0);
+                }
+              }}
               InputProps={{
                 startAdornment: <InputAdornment position="start">$</InputAdornment>,
               }}
               disabled={isUpdating}
             />
+            {project && (
+              <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
+                Current cost: ${project.actualCost.toLocaleString()}
+              </Typography>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
@@ -3361,7 +3444,14 @@ const ProjectDetailPage: React.FC<{}> = () => {
             Cancel
           </Button>
           <Button 
-            onClick={handleUpdateProjectCost} 
+            onClick={() => {
+              console.log('Update Cost button clicked with cost:', updatedCost);
+              if (updatedCost !== null) {
+                handleUpdateProjectCost();
+              } else {
+                console.error('No cost entered');
+              }
+            }}
             variant="contained"
             disabled={isUpdating || updatedCost === null || (project && updatedCost === project.actualCost)}
             startIcon={isUpdating ? <CircularProgress size={20} /> : null}

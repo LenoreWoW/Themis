@@ -89,16 +89,14 @@ const AppContent: React.FC = () => {
     if (i18n.language !== savedLanguage) {
       console.log('Forcing language change to:', savedLanguage);
       i18n.changeLanguage(savedLanguage);
+      document.documentElement.dir = initialDirection;
+      document.documentElement.lang = savedLanguage;
     }
-  }, []);
+  }, [i18n, savedLanguage, initialDirection]);
 
-  // Update direction and theme when language changes or theme mode changes
-  useEffect(() => {
-    const currentLang = i18n.language;
-    const newDirection = currentLang === 'ar' ? 'rtl' : 'ltr';
-    
-    console.log('Language changed to:', currentLang, 'Direction:', newDirection);
-    
+  // Handle direction change from language switcher
+  const handleDirectionChange = (newDirection: Direction) => {
+    console.log('Direction changed to:', newDirection);
     setDirection(newDirection);
     setCurrentTheme(createAppTheme(newDirection, mode));
     
@@ -114,10 +112,12 @@ const AppContent: React.FC = () => {
       link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap';
       document.head.appendChild(link);
     }
-  }, [i18n.language, mode]);
+  };
 
-  // Choose the right cache based on direction
-  const cache = direction === 'rtl' ? rtlCache : ltrCache;
+  // Update theme when mode changes
+  useEffect(() => {
+    setCurrentTheme(createAppTheme(direction, mode));
+  }, [mode, direction]);
 
   // Clean up mock data on application startup
   useEffect(() => {
@@ -128,6 +128,9 @@ const AppContent: React.FC = () => {
   if (!isAppReady) {
     return null; // Don't render until app is cleaned
   }
+
+  // Choose the right cache based on direction
+  const cache = direction === 'rtl' ? rtlCache : ltrCache;
 
   return (
     <CacheProvider value={cache}>
@@ -140,7 +143,7 @@ const AppContent: React.FC = () => {
                 <TaskRequestProvider>
                   <Routes>
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/" element={<PrivateRoute><Layout direction={direction} /></PrivateRoute>}>
+                    <Route path="/" element={<PrivateRoute><Layout direction={direction} onDirectionChange={handleDirectionChange} /></PrivateRoute>}>
                       <Route index element={<Navigate to="/dashboard" replace />} />
                       <Route path="dashboard" element={<PrivateRoute roleRequired={['ADMIN']}><DashboardPage /></PrivateRoute>} />
                       <Route path="projects" element={<ProjectsPage />} />

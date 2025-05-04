@@ -24,8 +24,8 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onDirectionChange }
   const currentLanguage = i18n.language;
   
   const languages = [
-    { code: 'en', name: t('language.english'), dir: 'ltr' },
-    { code: 'ar', name: t('language.arabic'), dir: 'rtl' }
+    { code: 'en', name: t('language.english', 'English'), dir: 'ltr' },
+    { code: 'ar', name: t('language.arabic', 'العربية'), dir: 'rtl' }
   ];
 
   // Initialize language from localStorage on component mount
@@ -37,7 +37,7 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onDirectionChange }
       onDirectionChange(langDirection as Direction);
       console.log('Initialized language from localStorage:', savedLanguage, langDirection);
     }
-  }, []);
+  }, [i18n, onDirectionChange]);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
@@ -48,32 +48,58 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onDirectionChange }
   };
   
   const handleLanguageChange = (langCode: string, direction: Direction) => {
-    // Change language
-    i18n.changeLanguage(langCode);
-    // Save to localStorage
-    localStorage.setItem('themisLanguage', langCode);
-    // Change direction
-    onDirectionChange(direction);
-    // Close menu
-    handleClose();
+    console.log(`Changing language to ${langCode} (${direction})`);
     
-    // Preserve auth state when changing language
-    if (auth.isAuthenticated && auth.user) {
-      // Save auth data to sessionStorage
-      const authState = {
-        isPreserved: true,
-        userId: auth.user.id,
-        username: auth.user.username,
-        token: auth.token,
-        user: auth.user
-      };
-      sessionStorage.setItem('themis_preserve_auth', JSON.stringify(authState));
-    }
-    
-    // Force window reload to apply all translations
-    setTimeout(() => {
+    try {
+      // Clear i18next cache first to ensure new translations are loaded
+      localStorage.removeItem('i18nextLng');
+      
+      // Change language
+      i18n.changeLanguage(langCode);
+      
+      // Save to localStorage
+      localStorage.setItem('themisLanguage', langCode);
+      localStorage.setItem('i18nextLng', langCode);
+      
+      // Change direction
+      onDirectionChange(direction);
+      
+      // Update document direction
+      document.documentElement.dir = direction;
+      document.documentElement.lang = langCode;
+      
+      // Apply RTL/LTR class to body
+      const body = document.body;
+      if (direction === 'rtl') {
+        body.classList.add('rtl');
+        body.classList.remove('ltr');
+      } else {
+        body.classList.add('ltr');
+        body.classList.remove('rtl');
+      }
+      
+      // Close menu
+      handleClose();
+      
+      // Preserve auth state when changing language
+      if (auth.isAuthenticated && auth.user) {
+        // Save auth data to sessionStorage
+        const authState = {
+          isPreserved: true,
+          userId: auth.user.id,
+          username: auth.user.username,
+          token: auth.token,
+          user: auth.user
+        };
+        sessionStorage.setItem('themis_preserve_auth', JSON.stringify(authState));
+      }
+      
+      // Refresh the page to ensure all translations are applied
       window.location.reload();
-    }, 100);
+      
+    } catch (error) {
+      console.error('Error changing language:', error);
+    }
   };
 
   return (

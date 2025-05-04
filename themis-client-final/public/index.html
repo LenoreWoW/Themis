@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
@@ -22,6 +22,18 @@
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
     <title>Themis | Project Management System</title>
+    
+    <!-- Font for RTL support -->
+    <link id="rtl-font" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap">
+    
+    <!-- Script to set language and direction attributes -->
+    <script>
+      // Set language attributes on HTML tag
+      const savedLanguage = localStorage.getItem('themisLanguage') || 'en';
+      const direction = savedLanguage === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = savedLanguage;
+      document.documentElement.dir = direction;
+    </script>
     
     <!-- Force reset local storage data -->
     <script>
