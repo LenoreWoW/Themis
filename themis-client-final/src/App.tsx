@@ -35,6 +35,7 @@ import ApprovalsPage from './pages/ApprovalsPage';
 import LegacyProjectPage from './pages/LegacyProjectPage';
 import AuditPage from './pages/AuditPage';
 import AuditLogPage from './pages/AuditLogPage';
+import SupabaseConnectionTest from './components/SupabaseConnectionTest';
 import { useTranslation } from 'react-i18next';
 import { initializeCleanApplication, isAppClean, cleanupMockData } from './utils/cleanupUtils';
 
@@ -161,6 +162,7 @@ const AppContent: React.FC = () => {
                       <Route path="legacy-projects" element={<PrivateRoute roleRequired={['ADMIN']}><LegacyProjectPage /></PrivateRoute>} />
                       <Route path="audit" element={<PrivateRoute roleRequired={['ADMIN']}><AuditPage /></PrivateRoute>} />
                       <Route path="audit-logs" element={<PrivateRoute roleRequired={['ADMIN']}><AuditLogPage /></PrivateRoute>} />
+                      <Route path="supabase-test" element={<SupabaseConnectionTest />} />
                     </Route>
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
