@@ -31,7 +31,7 @@ interface AddTaskDialogProps {
   projectId?: string; // Optional - if not provided, it's an independent task
   projectUsers?: User[];
   allUsers?: User[]; // For independent tasks
-  onTaskAdded: (success: boolean) => void;
+  onTaskAdded: (successOrTask: boolean | any) => void; // Changed to accept either boolean or task data
   isIndependentTask?: boolean;
   initialStatus?: TaskStatus; // Add initialStatus prop
 }
@@ -192,25 +192,41 @@ const AddTaskDialog: React.FC<AddTaskDialogProps> = ({
     
     setIsSubmitting(true);
     try {
+      console.log('AddTaskDialog: Submitting task with data:', {
+        ...taskData,
+        startDate: taskData.startDate.toISOString(),
+        dueDate: taskData.dueDate.toISOString()
+      });
+      
+      // For independent tasks
       if (isIndependentTask) {
-        // Create independent task
+        // Create independent task through TaskService
         await TaskService.createIndependentTask({
           ...taskData,
           startDate: taskData.startDate.toISOString(),
           dueDate: taskData.dueDate.toISOString()
         }, token || '');
-      } else if (projectId) {
-        // Create project task
-        await TaskService.createTask(projectId, {
+        onTaskAdded(true);
+      } 
+      // For project tasks
+      else if (projectId) {
+        // Use the project ID that was passed in props
+        const taskWithDates = {
           ...taskData,
           startDate: taskData.startDate.toISOString(),
-          dueDate: taskData.dueDate.toISOString()
-        }, token || '');
+          dueDate: taskData.dueDate.toISOString(),
+          projectId: projectId
+        };
+        
+        console.log('AddTaskDialog: Creating project task with data:', taskWithDates);
+        
+        // Call the onTaskAdded callback with the complete task data
+        // This is key - we're passing the task data directly to parent
+        onTaskAdded(taskWithDates);
       } else {
         throw new Error('Missing project ID for project task');
       }
       
-      onTaskAdded(true);
       onClose();
       
       // Reset form data

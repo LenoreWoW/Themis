@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Dialog, 
   DialogTitle, 
@@ -51,9 +51,9 @@ import {
 } from '@mui/icons-material';
 import { GridItem, GridContainer } from '../../components/common/MuiGridWrapper';
 import { Project, Department } from '../../types';
-import { mockProjects } from '../../services/mockData';
 import { v4 as uuidv4 } from 'uuid';
 import { getTemplatePreviewPath, getTemplateDescription } from '../../utils/imagePlaceholders';
+import { useProjects } from '../../context/ProjectContext';
 
 interface ApiResponse<T> {
   data: T;
@@ -96,12 +96,14 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
   users
 }) => {
   const { token } = useAuth();
+  const { addProject } = useProjects();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
   const [attachments, setAttachments] = useState<File[]>([]);
   const [attachmentErrors, setAttachmentErrors] = useState<string[]>([]);
   const { t } = useTranslation();
+  const [existingProjects, setExistingProjects] = useState<Project[]>([]);
   
   const [formData, setFormData] = useState({
     name: '',
@@ -115,11 +117,31 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
     client: '',
     teamMembers: [] as string[],
     priority: ProjectPriority.MEDIUM,
-    templateType: ProjectTemplateType.DEFAULT
+    templateType: ProjectTemplateType.DEFAULT,
+    dependsOnProjects: [] as string[],
+    projectsDependingOnThis: [] as string[]
   });
 
   const [previewOpen, setPreviewOpen] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplateType | null>(null);
+
+  // Fetch existing projects for dependencies dropdowns
+  useEffect(() => {
+    if (open && token) {
+      const fetchProjects = async () => {
+        try {
+          const response = await api.projects.getAllProjects(token);
+          if (response.data) {
+            setExistingProjects(response.data);
+          }
+        } catch (error) {
+          console.error('Error fetching projects:', error);
+        }
+      };
+      
+      fetchProjects();
+    }
+  }, [open, token]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -240,6 +262,23 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
     }));
   };
 
+  // Add handler for dependencies selection
+  const handleDependsOnChange = (event: SelectChangeEvent<string[]>) => {
+    const { value } = event.target;
+    setFormData(prev => ({
+      ...prev,
+      dependsOnProjects: typeof value === 'string' ? value.split(',') : value
+    }));
+  };
+
+  const handleDependingOnThisChange = (event: SelectChangeEvent<string[]>) => {
+    const { value } = event.target;
+    setFormData(prev => ({
+      ...prev,
+      projectsDependingOnThis: typeof value === 'string' ? value.split(',') : value
+    }));
+  };
+
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
     
@@ -287,6 +326,12 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
       const selectedProjectManager = users.find(u => u.id === formData.projectManagerId);
       const selectedDepartment = departments.find(d => d.id === formData.departmentId);
       
+      // Ensure project manager is included in team members
+      let updatedTeamMembers = [...formData.teamMembers];
+      if (selectedProjectManager && !updatedTeamMembers.includes(selectedProjectManager.id)) {
+        updatedTeamMembers.push(selectedProjectManager.id);
+      }
+      
       // Create project data
       const projectData = {
         name: formData.name,
@@ -299,17 +344,20 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
         budget: formData.budget,
         actualCost: 0,
         projectManager: selectedProjectManager,
-        teamMembers: formData.teamMembers,
+        teamMembers: updatedTeamMembers,
         client: formData.client,
         progress: 0,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        templateType: formData.templateType
+        templateType: formData.templateType,
+        dependsOnProjects: formData.dependsOnProjects,
+        projectsDependingOnThis: formData.projectsDependingOnThis
       };
       
-      // First, clear localStorage to avoid any inconsistencies
-      localStorage.removeItem('themis_projects');
+      // Get existing projects instead of clearing localStorage
+      const existingProjects = JSON.parse(localStorage.getItem('themis_projects') || '[]');
       
+      // Use API to create the project
       const projectResponse = await api.projects.createProject(projectData, token || '');
       
       // If we have attachments, upload them
@@ -326,8 +374,10 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
       
       // Check if we have a project response with data
       if (projectResponse.data) {
-        // Force update localStorage before proceeding
-        const existingProjects = JSON.parse(localStorage.getItem('themis_projects') || '[]');
+        // First add it to the context
+        addProject(projectResponse.data as Project);
+        
+        // Also add to localStorage directly to ensure it's immediately available
         localStorage.setItem('themis_projects', JSON.stringify([
           ...existingProjects,
           { ...projectResponse.data, templateType: formData.templateType }
@@ -773,6 +823,89 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
                     sx: { borderRadius: 1.5 }
                   }}
                 />
+              </GridItem>
+              
+              {/* Project Dependencies */}
+              <GridItem xs={12}>
+                <Typography variant="subtitle1" gutterBottom sx={{ mt: 2 }}>
+                  {t('project.dependencies')}
+                </Typography>
+              </GridItem>
+              
+              <GridItem xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="depends-on-label">{t('project.dependsOn')}</InputLabel>
+                  <Select
+                    labelId="depends-on-label"
+                    id="depends-on-select"
+                    multiple
+                    value={formData.dependsOnProjects}
+                    onChange={handleDependsOnChange}
+                    input={<OutlinedInput label={t('project.dependsOn')} />}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const project = existingProjects.find(p => p.id === value);
+                          return (
+                            <Chip 
+                              key={value} 
+                              label={project ? project.name : value} 
+                              size="small"
+                            />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {existingProjects.map((project) => (
+                      <MenuItem key={project.id} value={project.id}>
+                        <Checkbox checked={formData.dependsOnProjects.indexOf(project.id) > -1} />
+                        <ListItemText primary={project.name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {t('project.dependsOnHelper')}
+                  </FormHelperText>
+                </FormControl>
+              </GridItem>
+              
+              <GridItem xs={12} sm={6}>
+                <FormControl fullWidth>
+                  <InputLabel id="depending-on-this-label">{t('project.dependingOnThis')}</InputLabel>
+                  <Select
+                    labelId="depending-on-this-label"
+                    id="depending-on-this-select"
+                    multiple
+                    value={formData.projectsDependingOnThis}
+                    onChange={handleDependingOnThisChange}
+                    input={<OutlinedInput label={t('project.dependingOnThis')} />}
+                    renderValue={(selected) => (
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {selected.map((value) => {
+                          const project = existingProjects.find(p => p.id === value);
+                          return (
+                            <Chip 
+                              key={value} 
+                              label={project ? project.name : value} 
+                              size="small"
+                            />
+                          );
+                        })}
+                      </Box>
+                    )}
+                  >
+                    {existingProjects.map((project) => (
+                      <MenuItem key={project.id} value={project.id}>
+                        <Checkbox checked={formData.projectsDependingOnThis.indexOf(project.id) > -1} />
+                        <ListItemText primary={project.name} />
+                      </MenuItem>
+                    ))}
+                  </Select>
+                  <FormHelperText>
+                    {t('project.dependingOnThisHelper')}
+                  </FormHelperText>
+                </FormControl>
               </GridItem>
               
               {/* File Attachments */}

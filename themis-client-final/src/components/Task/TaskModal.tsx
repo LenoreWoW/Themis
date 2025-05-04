@@ -16,14 +16,28 @@ import {
   FormControlLabel,
   Checkbox,
   Stack,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Grid
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { Task, TaskStatus, TaskPriority, User, UserRole, Project } from '../../types';
 import { mapToBackendStatus, mapToFrontendStatus } from '../../utils/taskStatusMapper';
-import { GridItem, GridContainer } from '../common/MuiGridWrapper';
 import { useTranslation } from 'react-i18next';
+import { mockUsers } from '../../services/mockData';
+
+// Simple Grid wrapper components to maintain existing code structure
+const GridContainer = (props: any) => (
+  <Grid container spacing={props.spacing || 2} {...props}>
+    {props.children}
+  </Grid>
+);
+
+const GridItem = (props: any) => (
+  <Grid item xs={props.xs} md={props.md} {...props}>
+    {props.children}
+  </Grid>
+);
 
 interface TaskModalProps {
   open: boolean;
@@ -214,7 +228,9 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   value={formValues.assignee?.id || ''}
                   onChange={(e) => {
                     const selectedUserId = e.target.value as string;
-                    const selectedUser = projectUsers.find(user => user.id === selectedUserId);
+                    // Use projectUsers first, then fallback to mockUsers if no project users available
+                    const availableUsers = projectUsers.length > 0 ? projectUsers : mockUsers;
+                    const selectedUser = availableUsers.find(user => user.id === selectedUserId);
                     
                     if (selectedUser) {
                       setFormValues(prev => ({
@@ -228,7 +244,8 @@ const TaskModal: React.FC<TaskModalProps> = ({
                   <MenuItem value="">
                     <em>{t('project.unassigned')}</em>
                   </MenuItem>
-                  {projectUsers.map(user => (
+                  {/* Use projectUsers first, then fallback to mockUsers if no project users available */}
+                  {(projectUsers.length > 0 ? projectUsers : mockUsers).map(user => (
                     <MenuItem key={user.id} value={user.id}>
                       {user.firstName} {user.lastName}
                     </MenuItem>

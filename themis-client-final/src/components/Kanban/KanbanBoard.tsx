@@ -7,22 +7,35 @@ import {
   Stack,
   Chip
 } from '@mui/material';
-import { Task, TaskStatus, UserRole } from '../../types';
+import { Task, TaskStatus, UserRole, Project } from '../../types';
 import TaskCard from '../Task/TaskCard';
 import { useTheme } from '@mui/material/styles';
+import { Droppable } from 'react-beautiful-dnd';
+import { formatEnumValue } from '../../utils/helpers';
 
 interface KanbanBoardProps {
   tasks: Task[];
   onTaskClick?: (taskId: string) => void;
   onAddComment?: (taskId: string, comment: string) => Promise<void>;
   onUpdateProgress?: (taskId: string, progress: number, newStatus: TaskStatus) => void;
+  onTaskUpdate?: (taskId: string, newStatus: TaskStatus) => Promise<void>;
+  project?: any;
+  onAddTask?: () => void;
+  onRequestTask?: () => void;
+  onEdit?: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
+  onAttach?: (taskId: string) => void;
 }
 
 const KanbanBoard: React.FC<KanbanBoardProps> = ({ 
   tasks, 
   onTaskClick, 
   onAddComment,
-  onUpdateProgress
+  onUpdateProgress,
+  onTaskUpdate,
+  onEdit,
+  onDelete,
+  onAttach
 }) => {
   const theme = useTheme();
   const [columns, setColumns] = useState<{[key: string]: Task[]}>({
@@ -44,18 +57,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
   }, [tasks]);
 
   const getColumnTitle = (status: TaskStatus) => {
-    switch (status) {
-      case TaskStatus.TODO:
-        return 'To Do';
-      case TaskStatus.IN_PROGRESS:
-        return 'In Progress';
-      case TaskStatus.REVIEW:
-        return 'In Review';
-      case TaskStatus.DONE:
-        return 'Done';
-      default:
-        return status;
-    }
+    return formatEnumValue(status);
   };
 
   const getColumnColor = (status: TaskStatus) => {
@@ -71,6 +73,10 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
       default:
         return theme.palette.grey[300];
     }
+  };
+
+  const getStatusTitle = (status: TaskStatus): string => {
+    return formatEnumValue(status);
   };
 
   return (
@@ -91,44 +97,65 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({
         >
           <Box sx={{ p: 2, bgcolor: 'background.default' }}>
             <Typography variant="h6" component="h3" fontWeight="bold">
-              {getColumnTitle(status as TaskStatus)}
+              {formatEnumValue(String(status))}
               <Chip 
                 label={columns[status].length} 
                 size="small" 
                 sx={{ ml: 1 }}
-                color={status === TaskStatus.DONE ? 'success' : 
-                      status === TaskStatus.REVIEW ? 'warning' : 
+                color={status === TaskStatus.DONE ? 'success' :
+                      status === TaskStatus.REVIEW ? 'warning' :
                       status === TaskStatus.IN_PROGRESS ? 'primary' : 'default'}
               />
             </Typography>
           </Box>
           <Divider />
-          <Stack spacing={2} sx={{ p: 2, overflowY: 'auto', flexGrow: 1 }}>
-            {columns[status].map((task) => (
-              <TaskCard
-                key={task.id}
-                task={task}
-                onClick={() => onTaskClick && onTaskClick(task.id)}
-                onAddComment={onAddComment}
-                onUpdateProgress={onUpdateProgress}
-              />
-            ))}
-            {columns[status].length === 0 && (
-              <Box 
+          <Droppable droppableId={status} type="TASK">
+            {(provided, snapshot) => (
+              <Stack 
+                spacing={2} 
                 sx={{ 
                   p: 2, 
-                  textAlign: 'center', 
-                  color: 'text.secondary',
-                  bgcolor: 'background.paper',
-                  borderRadius: 1,
-                  border: '1px dashed',
-                  borderColor: 'divider'
+                  overflowY: 'auto', 
+                  flexGrow: 1,
+                  minHeight: 100,
+                  backgroundColor: snapshot.isDraggingOver ? 'rgba(0,0,0,0.05)' : 'transparent',
+                  transition: 'background-color 0.2s ease'
                 }}
+                ref={provided.innerRef}
+                {...provided.droppableProps}
               >
-                <Typography variant="body2">No tasks</Typography>
-              </Box>
+                {columns[status].map((task, index) => (
+                  <TaskCard
+                    key={task.id}
+                    task={task}
+                    index={index}
+                    onClick={() => onTaskClick && onTaskClick(task.id)}
+                    onAddComment={onAddComment}
+                    onUpdateProgress={onUpdateProgress}
+                    onEdit={onEdit}
+                    onDelete={onDelete}
+                    onAttach={onAttach}
+                  />
+                ))}
+                {columns[status].length === 0 && (
+                  <Box 
+                    sx={{ 
+                      p: 2, 
+                      textAlign: 'center', 
+                      color: 'text.secondary',
+                      bgcolor: 'background.paper',
+                      borderRadius: 1,
+                      border: '1px dashed',
+                      borderColor: 'divider'
+                    }}
+                  >
+                    <Typography variant="body2">No tasks</Typography>
+                  </Box>
+                )}
+                {provided.placeholder}
+              </Stack>
             )}
-          </Stack>
+          </Droppable>
         </Paper>
       ))}
     </Box>

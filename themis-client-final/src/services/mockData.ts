@@ -1,246 +1,372 @@
-import { Project, User, Department, ProjectStatus, ProjectPriority, Task, TaskStatus, Risk, Meeting, Issue, UserRole, RiskStatus, IssueStatus, RiskImpact, TaskRequestStatus, MeetingStatus, TaskPriority, ProjectTemplateType } from '../types';
+import { 
+  User, 
+  UserRole, 
+  Department,
+  Project,
+  ProjectStatus,
+  ProjectPriority,
+  Task,
+  TaskStatus,
+  TaskPriority,
+  Risk,
+  RiskStatus,
+  RiskImpact,
+  Issue,
+  IssueStatus,
+  Meeting,
+  MeetingStatus,
+  ProjectTemplateType
+} from '../types';
 
-// Mock Departments
+// Create departments
 export const mockDepartments: Department[] = [
-  { 
-    id: 'd1', 
-    name: 'Information Technology', 
-    description: 'Manages all IT infrastructure and software development',
-    createdAt: '2023-01-01T00:00:00Z', 
-    updatedAt: '2023-01-01T00:00:00Z' 
+  {
+    id: 'd1',
+    name: 'Information Technology',
+    description: 'IT department responsible for all technology infrastructure and support',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
-  { 
-    id: 'd2', 
-    name: 'Marketing', 
-    description: 'Handles all marketing campaigns and brand management',
-    createdAt: '2023-01-01T00:00:00Z', 
-    updatedAt: '2023-01-01T00:00:00Z' 
+  {
+    id: 'd2',
+    name: 'Engineering',
+    description: 'Engineering department responsible for product development',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
-  { 
-    id: 'd3', 
-    name: 'Finance', 
-    description: 'Manages company finances and budgeting',
-    createdAt: '2023-01-01T00:00:00Z', 
-    updatedAt: '2023-01-01T00:00:00Z' 
+  {
+    id: 'd3',
+    name: 'Human Resources',
+    description: 'HR department handling all personnel matters',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
-  { 
-    id: 'd4', 
-    name: 'Operations', 
-    description: 'Oversees daily business operations and logistics',
-    createdAt: '2023-01-01T00:00:00Z', 
-    updatedAt: '2023-01-01T00:00:00Z' 
+  {
+    id: 'd4',
+    name: 'Finance',
+    description: 'Finance department handling budgeting and accounting',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
-  { 
-    id: 'd5', 
-    name: 'Human Resources', 
-    description: 'Responsible for recruitment and employee management',
-    createdAt: '2023-01-01T00:00:00Z', 
-    updatedAt: '2023-01-01T00:00:00Z' 
+  {
+    id: 'd5',
+    name: 'Marketing',
+    description: 'Marketing department responsible for product promotion',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
-  { 
-    id: 'd6', 
-    name: 'Research & Development', 
-    description: 'Focuses on innovation and new product development',
-    createdAt: '2023-01-01T00:00:00Z', 
-    updatedAt: '2023-01-01T00:00:00Z' 
+  {
+    id: 'd6',
+    name: 'Sales',
+    description: 'Sales department handling customer acquisition',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
-  { 
-    id: 'd7', 
-    name: 'Customer Support', 
-    description: 'Provides assistance and technical support to customers',
-    createdAt: '2023-01-01T00:00:00Z', 
-    updatedAt: '2023-01-01T00:00:00Z' 
-  },
-  { 
-    id: 'd8', 
-    name: 'Legal', 
-    description: 'Handles legal matters and compliance',
-    createdAt: '2023-01-01T00:00:00Z', 
-    updatedAt: '2023-01-01T00:00:00Z' 
+  {
+    id: 'd7',
+    name: 'PMO',
+    description: 'Project Management Office',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 ];
 
-// Mock Users
+// Create test users with various roles
 export const mockUsers: User[] = [
+  // Admins
   {
-    id: 'u1',
-    firstName: 'John',
-    lastName: 'Smith',
-    email: 'john.smith@themis.com',
+    id: 'admin1',
+    email: 'admin@example.com',
+    firstName: 'Admin',
+    lastName: 'User',
     role: UserRole.ADMIN,
     department: mockDepartments[0],
-    username: 'john.smith',
+    username: 'admin.user',
     isActive: true,
-    createdAt: '2023-01-15T08:30:00Z',
-    updatedAt: '2023-06-10T14:45:00Z'
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
+  
+  // Executives
   {
-    id: 'u2',
+    id: 'exec1',
+    email: 'ceo@example.com',
     firstName: 'Sarah',
     lastName: 'Johnson',
-    email: 'sarah.johnson@themis.com',
-    role: UserRole.PROJECT_MANAGER,
-    department: mockDepartments[0],
+    role: UserRole.EXECUTIVE,
+    department: mockDepartments[3], // Finance
     username: 'sarah.johnson',
     isActive: true,
-    createdAt: '2023-01-20T09:15:00Z',
-    updatedAt: '2023-05-25T11:30:00Z'
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
-    id: 'u3',
+    id: 'exec2',
+    email: 'cto@example.com',
     firstName: 'Michael',
     lastName: 'Chen',
-    email: 'michael.chen@themis.com',
-    role: UserRole.DEVELOPER,
-    department: mockDepartments[0],
+    role: UserRole.EXECUTIVE,
+    department: mockDepartments[0], // IT
     username: 'michael.chen',
     isActive: true,
-    createdAt: '2023-02-05T10:45:00Z',
-    updatedAt: '2023-06-15T16:20:00Z'
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
+  
+  // Department Directors
   {
-    id: 'u4',
-    firstName: 'Emma',
-    lastName: 'Garcia',
-    email: 'emma.garcia@themis.com',
-    role: UserRole.DEPARTMENT_DIRECTOR,
-    department: mockDepartments[1],
-    username: 'emma.garcia',
-    isActive: true,
-    createdAt: '2023-01-10T08:00:00Z',
-    updatedAt: '2023-06-05T13:15:00Z'
-  },
-  {
-    id: 'u5',
-    firstName: 'David',
-    lastName: 'Wilson',
-    email: 'david.wilson@themis.com',
-    role: UserRole.PROJECT_MANAGER,
-    department: mockDepartments[1],
-    username: 'david.wilson',
-    isActive: true,
-    createdAt: '2023-02-10T11:20:00Z',
-    updatedAt: '2023-05-30T15:45:00Z'
-  },
-  {
-    id: 'u6',
-    firstName: 'Sophia',
-    lastName: 'Kim',
-    email: 'sophia.kim@themis.com',
-    role: UserRole.DESIGNER,
-    department: mockDepartments[1],
-    username: 'sophia.kim',
-    isActive: true,
-    createdAt: '2023-03-01T09:30:00Z',
-    updatedAt: '2023-06-20T10:10:00Z'
-  },
-  {
-    id: 'u7',
-    firstName: 'Robert',
-    lastName: 'Taylor',
-    email: 'robert.taylor@themis.com',
-    role: UserRole.EXECUTIVE,
-    department: mockDepartments[2],
-    username: 'robert.taylor',
-    isActive: true,
-    createdAt: '2023-01-05T08:15:00Z',
-    updatedAt: '2023-05-20T14:00:00Z'
-  },
-  {
-    id: 'u8',
-    firstName: 'Olivia',
-    lastName: 'Martinez',
-    email: 'olivia.martinez@themis.com',
-    role: UserRole.PROJECT_MANAGER,
-    department: mockDepartments[2],
-    username: 'olivia.martinez',
-    isActive: true,
-    createdAt: '2023-02-15T10:00:00Z',
-    updatedAt: '2023-06-25T11:45:00Z'
-  },
-  {
-    id: 'u9',
+    id: 'dir1',
+    email: 'itdirector@example.com',
     firstName: 'James',
-    lastName: 'Brown',
-    email: 'james.brown@themis.com',
+    lastName: 'Wilson',
     role: UserRole.DEPARTMENT_DIRECTOR,
-    department: mockDepartments[3],
-    username: 'james.brown',
+    department: mockDepartments[0], // IT
+    username: 'james.wilson',
     isActive: true,
-    createdAt: '2023-01-25T09:45:00Z',
-    updatedAt: '2023-06-01T15:30:00Z'
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
-    id: 'u10',
+    id: 'dir2',
+    email: 'engdirector@example.com',
     firstName: 'Emily',
-    lastName: 'Davis',
-    email: 'emily.davis@themis.com',
-    role: UserRole.MANAGER,
-    department: mockDepartments[3],
-    username: 'emily.davis',
-    isActive: true,
-    createdAt: '2023-03-05T10:15:00Z',
-    updatedAt: '2023-06-30T09:20:00Z'
-  },
-  {
-    id: 'u11',
-    firstName: 'Daniel',
     lastName: 'Rodriguez',
-    email: 'daniel.rodriguez@themis.com',
-    role: UserRole.DEVELOPER,
-    department: mockDepartments[0],
-    username: 'daniel.rodriguez',
+    role: UserRole.DEPARTMENT_DIRECTOR,
+    department: mockDepartments[1], // Engineering
+    username: 'emily.rodriguez',
     isActive: true,
-    createdAt: '2023-02-20T14:20:00Z',
-    updatedAt: '2023-06-12T11:30:00Z'
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
-    id: 'u12',
-    firstName: 'Ava',
+    id: 'dir3',
+    email: 'hrdirector@example.com',
+    firstName: 'David',
     lastName: 'Thompson',
-    email: 'ava.thompson@themis.com',
-    role: UserRole.QA,
-    department: mockDepartments[0],
-    username: 'ava.thompson',
+    role: UserRole.DEPARTMENT_DIRECTOR,
+    department: mockDepartments[2], // HR
+    username: 'david.thompson',
     isActive: true,
-    createdAt: '2023-03-15T09:40:00Z',
-    updatedAt: '2023-07-01T10:15:00Z'
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
+  
+  // Main PMO
   {
-    id: 'u13',
-    firstName: 'Mohammed',
-    lastName: 'Al-Farsi',
-    email: 'mohammed.alfarsi@themis.com',
-    role: UserRole.SUB_PMO,
-    department: mockDepartments[5],
-    username: 'mohammed.alfarsi',
-    isActive: true,
-    createdAt: '2023-01-30T12:00:00Z',
-    updatedAt: '2023-06-18T16:45:00Z'
-  },
-  {
-    id: 'u14',
-    firstName: 'Fatima',
-    lastName: 'Al-Said',
-    email: 'fatima.alsaid@themis.com',
+    id: 'mainpmo1',
+    email: 'mainpmo@example.com',
+    firstName: 'Jennifer',
+    lastName: 'Garcia',
     role: UserRole.MAIN_PMO,
-    department: mockDepartments[5],
-    username: 'fatima.alsaid',
+    department: mockDepartments[6], // PMO
+    username: 'jennifer.garcia',
     isActive: true,
-    createdAt: '2023-01-18T11:10:00Z',
-    updatedAt: '2023-05-22T14:30:00Z'
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  
+  // Sub PMO
+  {
+    id: 'subpmo1',
+    email: 'itpmo@example.com',
+    firstName: 'Robert',
+    lastName: 'Davis',
+    role: UserRole.SUB_PMO,
+    department: mockDepartments[0], // IT
+    username: 'robert.davis',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   },
   {
-    id: 'u15',
-    firstName: 'Ahmed',
-    lastName: 'Hassan',
-    email: 'ahmed.hassan@themis.com',
-    role: UserRole.TEAM_LEAD,
-    department: mockDepartments[0],
-    username: 'ahmed.hassan',
+    id: 'subpmo2',
+    email: 'engpmo@example.com',
+    firstName: 'Lisa',
+    lastName: 'Martinez',
+    role: UserRole.SUB_PMO,
+    department: mockDepartments[1], // Engineering
+    username: 'lisa.martinez',
     isActive: true,
-    createdAt: '2023-02-08T10:30:00Z',
-    updatedAt: '2023-06-14T15:00:00Z'
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  
+  // Project Managers
+  {
+    id: 'pm1',
+    email: 'itpm@example.com',
+    firstName: 'Thomas',
+    lastName: 'Anderson',
+    role: UserRole.PROJECT_MANAGER,
+    department: mockDepartments[0], // IT
+    username: 'thomas.anderson',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'pm2',
+    email: 'engpm@example.com',
+    firstName: 'Michelle',
+    lastName: 'Lee',
+    role: UserRole.PROJECT_MANAGER,
+    department: mockDepartments[1], // Engineering
+    username: 'michelle.lee',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'pm3',
+    email: 'marketingpm@example.com',
+    firstName: 'Daniel',
+    lastName: 'White',
+    role: UserRole.PROJECT_MANAGER,
+    department: mockDepartments[4], // Marketing
+    username: 'daniel.white',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  
+  // Team Leads
+  {
+    id: 'tl1',
+    email: 'devlead@example.com',
+    firstName: 'Patricia',
+    lastName: 'Taylor',
+    role: UserRole.TEAM_LEAD,
+    department: mockDepartments[1], // Engineering
+    username: 'patricia.taylor',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'tl2',
+    email: 'networklead@example.com',
+    firstName: 'Andrew',
+    lastName: 'Clark',
+    role: UserRole.TEAM_LEAD,
+    department: mockDepartments[0], // IT
+    username: 'andrew.clark',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  
+  // Developers
+  {
+    id: 'dev1',
+    email: 'frontend@example.com',
+    firstName: 'Jessica',
+    lastName: 'Brown',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[1], // Engineering
+    username: 'jessica.brown',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'dev2',
+    email: 'backend@example.com',
+    firstName: 'Kevin',
+    lastName: 'Miller',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[1], // Engineering
+    username: 'kevin.miller',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'dev3',
+    email: 'fullstack@example.com',
+    firstName: 'Amanda',
+    lastName: 'Moore',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[1], // Engineering
+    username: 'amanda.moore',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  
+  // QA - using DEVELOPER role since QA isn't in UserRole enum
+  {
+    id: 'qa1',
+    email: 'qaengineer@example.com',
+    firstName: 'Brian',
+    lastName: 'Jackson',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[1], // Engineering
+    username: 'brian.jackson',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'qa2',
+    email: 'qalead@example.com',
+    firstName: 'Stephanie',
+    lastName: 'Lewis',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[1], // Engineering
+    username: 'stephanie.lewis',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  
+  // Other team members - using DEVELOPER role since the other roles aren't in UserRole enum
+  {
+    id: 'design1',
+    email: 'uidesigner@example.com',
+    firstName: 'Mark',
+    lastName: 'Harris',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[4], // Marketing
+    username: 'mark.harris',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'sales1',
+    email: 'salesrep@example.com',
+    firstName: 'Laura',
+    lastName: 'King',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[5], // Sales
+    username: 'laura.king',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'finance1',
+    email: 'accountant@example.com',
+    firstName: 'Christopher',
+    lastName: 'Scott',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[3], // Finance
+    username: 'christopher.scott',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'hr1',
+    email: 'hrspecialist@example.com',
+    firstName: 'Nicole',
+    lastName: 'Green',
+    role: UserRole.DEVELOPER,
+    department: mockDepartments[2], // HR
+    username: 'nicole.green',
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
   }
 ];
 
@@ -248,213 +374,296 @@ export const mockUsers: User[] = [
 export const mockProjects: Project[] = [
   {
     id: 'p1',
-    name: 'Enterprise Resource Planning System',
-    description: 'Implement a new ERP system to improve business processes and operations.',
-    department: mockDepartments[0], // IT Department
-    departmentId: mockDepartments[0].id,
+    name: 'Digital Transformation',
+    description: 'Company-wide digital transformation initiative to modernize systems and processes',
     status: ProjectStatus.IN_PROGRESS,
     priority: ProjectPriority.HIGH,
-    startDate: '2023-05-01T00:00:00Z',
-    endDate: '2023-10-31T00:00:00Z',
-    budget: 250000,
-    actualCost: 120000,
-    projectManager: mockUsers[1], // Sarah Johnson (Project Manager)
-    projectManagerId: mockUsers[1].id,
-    teamMembers: [mockUsers[2], mockUsers[10], mockUsers[11]], // Michael Chen, Daniel Rodriguez, Ava Thompson
-    progress: 45,
-    createdAt: '2023-04-15T00:00:00Z',
-    updatedAt: '2023-06-20T00:00:00Z',
-    templateType: ProjectTemplateType.ERP
+    startDate: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+    endDate: new Date(new Date().setDate(new Date().getDate() + 120)).toISOString(),
+    projectManager: mockUsers[9], // Thomas Anderson
+    department: mockDepartments[0], // IT
+    budget: 500000,
+    actualCost: 150000,
+    progress: 35,
+    templateType: ProjectTemplateType.DEFAULT,
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 30)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
   },
   {
     id: 'p2',
-    name: 'Marketing Campaign for Q3',
-    description: 'Plan and execute marketing campaign for the third quarter focusing on new product launch.',
-    department: mockDepartments[1], // Marketing Department
-    departmentId: mockDepartments[1].id,
+    name: 'Product Launch Campaign',
+    description: 'Marketing campaign for the new product line launching in Q3',
     status: ProjectStatus.PLANNING,
     priority: ProjectPriority.MEDIUM,
-    startDate: '2023-07-01T00:00:00Z',
-    endDate: '2023-09-30T00:00:00Z',
-    budget: 100000,
-    projectManager: mockUsers[4], // David Wilson (Project Manager)
-    projectManagerId: mockUsers[4].id,
-    teamMembers: [mockUsers[5]], // Sophia Kim (Designer)
-    progress: 15,
-    createdAt: '2023-06-10T00:00:00Z',
-    updatedAt: '2023-06-15T00:00:00Z',
-    templateType: ProjectTemplateType.MARKETING
+    startDate: new Date(new Date().setDate(new Date().getDate() + 15)).toISOString(),
+    endDate: new Date(new Date().setDate(new Date().getDate() + 90)).toISOString(),
+    projectManager: mockUsers[11], // Daniel White
+    department: mockDepartments[4], // Marketing
+    budget: 250000,
+    actualCost: 25000,
+    progress: 10,
+    templateType: ProjectTemplateType.MARKETING,
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString()
   },
   {
     id: 'p3',
-    name: 'Financial System Upgrade',
-    description: 'Upgrade the financial reporting system to comply with new regulations.',
-    department: mockDepartments[2], // Finance Department
-    departmentId: mockDepartments[2].id,
-    status: ProjectStatus.ON_HOLD,
-    priority: ProjectPriority.CRITICAL,
-    startDate: '2023-04-01T00:00:00Z',
-    endDate: '2023-08-31T00:00:00Z',
-    budget: 180000,
-    actualCost: 65000,
-    projectManager: mockUsers[7], // Olivia Martinez (Project Manager)
-    projectManagerId: mockUsers[7].id,
-    teamMembers: [mockUsers[2], mockUsers[6]], // Michael Chen (Developer), Robert Taylor (Executive)
-    progress: 30,
-    createdAt: '2023-03-15T00:00:00Z',
-    updatedAt: '2023-06-05T00:00:00Z',
-    templateType: ProjectTemplateType.FINANCE
-  },
-  {
-    id: 'p4',
-    name: 'Operations Optimization',
-    description: 'Optimize warehouse operations to improve efficiency and reduce costs.',
-    department: mockDepartments[3], // Operations Department
-    departmentId: mockDepartments[3].id,
-    status: ProjectStatus.COMPLETED,
-    priority: ProjectPriority.HIGH,
-    startDate: '2023-01-15T00:00:00Z',
-    endDate: '2023-05-15T00:00:00Z',
-    budget: 120000,
-    actualCost: 118000,
-    projectManager: mockUsers[9], // Emily Davis (Manager)
-    projectManagerId: mockUsers[9].id,
-    teamMembers: [mockUsers[8]], // James Brown (Department Director)
-    progress: 100,
-    createdAt: '2023-01-10T00:00:00Z',
-    updatedAt: '2023-05-20T00:00:00Z',
-    templateType: ProjectTemplateType.SUPPLY_CHAIN
-  },
-  {
-    id: 'p5',
-    name: 'Website Redesign',
-    description: 'Completely redesign the company website to improve user experience and conversion rates.',
-    department: mockDepartments[1], // Marketing Department
-    departmentId: mockDepartments[1].id,
+    name: 'Legacy System Migration',
+    description: 'Migration from legacy systems to modern cloud-based infrastructure',
     status: ProjectStatus.IN_PROGRESS,
-    priority: ProjectPriority.MEDIUM,
-    startDate: '2023-03-01T00:00:00Z',
-    endDate: '2023-07-31T00:00:00Z',
-    budget: 75000,
-    actualCost: 40000,
-    projectManager: mockUsers[4], // David Wilson (Project Manager)
-    projectManagerId: mockUsers[4].id,
-    teamMembers: [mockUsers[5], mockUsers[2]], // Sophia Kim (Designer), Michael Chen (Developer)
-    progress: 60,
-    createdAt: '2023-02-15T00:00:00Z',
-    updatedAt: '2023-06-10T00:00:00Z',
-    templateType: ProjectTemplateType.WEBSITE,
-    projectDependencies: ['p2'], // Depends on Marketing Campaign
-    dependentProjects: [] // No projects depend on this one yet
+    priority: ProjectPriority.CRITICAL,
+    startDate: new Date(new Date().setDate(new Date().getDate() - 60)).toISOString(),
+    endDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString(),
+    projectManager: mockUsers[10], // Michelle Lee
+    department: mockDepartments[1], // Engineering
+    budget: 750000,
+    actualCost: 400000,
+    progress: 65,
+    templateType: ProjectTemplateType.INFRASTRUCTURE,
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 60)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
   }
 ];
 
-// Empty Tasks
-export const mockTasks: Task[] = [];
+// Mock Risks
+export const mockRisks: Risk[] = [
+  {
+    id: 'r1',
+    projectId: 'p1',
+    title: 'Vendor Integration Delays',
+    description: 'Potential delays in vendor integration for the new system',
+    status: RiskStatus.IDENTIFIED,
+    impact: RiskImpact.MEDIUM,
+    probability: 50,
+    mitigation: 'Begin early engagement with vendors and establish clear milestones',
+    owner: mockUsers[9], // Thomas Anderson
+    createdBy: mockUsers[0], // Admin
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 25)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 25)).toISOString()
+  },
+  {
+    id: 'r2',
+    projectId: 'p1',
+    title: 'Data Migration Corruption',
+    description: 'Risk of data corruption during the migration process',
+    status: RiskStatus.ASSESSED,
+    impact: RiskImpact.HIGH,
+    probability: 30,
+    mitigation: 'Implement comprehensive backup strategy and perform multiple test migrations',
+    owner: mockUsers[16], // Kevin Miller
+    createdBy: mockUsers[9], // Thomas Anderson
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString()
+  },
+  {
+    id: 'r3',
+    projectId: 'p3',
+    title: 'Resource Availability',
+    description: 'Key technical resources may not be available for the entire project duration',
+    status: RiskStatus.MITIGATED,
+    impact: RiskImpact.MEDIUM,
+    probability: 40,
+    mitigation: 'Cross-train additional team members and create detailed documentation',
+    owner: mockUsers[10], // Michelle Lee
+    createdBy: mockUsers[4], // Emily Rodriguez
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 50)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString()
+  }
+];
 
-// Empty Risks
-export const mockRisks: Risk[] = [];
+// Mock Issues
+export const mockIssues: Issue[] = [
+  {
+    id: 'i1',
+    projectId: 'p1',
+    title: 'API Authentication Failure',
+    description: 'The authentication mechanism for the new API is failing in staging environment',
+    status: IssueStatus.OPEN,
+    impact: RiskImpact.HIGH,
+    owner: mockUsers[16], // Kevin Miller
+    createdBy: mockUsers[15], // Jessica Brown
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString()
+  },
+  {
+    id: 'i2',
+    projectId: 'p3',
+    title: 'Database Performance Degradation',
+    description: 'Database performance has degraded after migrating data from legacy system',
+    status: IssueStatus.IN_PROGRESS,
+    impact: RiskImpact.MEDIUM,
+    owner: mockUsers[16], // Kevin Miller
+    resolutionSummary: 'Investigating query performance and adding necessary indexes',
+    createdBy: mockUsers[15], // Jessica Brown
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 3)).toISOString()
+  },
+  {
+    id: 'i3',
+    projectId: 'p2',
+    title: 'Design Asset Discrepancies',
+    description: 'Design assets provided by external agency do not match brand guidelines',
+    status: IssueStatus.RESOLVED,
+    impact: RiskImpact.LOW,
+    owner: mockUsers[19], // Mark Harris
+    resolutionSummary: 'Worked with agency to update all assets to comply with guidelines',
+    createdBy: mockUsers[11], // Daniel White
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 2)).toISOString()
+  }
+];
 
-// Empty Meetings
-export const mockMeetings: Meeting[] = [];
+// Mock Meetings
+export const mockMeetings: Meeting[] = [
+  {
+    id: 'm1',
+    title: 'Sprint Planning',
+    description: 'Weekly sprint planning session for the Digital Transformation project',
+    startTime: new Date(new Date().setHours(new Date().getHours() + 1)).toISOString(),
+    endTime: new Date(new Date().setHours(new Date().getHours() + 2)).toISOString(),
+    status: MeetingStatus.SCHEDULED,
+    organizer: mockUsers[9], // Thomas Anderson
+    participants: [mockUsers[9], mockUsers[15], mockUsers[16], mockUsers[17]], // Thomas, Jessica, Kevin, Amanda
+    isActive: true,
+    meetingLink: 'https://example.com/meeting/123',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'm2',
+    title: 'Product Demo',
+    description: 'Demo of the latest features for the executive team',
+    startTime: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+    endTime: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString(),
+    status: MeetingStatus.SCHEDULED,
+    organizer: mockUsers[10], // Michelle Lee
+    participants: [mockUsers[1], mockUsers[2], mockUsers[10], mockUsers[15], mockUsers[16]], // Sarah, Michael, Michelle, Jessica, Kevin
+    isActive: true,
+    meetingLink: 'https://example.com/meeting/456',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: 'm3',
+    title: 'Campaign Strategy Review',
+    description: 'Review of the marketing campaign strategy for the new product launch',
+    startTime: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+    endTime: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString(),
+    status: MeetingStatus.COMPLETED,
+    organizer: mockUsers[11], // Daniel White
+    participants: [mockUsers[11], mockUsers[19], mockUsers[20]], // Daniel, Mark, Laura
+    isActive: false,
+    meetingLink: 'https://example.com/meeting/789',
+    createdAt: new Date(new Date().setDate(new Date().getDate() - 5)).toISOString(),
+    updatedAt: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString()
+  }
+];
 
-// Empty Issues
-export const mockIssues: Issue[] = [];
-
-// Helper function to generate random activities - returns empty array
-export const generateRandomActivities = (count: number) => {
-  return [];
-};
-
-// Empty activities
-export const mockActivities = [];
-
-// Empty change requests
-export const mockChangeRequests = [];
-
-// Empty task requests
-export const mockTaskRequests = [];
-
-// Create default tasks for a given project
+// Function to create default tasks for a project
 export const createDefaultTasks = (projectId: string): Task[] => {
+  // Find the corresponding project by ID
+  const project = mockProjects.find(p => p.id === projectId) || mockProjects[0];
+  
   return [
     {
-      id: `t1-${projectId}`,
-      title: 'Initial planning',
-      description: 'Define project scope and deliverables',
+      id: `task-${projectId}-1`,
+      title: 'Project Kick-off',
+      description: 'Initial kick-off meeting with all stakeholders',
       status: TaskStatus.DONE,
       priority: TaskPriority.HIGH,
-      startDate: '2023-05-01T09:00:00Z',
-      dueDate: '2023-05-05T17:00:00Z',
+      startDate: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
+      dueDate: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString(),
       projectId: projectId,
-      assignee: mockUsers[1], // Sarah Johnson (Project Manager)
-      project: {} as Project, // Will be filled by the caller
-      createdAt: '2023-04-28T14:30:00Z',
-      updatedAt: '2023-05-05T16:45:00Z'
+      project: project,
+      assignee: mockUsers[9], // Thomas Anderson (assume project manager)
+      createdAt: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString(),
+      updatedAt: new Date(new Date().setDate(new Date().getDate() - 15)).toISOString()
     },
     {
-      id: `t2-${projectId}`,
-      title: 'Requirements gathering',
-      description: 'Collect and document all requirements from stakeholders',
+      id: `task-${projectId}-2`,
+      title: 'Requirements Gathering',
+      description: 'Gather detailed requirements from all stakeholders',
       status: TaskStatus.DONE,
       priority: TaskPriority.HIGH,
-      startDate: '2023-05-08T09:00:00Z',
-      dueDate: '2023-05-12T17:00:00Z',
+      startDate: new Date(new Date().setDate(new Date().getDate() - 14)).toISOString(),
+      dueDate: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString(),
       projectId: projectId,
-      assignee: mockUsers[1], // Sarah Johnson (Project Manager)
-      project: {} as Project, // Will be filled by the caller
-      createdAt: '2023-05-05T11:20:00Z',
-      updatedAt: '2023-05-12T15:30:00Z'
+      project: project,
+      assignee: mockUsers[15], // Jessica Brown
+      createdAt: new Date(new Date().setDate(new Date().getDate() - 20)).toISOString(),
+      updatedAt: new Date(new Date().setDate(new Date().getDate() - 7)).toISOString()
     },
     {
-      id: `t3-${projectId}`,
-      title: 'Design system architecture',
-      description: 'Create system architecture diagrams and documentation',
+      id: `task-${projectId}-3`,
+      title: 'Design Prototype',
+      description: 'Create initial design prototypes based on requirements',
       status: TaskStatus.IN_PROGRESS,
       priority: TaskPriority.MEDIUM,
-      startDate: '2023-05-15T09:00:00Z',
-      dueDate: '2023-05-19T17:00:00Z',
+      startDate: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString(),
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 2)).toISOString(),
       projectId: projectId,
-      assignee: mockUsers[2], // Michael Chen (Developer)
-      project: {} as Project, // Will be filled by the caller
-      createdAt: '2023-05-12T16:00:00Z',
-      updatedAt: '2023-05-17T10:15:00Z'
+      project: project,
+      assignee: mockUsers[19], // Mark Harris
+      createdAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
+      updatedAt: new Date(new Date().setDate(new Date().getDate() - 6)).toISOString()
     },
     {
-      id: `t4-${projectId}`,
-      title: 'UI/UX Design',
-      description: 'Create wireframes and high-fidelity designs',
-      status: TaskStatus.TODO,
-      priority: TaskPriority.MEDIUM,
-      startDate: '2023-05-22T09:00:00Z',
-      dueDate: '2023-05-31T17:00:00Z',
-      projectId: projectId,
-      assignee: mockUsers[5], // Sophia Kim (Designer)
-      project: {} as Project, // Will be filled by the caller
-      createdAt: '2023-05-17T14:45:00Z',
-      updatedAt: '2023-05-17T14:45:00Z'
-    },
-    {
-      id: `t5-${projectId}`,
-      title: 'Backend development',
-      description: 'Implement API endpoints and database models',
+      id: `task-${projectId}-4`,
+      title: 'Backend Development',
+      description: 'Develop backend APIs and database structure',
       status: TaskStatus.TODO,
       priority: TaskPriority.HIGH,
-      startDate: '2023-06-01T09:00:00Z',
-      dueDate: '2023-06-14T17:00:00Z',
+      startDate: new Date(new Date().setDate(new Date().getDate() + 3)).toISOString(),
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 14)).toISOString(),
       projectId: projectId,
-      assignee: mockUsers[2], // Michael Chen (Developer)
-      project: {} as Project, // Will be filled by the caller
-      createdAt: '2023-05-20T09:30:00Z',
-      updatedAt: '2023-05-20T09:30:00Z'
+      project: project,
+      assignee: mockUsers[16], // Kevin Miller
+      createdAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
+      updatedAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString()
+    },
+    {
+      id: `task-${projectId}-5`,
+      title: 'Frontend Implementation',
+      description: 'Implement user interface based on approved designs',
+      status: TaskStatus.TODO,
+      priority: TaskPriority.MEDIUM,
+      startDate: new Date(new Date().setDate(new Date().getDate() + 4)).toISOString(),
+      dueDate: new Date(new Date().setDate(new Date().getDate() + 18)).toISOString(),
+      projectId: projectId,
+      project: project,
+      assignee: mockUsers[15], // Jessica Brown
+      createdAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString(),
+      updatedAt: new Date(new Date().setDate(new Date().getDate() - 10)).toISOString()
     }
   ];
 };
 
-// Helper function to get project for task
-export const getProjectForTask = (task: Task, projects: Project[]): Project | undefined => {
-  return projects.find(project => project.id === task.projectId);
+// Function to get users by department
+export const getUsersByDepartment = (departmentId: string): User[] => {
+  return mockUsers.filter(user => user.department.id === departmentId);
 };
 
-// Empty Notifications
-export const mockNotifications = []; 
+// Function to get users by role
+export const getUsersByRole = (role: UserRole): User[] => {
+  return mockUsers.filter(user => user.role === role);
+};
+
+// Function to get random users for team selection
+export const getRandomUsers = (count: number): User[] => {
+  const shuffled = [...mockUsers].sort(() => 0.5 - Math.random());
+  return shuffled.slice(0, count);
+};
+
+// Export the mock data
+export default {
+  users: mockUsers,
+  departments: mockDepartments,
+  projects: mockProjects,
+  risks: mockRisks,
+  meetings: mockMeetings,
+  issues: mockIssues,
+  getUsersByDepartment,
+  getUsersByRole,
+  getRandomUsers,
+  createDefaultTasks
+}; 

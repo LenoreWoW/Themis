@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { runFullAudit, AuditResult } from '../utils/auditUtils';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import ProjectDependencies from '../components/Project/ProjectDependencies';
 import { 
   Box, 
   Typography,
@@ -46,7 +46,12 @@ import {
   TableRow,
   TablePagination,
   LinearProgress,
-  Menu
+  Menu,
+  InputAdornment,
+  ToggleButton,
+  ToggleButtonGroup,
+  Grid,
+  ListItemAvatar
 } from '@mui/material';
 import {
   CalendarMonth as CalendarIcon,
@@ -77,7 +82,14 @@ import {
   AttachMoney as AttachMoneyIcon,
   Subject as SubjectIcon,
   MoreHoriz as MoreHorizIcon,
-  Close as CloseIcon
+  Close as CloseIcon,
+  TaskAlt as TaskAltIcon,
+  ZoomOutMap as ZoomOutMapIcon,
+  AccountBalanceWallet as AccountBalanceWalletIcon,
+  People as PeopleIcon,
+  Category as CategoryIcon,
+  KeyboardArrowRight,
+  Comment as CommentIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../context/TaskContext';
@@ -94,7 +106,8 @@ import {
   TaskStatus,
   Attachment,
   UserRole,
-  ProjectTemplateType
+  ProjectTemplateType,
+  TaskPriority
 } from '../types';
 import { TaskService } from '../services/TaskService';
 import api from '../services/api';
@@ -111,7 +124,14 @@ import WeeklyUpdates from '../components/Project/WeeklyUpdates';
 import GanttChart from '../components/Gantt/GanttChart';
 import ChangeRequestDialog from '../components/Project/ChangeRequestDialog';
 import { canAddTasks, canRequestTasks, canManageProjects, canApproveProjects } from '../utils/permissions';
-import { runFullAudit, AuditResult } from '../utils/auditUtils';
+import { v4 as uuidv4 } from 'uuid';
+import { DragDropContext, DropResult } from 'react-beautiful-dnd';
+import EditTaskDialog from '../components/Task/EditTaskDialog';
+import FilePreviewDialog from '../components/FilePreview/FilePreviewDialog';
+import TaskDetailDialog from '../components/Task/TaskDetailDialog';
+import DeleteTaskDialog from '../components/Task/DeleteTaskDialog';
+import { formatEnumValue } from '../utils/helpers';
+import { mockUsers as importedMockUsers } from '../services/mockData';
 
 // Add this enum at the top of your file, just before const mockUsers
 enum AuditAction {
@@ -122,7 +142,8 @@ enum AuditAction {
   LOGOUT = 'LOGOUT',
   APPROVE = 'APPROVE',
   REJECT = 'REJECT',
-  SUBMIT = 'SUBMIT'
+  SUBMIT = 'SUBMIT',
+  PROJECT_VIEWED = 'PROJECT_VIEWED'
 }
 
 // Mock data for project
@@ -214,10 +235,7 @@ interface ProjectWithTeamData {
   id: string;
   name: string;
   description: string;
-  department: {
-    id: string;
-    name: string;
-  };
+  client?: string;
   status: ProjectStatus;
   priority: ProjectPriority;
   startDate: string;
@@ -226,6 +244,10 @@ interface ProjectWithTeamData {
     id: string;
     firstName: string;
     lastName: string;
+  };
+  department: {
+    id: string;
+    name: string;
   };
   team: User[];
   attachments: Attachment[];
@@ -237,29 +259,30 @@ interface ProjectWithTeamData {
 }
 
 const mockProject: ProjectWithTeamData = {
-  id: 'mock-project-1',
+  id: '1',
   name: 'Digital Transformation',
   description: 'Company-wide digital transformation initiative',
-  department: {
-    id: '1',
-    name: 'Engineering'
-  },
+  client: 'Sample Client',
   status: ProjectStatus.IN_PROGRESS,
   priority: ProjectPriority.MEDIUM,
-  startDate: new Date(2023, 0, 15).toISOString(),
-  endDate: new Date(2023, 11, 31).toISOString(),
+  startDate: '2024-01-01',
+  endDate: '2024-12-31',
   projectManager: {
     id: '1',
     firstName: 'John',
     lastName: 'Doe'
   },
+  department: {
+    id: '1',
+    name: 'Engineering'
+  },
   team: mockUsers,
   attachments: mockAttachments,
-  budget: 1500000,
-  actualCost: 425000,
-  progress: 35,
-  createdAt: new Date(2022, 11, 15).toISOString(),
-  updatedAt: new Date(2023, 1, 5).toISOString()
+  budget: 1000000,
+  actualCost: 450000,
+  progress: 45,
+  createdAt: '2024-01-01',
+  updatedAt: '2024-01-01'
 };
 
 // Mock data for tasks
@@ -342,6 +365,9 @@ const getStatusColor = (status: string, endDate?: string) => {
 
 // Helper function to get status label
 const getStatusLabel = (status: string) => {
+  if (!status) return '';
+  
+  // For some specific statuses, we have custom labels
   switch(status) {
     case 'InProgress': 
     case 'IN_PROGRESS': return 'In Progress';
@@ -355,7 +381,7 @@ const getStatusLabel = (status: string) => {
     case 'PLANNING': return 'Planning';
     case 'SubPMOReview': return 'Sub PMO Review';
     case 'MainPMOApproval': return 'Main PMO Approval';
-    default: return status;
+    default: return formatEnumValue(status);
   }
 };
 
@@ -416,15 +442,19 @@ interface RequestTaskDialogProps {
   projectId: string;
 }
 
-// Function to convert ProjectWithTeamData to a full Project with proper types
-// Extended Project interface with dependencies
-interface ProjectWithDependencies extends Project {
-  dependsOnProjects?: string[];
-  projectsDependingOnThis?: string[];
+// Define our own local enum for ChangeRequestType since it might be different
+enum ChangeRequestType {
+  SCHEDULE = 'SCHEDULE',
+  BUDGET = 'BUDGET',
+  SCOPE = 'SCOPE',
+  RESOURCE = 'RESOURCE',
+  CLOSURE = 'CLOSURE',
+  OTHER = 'OTHER'
 }
 
-const convertToFullProject = (data: ProjectWithTeamData): ProjectWithDependencies => {
-  // Set the project manager
+// Function to convert ProjectWithTeamData to a full Project with proper types
+const convertToFullProject = (data: ProjectWithTeamData): Project => {
+  // Create a complete User object from the minimal projectManager data
   const projectManager: User = {
     id: data.projectManager.id,
     firstName: data.projectManager.firstName,
@@ -442,7 +472,7 @@ const convertToFullProject = (data: ProjectWithTeamData): ProjectWithDependencie
     updatedAt: data.updatedAt
   };
 
-  // Set the department
+  // Create a complete Department object
   const department: Department = {
     id: data.department.id,
     name: data.department.name,
@@ -451,7 +481,7 @@ const convertToFullProject = (data: ProjectWithTeamData): ProjectWithDependencie
     updatedAt: data.updatedAt
   };
 
-  // Create and return a complete Project object with dependencies
+  // Create and return a complete Project object
   return {
     id: data.id,
     name: data.name,
@@ -467,10 +497,7 @@ const convertToFullProject = (data: ProjectWithTeamData): ProjectWithDependencie
     actualCost: data.actualCost,
     createdAt: data.createdAt,
     updatedAt: data.updatedAt,
-    templateType: ProjectTemplateType.DEFAULT,
-    // Mock dependency data for demonstration purposes
-    dependsOnProjects: ['project-1', 'project-2'],
-    projectsDependingOnThis: ['project-3', 'project-4']
+    templateType: ProjectTemplateType.DEFAULT
   };
 };
 
@@ -489,12 +516,15 @@ interface ProjectLog {
   id: string;
   action: AuditAction;
   details: string;
-  user: {
+  timestamp: string;
+  userId?: string;
+  projectId?: string;
+  username?: string;
+  user?: {
     id: string;
     firstName: string;
     lastName: string;
   };
-  timestamp: string;
 }
 
 // Add mock logs data
@@ -567,7 +597,7 @@ const mockProjectLogs: ProjectLog[] = [
   }
 ];
 
-const ProjectDetailPage: React.FC = () => {
+const ProjectDetailPage: React.FC<{}> = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth() as AuthContextValue;
   const { projects } = useProjects();
@@ -578,99 +608,392 @@ const ProjectDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [tabValue, setTabValue] = useState(0);
-  const { tasks: contextTasks, addTask, updateTask, deleteTask, moveTask, loading: tasksLoading, error: contextError } = useTasks();
+  const { tasks: contextTasks, addTask, updateTask, deleteTask, moveTask, refreshTasks, loading: tasksLoading, error: contextError } = useTasks();
   const navigate = useNavigate();
   const [isAddTeamMemberDialogOpen, setIsAddTeamMemberDialogOpen] = useState(false);
   const [availableUsers, setAvailableUsers] = useState<User[]>([]);
   const [selectedTeamMembers, setSelectedTeamMembers] = useState<string[]>([]);
   const [addingTeamMembers, setAddingTeamMembers] = useState(false);
-  const [projectAttachments, setProjectAttachments] = useState<Attachment[]>(mockAttachments);
+  const [projectAttachments, setProjectAttachments] = useState<Attachment[]>([]);
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [newTaskStatus, setNewTaskStatus] = useState<TaskStatus | undefined>(undefined);
-  const [projectLogs, setProjectLogs] = useState<ProjectLog[]>(mockProjectLogs);
+  const [projectLogs, setProjectLogs] = useState<ProjectLog[]>([]);
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [changeRequestType, setChangeRequestType] = useState<ChangeRequestType | null>(null);
+  const [isEditStatusDialogOpen, setIsEditStatusDialogOpen] = useState(false);
+  const [isEditCostDialogOpen, setIsEditCostDialogOpen] = useState(false);
+  const [updatedStatus, setUpdatedStatus] = useState<ProjectStatus | null>(null);
+  const [updatedCost, setUpdatedCost] = useState<number | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [activeTaskView, setActiveTaskView] = useState<'kanban' | 'gantt' | 'mindmap'>('kanban');
+  const [projectTasks, setProjectTasks] = useState<Task[]>([]);
+  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+    open: false,
+    message: '',
+    severity: 'success'
+  });
 
-  // Fetch project data based on ID
+  // Add state for audit results
+  const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
+
+  // First, add a state for weekly updates
+  const [weeklyUpdates, setWeeklyUpdates] = useState<Array<{
+    id: string;
+    week: string;
+    progressUpdate: string;
+    budgetUpdate: string;
+    timeline: string;
+    createdAt: string;
+    comments: Array<{
+      id: string;
+      text: string;
+      author: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      };
+      createdAt: string;
+    }>;
+    attachments: Array<{
+      id: string;
+      name: string;
+      type: string;
+      size: number;
+      url: string;
+      uploadedBy: {
+        id: string;
+        firstName: string;
+        lastName: string;
+      };
+      createdAt: string;
+    }>;
+  }>>([]);
+
+  // Add new states for weekly update management
+  const [updateComment, setUpdateComment] = useState<string>('');
+  const [selectedUpdateId, setSelectedUpdateId] = useState<string | null>(null);
+  const [updateFiles, setUpdateFiles] = useState<File[]>([]);
+  const updateFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Run audit on page load to verify compliance with ClientTerms
   useEffect(() => {
-    const fetchProjectData = async () => {
-      if (!id) return;
-      
-      try {
-        setIsLoading(true);
-        setError(null);
-        
-        // In a real app, this would use the API
-        // const response = await projectService.getProjectById(id);
-        // const projectData = response.data;
-        
-        // For now, find the project in the projects array or use mock data
-        const foundProject = projects.find(p => p.id === id);
-        
-        if (foundProject) {
-          // Convert to ProjectWithTeamData format if needed
-          const projectWithTeam: ProjectWithTeamData = {
-            id: foundProject.id,
-            name: foundProject.name,
-            description: foundProject.description,
-            status: foundProject.status,
-            priority: foundProject.priority,
-            startDate: foundProject.startDate,
-            endDate: foundProject.endDate,
-            projectManager: foundProject.projectManager 
-              ? { 
-                  id: foundProject.projectManager.id,
-                  firstName: foundProject.projectManager.firstName,
-                  lastName: foundProject.projectManager.lastName
-                }
-              : { id: '1', firstName: 'Default', lastName: 'Manager' },
-            department: foundProject.department 
-              ? { 
-                  id: foundProject.department.id,
-                  name: foundProject.department.name
-                }
-              : { id: '1', name: 'Default Department' },
-            team: mockUsers, // In a real app, you would fetch the team members
-            attachments: mockAttachments, // In a real app, you would fetch the attachments
-            budget: foundProject.budget,
-            actualCost: foundProject.actualCost || 0,
-            progress: foundProject.progress,
-            createdAt: foundProject.createdAt || new Date().toISOString(), 
-            updatedAt: foundProject.updatedAt || new Date().toISOString()
-          };
-          setProject(projectWithTeam);
-        } else {
-          // If project not found in the context, use the mock data as fallback
-          // but with the correct ID
-          const mockWithCorrectId = {
-            ...mockProject,
-            id: id
-          };
-          setProject(mockWithCorrectId);
-          console.warn(`Project with ID ${id} not found in context, using mock data.`);
-        }
-      } catch (err) {
-        console.error('Error fetching project:', err);
-        setError('Failed to load project data');
-      } finally {
-        setIsLoading(false);
+    // Only run audit for admin users
+    if (user?.role === UserRole.ADMIN) {
+      const result = runFullAudit();
+      setAuditResult(result);
+      if (!result.passed) {
+        showSnackbar('Audit found compliance issues. Check the console for details.', 'error');
+        console.warn('Audit results:', result);
       }
-    };
+    }
+  }, [user?.role]);
+
+  // Update the fetchProjectData function to properly use API when available
+  const fetchProjectData = useCallback(async () => {
+    if (!id) return;
     
-    fetchProjectData();
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      // Try to find the project in the projects context first
+      const foundProject = projects.find(p => p.id === id);
+      
+      if (foundProject) {
+        console.log('Found project in context:', foundProject);
+        
+        // Ensure we have all required properties for ProjectWithTeamData
+        const projectWithTeam: ProjectWithTeamData = {
+          id: foundProject.id,
+          name: foundProject.name,
+          description: foundProject.description,
+          status: foundProject.status,
+          priority: foundProject.priority,
+          startDate: foundProject.startDate,
+          endDate: foundProject.endDate,
+          projectManager: foundProject.projectManager || {
+            id: '1',
+            firstName: 'Default',
+            lastName: 'Manager'
+          },
+          department: foundProject.department,
+          team: [], // Initialize with empty team
+          attachments: [], // Initialize with empty attachments
+          budget: foundProject.budget,
+          actualCost: foundProject.actualCost,
+          progress: foundProject.progress,
+          createdAt: foundProject.createdAt || new Date().toISOString(),
+          updatedAt: foundProject.updatedAt || new Date().toISOString()
+        };
+        
+        // Try to get project team data
+        try {
+          // Get team members from localStorage if available
+          const teamJson = localStorage.getItem(`project_${id}_team`) || sessionStorage.getItem(`project_${id}_team`);
+          if (teamJson) {
+            const teamData = JSON.parse(teamJson);
+            projectWithTeam.team = Array.isArray(teamData) ? teamData : [];
+          } else {
+            // Project manager only - but ensure we include the project manager
+            projectWithTeam.team = [];
+            
+            // Save to localStorage for future use
+            localStorage.setItem(`project_${id}_team`, JSON.stringify([]));
+          }
+          
+          // Also update the availableUsers state for team member selection
+          setAvailableUsers(importedMockUsers);
+        } catch (err) {
+          console.error('Error fetching team members:', err);
+          projectWithTeam.team = [];
+        }
+        
+        // Try to get project attachments data
+        try {
+          // Get attachments from localStorage if available
+          const attachmentsJson = localStorage.getItem(`project_${id}_attachments`) || sessionStorage.getItem(`project_${id}_attachments`);
+          if (attachmentsJson) {
+            const attachmentsData = JSON.parse(attachmentsJson);
+            projectWithTeam.attachments = Array.isArray(attachmentsData) ? attachmentsData : [];
+            setProjectAttachments(projectWithTeam.attachments);
+          } else {
+            // Initialize with empty attachments - no random ones
+            projectWithTeam.attachments = [];
+            setProjectAttachments([]);
+            
+            // Save to localStorage for future use
+            localStorage.setItem(`project_${id}_attachments`, JSON.stringify([]));
+          }
+        } catch (err) {
+          console.error('Error fetching attachments:', err);
+          projectWithTeam.attachments = [];
+          setProjectAttachments([]);
+        }
+        
+        // Try to get project logs
+        try {
+          // Get logs from localStorage if available
+          const logsJson = localStorage.getItem(`project_${id}_logs`) || sessionStorage.getItem(`project_${id}_logs`);
+          if (logsJson) {
+            const logsData = JSON.parse(logsJson);
+            setProjectLogs(Array.isArray(logsData) ? logsData : []);
+          } else {
+            // Generate project logs that match the actual project data
+            const generatedLogs: ProjectLog[] = [
+              {
+                id: `log-${Date.now()}-1`,
+                action: AuditAction.CREATE,
+                details: `Project "${projectWithTeam.name}" created`,
+                timestamp: projectWithTeam.createdAt,
+                user: {
+                  id: projectWithTeam.projectManager.id,
+                  firstName: projectWithTeam.projectManager.firstName,
+                  lastName: projectWithTeam.projectManager.lastName
+                }
+              },
+              {
+                id: `log-${Date.now()}-2`,
+                action: AuditAction.UPDATE,
+                details: `Project status set to ${getStatusLabel(projectWithTeam.status)}`,
+                timestamp: new Date(new Date(projectWithTeam.createdAt).getTime() + 86400000).toISOString(),
+                user: {
+                  id: projectWithTeam.projectManager.id,
+                  firstName: projectWithTeam.projectManager.firstName,
+                  lastName: projectWithTeam.projectManager.lastName
+                }
+              }
+            ];
+            
+            // Add team member logs
+            projectWithTeam.team.forEach((member, index) => {
+              generatedLogs.push({
+                id: `log-${Date.now()}-${index + 3}`,
+                action: AuditAction.UPDATE,
+                details: `Team member added: ${member.firstName} ${member.lastName}`,
+                timestamp: new Date(new Date(projectWithTeam.createdAt).getTime() + (86400000 * (index + 1))).toISOString(),
+                user: {
+                  id: projectWithTeam.projectManager.id,
+                  firstName: projectWithTeam.projectManager.firstName,
+                  lastName: projectWithTeam.projectManager.lastName
+                }
+              });
+            });
+            
+            // Add attachment logs
+            projectWithTeam.attachments.forEach((attachment, index) => {
+              generatedLogs.push({
+                id: `log-${Date.now()}-${index + projectWithTeam.team.length + 3}`,
+                action: AuditAction.UPDATE,
+                details: `File uploaded: ${attachment.name}`,
+                timestamp: attachment.createdAt,
+                user: {
+                  id: attachment.uploadedBy.id,
+                  firstName: attachment.uploadedBy.firstName,
+                  lastName: attachment.uploadedBy.lastName
+                }
+              });
+            });
+            
+            // Sort logs by timestamp (newest first)
+            generatedLogs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+            
+            setProjectLogs(generatedLogs);
+            
+            // Save to localStorage for future use
+            localStorage.setItem(`project_${id}_logs`, JSON.stringify(generatedLogs));
+          }
+        } catch (err) {
+          console.error('Error fetching project logs:', err);
+          setProjectLogs([]);
+        }
+        
+        // Add this to the fetchProjectData function after the logs section
+        // Try to get weekly updates
+        try {
+          // Get weekly updates from localStorage if available
+          const updatesJson = localStorage.getItem(`project_${id}_weekly_updates`) || sessionStorage.getItem(`project_${id}_weekly_updates`);
+          if (updatesJson) {
+            const updatesData = JSON.parse(updatesJson);
+            setWeeklyUpdates(Array.isArray(updatesData) ? updatesData : []);
+          } else {
+            // Generate weekly updates based on project data
+            const startDate = new Date(projectWithTeam.startDate);
+            const now = new Date();
+            const weekCount = Math.min(
+              3,
+              Math.max(1, Math.floor((now.getTime() - startDate.getTime()) / (7 * 24 * 60 * 60 * 1000)))
+            );
+            
+            const updates = Array.from({ length: weekCount }, (_, i) => {
+              const weekDate = new Date(now.getTime() - (i * 7 * 24 * 60 * 60 * 1000));
+              const progressValue = Math.min(100, Math.max(5, Math.round(projectWithTeam.progress - (i * 15))));
+              const budgetValue = Math.min(projectWithTeam.budget, Math.max(0, Math.round(projectWithTeam.actualCost - (i * projectWithTeam.budget / 10))));
+              const budgetPercent = Math.round((budgetValue / projectWithTeam.budget) * 100);
+              
+              // Calculate remaining days as of this update
+              const endDate = new Date(projectWithTeam.endDate);
+              const daysRemaining = Math.max(0, Math.ceil((endDate.getTime() - weekDate.getTime()) / (24 * 60 * 60 * 1000)));
+              
+              return {
+                id: `weekly-update-${i + 1}`,
+                week: `Week of ${weekDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+                progressUpdate: `${progressValue}% complete. ${
+                  progressValue < 30 
+                    ? 'Project is in early stages.' 
+                    : progressValue < 60 
+                      ? 'Project is progressing as planned.' 
+                      : progressValue < 90 
+                        ? 'Project is nearing completion.' 
+                        : 'Project is in final stages.'
+                }`,
+                budgetUpdate: `$${budgetValue.toLocaleString()} spent of $${projectWithTeam.budget.toLocaleString()} budget (${budgetPercent}% of budget used).`,
+                timeline: `${daysRemaining} days remaining until project deadline.`,
+                createdAt: weekDate.toISOString(),
+                comments: [],
+                attachments: []
+              };
+            });
+            
+            // Sort updates by date (newest first)
+            updates.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            
+            setWeeklyUpdates(updates);
+            
+            // Save to localStorage for future use
+            localStorage.setItem(`project_${id}_weekly_updates`, JSON.stringify(updates));
+          }
+        } catch (err) {
+          console.error('Error generating weekly updates:', err);
+          setWeeklyUpdates([]);
+        }
+        
+        setProject(projectWithTeam);
+      } else {
+        console.warn(`Project with ID ${id} not found in context, using mock data.`);
+        // If project not found in the context, use the mock data as fallback
+        // but with the correct ID
+        const mockWithCorrectId = {
+          ...mockProject,
+          id: id
+        };
+        setProject(mockWithCorrectId);
+        setProjectAttachments(mockAttachments);
+        setAvailableUsers(mockUsers);
+        setProjectLogs(mockProjectLogs);
+      }
+    } catch (err) {
+      console.error('Error fetching project:', err);
+      setError('Failed to load project data');
+    } finally {
+      setIsLoading(false);
+    }
   }, [id, projects]);
 
-  // Load available users when needed
+  // Add back the useEffect that calls fetchProjectData
+  useEffect(() => {
+    fetchProjectData();
+  }, [fetchProjectData]);
+
+  // Load tasks from context when they change
+  useEffect(() => {
+    if (contextTasks && id) {
+      console.log('ProjectDetail: Context tasks changed, updating local state with filtered tasks');
+      // Make a deep copy to avoid reference issues
+      const filteredTasks = contextTasks
+        .filter(task => String(task.projectId) === String(id))
+        .map(task => ({...task}));
+      
+      console.log(`ProjectDetail: Filtered tasks for project ${id}:`, filteredTasks.length, 'out of', contextTasks.length);
+      
+      // Only update state if we have different tasks to avoid infinite loop
+      // Use JSON.stringify for deep comparison
+      const currentTasksJson = JSON.stringify(tasks.map(t => t.id).sort());
+      const newTasksJson = JSON.stringify(filteredTasks.map(t => t.id).sort());
+      
+      if (currentTasksJson !== newTasksJson) {
+        console.log('ProjectDetail: Tasks have changed, updating state');
+        setTasks(filteredTasks);
+        setProjectTasks(filteredTasks);
+      } else {
+        console.log('ProjectDetail: No change in tasks, skipping state update');
+      }
+    }
+  }, [contextTasks, id]);
+
+  // Debug tasks whenever they change
+  useEffect(() => {
+    console.log('ProjectDetail: Current tasks state changed:', tasks.length, 'tasks');
+    console.log('ProjectDetail: Current projectTasks state changed:', projectTasks.length, 'tasks');
+  }, [tasks, projectTasks]);
+
+  // Remove the redundant effect that duplicates task syncing
+  // This was causing issues with tasks disappearing due to race conditions
+  // useEffect(() => {
+  //   if (contextTasks && id) {
+  //     const filteredTasks = contextTasks.filter(task => task.projectId === id);
+  //     setProjectTasks(filteredTasks);
+  //     setTasks(filteredTasks);
+  //     console.log('Task state synchronized across views:', filteredTasks);
+  //   }
+  // }, [contextTasks, id]);
+
+  // Update the useEffect for loading available users
   useEffect(() => {
     if (isAddTeamMemberDialogOpen && user?.token) {
       const fetchUsers = async () => {
         try {
           // In a real app, you would fetch users from your API
-          // For now, we'll use mock data
-          setAvailableUsers(mockUsers);
+          // For now, we'll use mock data, but filter out users already in the team
+          if (project) {
+            const currentTeamIds = project.team.map(member => member.id);
+            setAvailableUsers(importedMockUsers.filter(u => !currentTeamIds.includes(u.id)));
+          } else {
+            setAvailableUsers(importedMockUsers);
+          }
         } catch (err) {
           console.error('Error fetching users:', err);
         }
@@ -678,14 +1001,20 @@ const ProjectDetailPage: React.FC = () => {
       
       fetchUsers();
     }
-  }, [isAddTeamMemberDialogOpen, user?.token]);
+  }, [isAddTeamMemberDialogOpen, user?.token, project]);
 
   // Fetch attachments when the Attachments tab is selected
   useEffect(() => {
     const fetchAttachments = async () => {
-      if (!id || !user?.token || tabValue !== 5) return;
+      if (!id || !user?.token || tabValue !== 3) return;
       
       try {
+        // If we already have attachments in the project data, use those
+        if (project && project.attachments && project.attachments.length > 0) {
+          setProjectAttachments(project.attachments);
+          return;
+        }
+        
         // In a real app, you would fetch the attachments from the API
         // For now, we'll just use the mock data
         setProjectAttachments(mockAttachments);
@@ -695,24 +1024,43 @@ const ProjectDetailPage: React.FC = () => {
     };
     
     fetchAttachments();
-  }, [id, user?.token, tabValue]);
+  }, [id, user?.token, tabValue, project]);
 
-  // Fetch logs when the Logs tab is selected
+  // Fetch project logs
   useEffect(() => {
     const fetchLogs = async () => {
-      if (!id || !user?.token || tabValue !== 7) return;
+      if (!id || !user?.token) return;
       
       try {
-        // In a real app, you would fetch the logs from the API
-        // For now, we'll just use mock data
-        setProjectLogs(mockProjectLogs);
-      } catch (err) {
-        console.error('Error fetching project logs:', err);
+        console.log("Fetching logs for project:", id);
+        const logsResponse = await api.auditLogs.getAuditLogsByProject(id, user.token);
+        
+        if (logsResponse && Array.isArray(logsResponse)) {
+          console.log("Logs fetched successfully:", logsResponse);
+          setProjectLogs(logsResponse);
+        } else {
+          console.error("Error fetching logs:", logsResponse);
+          // Create initial logs if no logs found
+          const initialLog: ProjectLog = {
+            id: uuidv4(),
+            timestamp: new Date().toISOString(),
+            action: AuditAction.PROJECT_VIEWED,
+            userId: user.id || 'system',
+            projectId: id,
+            details: 'Project was viewed',
+            username: `${user.firstName} ${user.lastName}` || 'System'
+          };
+          setProjectLogs([initialLog]);
+        }
+      } catch (error) {
+        console.error("Error fetching logs:", error);
+        // Handle error case
+        setProjectLogs([]);
       }
     };
-    
+
     fetchLogs();
-  }, [id, user?.token, tabValue]);
+  }, [id, user?.token, user?.id, user?.firstName, user?.lastName]);
 
   // Gantt Chart error handling
   const [ganttError, setGanttError] = useState<string | null>(null);
@@ -730,6 +1078,7 @@ const ProjectDetailPage: React.FC = () => {
     setTabValue(newValue);
   };
 
+  // Define handleGoBack function if it doesn't exist
   const handleGoBack = () => {
     navigate('/projects');
   };
@@ -744,36 +1093,154 @@ const ProjectDetailPage: React.FC = () => {
   const daysRemaining = Math.max(0, daysTotal - daysElapsed);
   const isOverdue = new Date() > new Date(projectData.endDate) && projectData.status !== ProjectStatus.COMPLETED;
 
-  const handleAddTask = async (newTask: Task) => {
+  // Handle adding a task directly
+  const handleAddTask = async (newTask: any) => {
     try {
-      await addTask(newTask);
-      setIsAddTaskDialogOpen(false);
+      console.log('ProjectDetailPage: Adding task with data:', newTask);
+      
+      // Validate that we have a project ID
+      const targetProjectId = id;
+      if (!targetProjectId) {
+        console.error('ProjectDetailPage: No project ID available for adding task');
+        setSnackbar({
+          open: true,
+          message: 'Cannot add task: No project ID available',
+          severity: 'error'
+        });
+        return;
+      }
+      
+      // Ensure the task has a projectId
+      const taskData = {
+        ...newTask,
+        projectId: targetProjectId
+      };
+      
+      console.log('ProjectDetailPage: Calling context addTask with data:', taskData);
+      // Call the context's addTask function
+      const result = await addTask(taskData);
+      console.log('ProjectDetailPage: Result from context addTask:', result);
+      
+      if (result.success) {
+        // Update the local state directly with the new task to avoid refresh race conditions
+        const newTask = result.data;
+        setTasks(prevTasks => {
+          // Only add if it doesn't already exist
+          const exists = prevTasks.some(t => t.id === newTask.id);
+          if (!exists) {
+            return [...prevTasks, newTask];
+          }
+          return prevTasks;
+        });
+        
+        setProjectTasks(prevTasks => {
+          // Only add if it doesn't already exist
+          const exists = prevTasks.some(t => t.id === newTask.id);
+          if (!exists) {
+            return [...prevTasks, newTask];
+          }
+          return prevTasks;
+        });
+        
+        // Close the dialog and show success message
+        setIsAddTaskDialogOpen(false);
+        setSnackbar({
+          open: true,
+          message: 'Task added successfully',
+          severity: 'success'
+        });
+      } else {
+        console.error('ProjectDetailPage: Error adding task:', result.error);
+        setSnackbar({
+          open: true,
+          message: 'Failed to add task: ' + (result.error || 'Unknown error'),
+          severity: 'error'
+        });
+      }
     } catch (err) {
-      console.error('Error adding task:', err);
+      console.error('ProjectDetailPage: Error adding task:', err);
+      setSnackbar({
+        open: true,
+        message: 'Failed to add task: ' + (err instanceof Error ? err.message : 'Unknown error'),
+        severity: 'error'
+      });
     }
   };
 
   const handleUpdateTask = async (taskId: string, updatedTask: Partial<Task>) => {
     try {
       await updateTask(taskId, updatedTask);
+      
+      // Update local state to ensure immediate UI update
+      setTasks(prevTasks => 
+        prevTasks.map(task => task.id === taskId ? { ...task, ...updatedTask } : task)
+      );
+      setProjectTasks(prevTasks => 
+        prevTasks.map(task => task.id === taskId ? { ...task, ...updatedTask } : task)
+      );
+      
+      setSnackbar({
+        open: true,
+        message: 'Task updated successfully',
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Error updating task:', err);
+      setSnackbar({
+        open: true,
+        message: 'Failed to update task',
+        severity: 'error'
+      });
     }
   };
 
   const handleDeleteTask = async (taskId: string) => {
     try {
       await deleteTask(taskId);
+      
+      // Update local state to ensure immediate UI update
+      setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+      setProjectTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+      
+      setSnackbar({
+        open: true,
+        message: 'Task deleted successfully',
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Error deleting task:', err);
+      setSnackbar({
+        open: true,
+        message: 'Failed to delete task',
+        severity: 'error'
+      });
     }
   };
 
   const handleMoveTask = async (taskId: string, newStatus: TaskStatus) => {
     try {
       await moveTask(taskId, newStatus);
+      
+      // Update local state to ensure immediate UI update
+      setTasks(prevTasks => 
+        prevTasks.map(task => task.id === taskId ? { ...task, status: newStatus } : task)
+      );
+      setProjectTasks(prevTasks => 
+        prevTasks.map(task => task.id === taskId ? { ...task, status: newStatus } : task)
+      );
+      
+      setSnackbar({
+        open: true,
+        message: `Task moved to ${newStatus.replace('_', ' ')}`,
+        severity: 'success'
+      });
     } catch (err) {
       console.error('Error moving task:', err);
+      setSnackbar({
+        open: true,
+        message: 'Failed to move task',
+        severity: 'error'
+      });
     }
   };
 
@@ -786,24 +1253,299 @@ const ProjectDetailPage: React.FC = () => {
     setIsAddTeamMemberDialogOpen(false);
   };
   
+  // Handle file upload button click
+  const handleUploadClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleAddTaskOpen = (status?: TaskStatus) => {
+    if (status) {
+      setNewTaskStatus(status);
+    }
+    setIsAddTaskDialogOpen(true);
+  };
+
+  const handleGanttTaskClick = (task: Task) => {
+    console.log('Task clicked from Gantt:', task);
+  };
+
+  const handleRequestTask = () => {
+    setIsRequestTaskDialogOpen(true);
+  };
+
+  const handleTaskClick = (taskId: string) => {
+    const selectedTask = projectTasks.find(task => task.id === taskId);
+    if (selectedTask) {
+      setSelectedTask(selectedTask);
+      setIsTaskDetailDialogOpen(true);
+    }
+  };
+
+  // Show snackbar function
+  const showSnackbar = (message: string, severity: 'success' | 'error') => {
+    setSnackbar({
+      open: true,
+      message,
+      severity
+    });
+  };
+
+  // Close snackbar function
+  const handleSnackbarClose = () => {
+    setSnackbar(prev => ({ ...prev, open: false }));
+  };
+
+  // Wrapper function to handle task creation from components
+  const handleTaskAddedWrapper = async (successOrTask: boolean | any) => {
+    console.log('ProjectDetailPage: handleTaskAddedWrapper called with:', successOrTask);
+    
+    // The input can be either a boolean (simple success/failure) or actual task data
+    if (typeof successOrTask === 'boolean') {
+      // Boolean result means simple success/failure from legacy components
+      if (successOrTask) {
+        // Show success message
+        setSnackbar({
+          open: true,
+          message: 'Task added successfully',
+          severity: 'success'
+        });
+      } else {
+        // Show error message
+        setSnackbar({
+          open: true,
+          message: 'Failed to add task',
+          severity: 'error'
+        });
+      }
+    } 
+    // Handle actual task data - this is the case from AddTaskDialog
+    else if (successOrTask && typeof successOrTask === 'object') {
+      console.log('ProjectDetailPage: Received task object to add:', successOrTask);
+      
+      try {
+        // Use our handleAddTask function to process the task
+        await handleAddTask(successOrTask);
+        console.log('ProjectDetailPage: Task successfully added via handleAddTask');
+      } catch (error) {
+        console.error('ProjectDetailPage: Error handling task object:', error);
+        setSnackbar({
+          open: true,
+          message: 'Failed to add task: ' + (error instanceof Error ? error.message : 'Unknown error'),
+          severity: 'error'
+        });
+      }
+    }
+    
+    // Always close the dialog
+    setIsAddTaskDialogOpen(false);
+  };
+
+  // Handle log pagination
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Get action color
+  const getActionColor = (action: AuditAction) => {
+    switch(action) {
+      case AuditAction.CREATE: return 'success';
+      case AuditAction.UPDATE: return 'primary';
+      case AuditAction.DELETE: return 'error';
+      case AuditAction.APPROVE: return 'success';
+      case AuditAction.REJECT: return 'error';
+      case AuditAction.SUBMIT: return 'info';
+      default: return 'default';
+    }
+  };
+
+  // Change request handlers
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+  const openChangeRequestMenu = Boolean(anchorEl);
+  
+  const handleChangeRequestMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setAnchorEl(event.currentTarget);
+  };
+
+  const handleChangeRequestMenuClose = () => {
+    setAnchorEl(null);
+  };
+
+  const handleChangeRequestOpen = (type: ChangeRequestType | null = null) => {
+    setChangeRequestType(type);
+    setIsChangeRequestDialogOpen(true);
+    handleChangeRequestMenuClose();
+  };
+
+  const handleChangeRequestClose = () => {
+    setIsChangeRequestDialogOpen(false);
+  };
+
+  const handleChangeRequestSubmitted = () => {
+    setSnackbar({
+      open: true,
+      message: 'Change request submitted successfully!',
+      severity: 'success'
+    });
+  };
+
+  // Add state for change request menu and dialog
+  const [isChangeRequestDialogOpen, setIsChangeRequestDialogOpen] = useState(false);
+
+  // Let's modify the handleChangeRequestMenuItemClick function to use our enum values
+  const handleChangeRequestMenuItemClick = (type: ChangeRequestType) => {
+    handleChangeRequestMenuClose();
+    handleChangeRequestOpen(type);
+  };
+
+  // Helper function to generate consistent colors for avatars
+  const stringToColor = (string: string) => {
+    let hash = 0;
+    for (let i = 0; i < string.length; i++) {
+      hash = string.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    let color = '#';
+    for (let i = 0; i < 3; i++) {
+      const value = (hash >> (i * 8)) & 0xff;
+      color += `00${value.toString(16)}`.slice(-2);
+    }
+    return color;
+  };
+
+  // Update the handleUpdateProjectStatus function to properly update both the project state and projectData
+  const handleUpdateProjectStatus = async () => {
+    if (!id || !updatedStatus || !user?.token) return;
+    
+    setIsUpdating(true);
+    try {
+      // In a real app, you would call your API to update the project
+      // await api.projects.updateStatus(id, updatedStatus);
+      
+      // Create a new log entry
+      const newLog: ProjectLog = {
+        id: `log-${Date.now()}`,
+        action: AuditAction.UPDATE,
+        details: `Project status updated to ${getStatusLabel(updatedStatus as string)}`,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      // Update the project locally
+      if (project) {
+        const updatedProject = {
+          ...project,
+          status: updatedStatus
+        };
+        
+        // Update state
+        setProject(updatedProject);
+        
+        // Update projectData in localStorage for persistence
+        const projectDataJson = localStorage.getItem(`project_${id}`);
+        if (projectDataJson) {
+          const projectData = JSON.parse(projectDataJson);
+          projectData.status = updatedStatus;
+          localStorage.setItem(`project_${id}`, JSON.stringify(projectData));
+        }
+        
+        // Update logs state with the new log at the top
+        const updatedLogs = [newLog, ...projectLogs];
+        setProjectLogs(updatedLogs);
+        
+        // Save logs to localStorage for persistence
+        localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
+        
+        showSnackbar(`Project status updated to ${getStatusLabel(updatedStatus as string)}`, 'success');
+      }
+    } catch (err) {
+      console.error('Error updating project status:', err);
+      showSnackbar('Failed to update project status', 'error');
+    } finally {
+      setIsUpdating(false);
+      setIsEditStatusDialogOpen(false);
+    }
+  };
+
+  // Update the handleUpdateProjectCost function to properly update both the project state and projectData
+  const handleUpdateProjectCost = async () => {
+    if (!id || updatedCost === null || !user?.token) return;
+    
+    setIsUpdating(true);
+    try {
+      // In a real app, you would call your API to update the project
+      // await api.projects.updateCost(id, updatedCost);
+      
+      // Create a new log entry
+      const newLog: ProjectLog = {
+        id: `log-${Date.now()}`,
+        action: AuditAction.UPDATE,
+        details: `Project actual cost updated to $${updatedCost.toLocaleString()}`,
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      // Update the project directly
+      if (project) {
+        const updatedProject = {
+          ...project,
+          actualCost: updatedCost
+        };
+        
+        // Update state
+        setProject(updatedProject);
+        
+        // Update projectData in localStorage for persistence
+        const projectDataJson = localStorage.getItem(`project_${id}`);
+        if (projectDataJson) {
+          const projectData = JSON.parse(projectDataJson);
+          projectData.actualCost = updatedCost;
+          localStorage.setItem(`project_${id}`, JSON.stringify(projectData));
+        }
+        
+        // Update logs list with the new log at the top
+        setProjectLogs(prevLogs => [newLog, ...prevLogs]);
+        
+        // Save to localStorage for persistence
+        localStorage.setItem(`project_${id}_logs`, JSON.stringify([newLog, ...projectLogs]));
+        
+        showSnackbar(`Project cost updated to $${updatedCost.toLocaleString()}`, 'success');
+      }
+    } catch (err) {
+      console.error('Error updating project cost:', err);
+      showSnackbar('Failed to update project cost', 'error');
+    } finally {
+      setIsUpdating(false);
+      setIsEditCostDialogOpen(false);
+    }
+  };
+
+  // Handle team members change
   const handleTeamMembersChange = (event: SelectChangeEvent<string[]>) => {
     const { value } = event.target;
     setSelectedTeamMembers(typeof value === 'string' ? value.split(',') : value);
   };
   
+  // Handle adding team members
   const handleAddTeamMembers = async () => {
     if (!id || !user?.token || selectedTeamMembers.length === 0) return;
     
     setAddingTeamMembers(true);
     try {
-      // In a real app, you would call your API to add team members
-      // For now, we'll just simulate success
-      console.log('Adding team members:', selectedTeamMembers);
-      
-      // Simulate API call with a delay
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // Update the UI with the new team members
+      // Get the selected users from the available users array
       const newTeamMembers = selectedTeamMembers.map(userId => {
         const foundUser = availableUsers.find(u => u.id === userId);
         if (foundUser) {
@@ -830,15 +1572,63 @@ const ProjectDetailPage: React.FC = () => {
         }
       });
       
-      // In a real app, you would refetch the project data
-      // For now, we'll just update our mock data
-      mockProject.team = [...mockProject.team, ...newTeamMembers];
+      // Update the project's team in our state
+      if (project) {
+        const updatedProject = {
+          ...project,
+          team: [...(project.team || []), ...newTeamMembers]
+        };
+        
+        // Update state
+        setProject(updatedProject);
+        
+        // Save to localStorage for persistence
+        localStorage.setItem(`project_${id}_team`, JSON.stringify(updatedProject.team));
+        
+        // Update projectData in localStorage for persistence
+        const projectDataJson = localStorage.getItem(`project_${id}`);
+        if (projectDataJson) {
+          const projectData = JSON.parse(projectDataJson);
+          projectData.team = updatedProject.team;
+          localStorage.setItem(`project_${id}`, JSON.stringify(projectData));
+        }
+        
+        // Add logs for the team member additions
+        const newLogs = newTeamMembers.map((member, index) => ({
+          id: `log-${Date.now()}-team-${index}`,
+          action: AuditAction.UPDATE,
+          details: `Team member added: ${member.firstName} ${member.lastName}`,
+          timestamp: new Date().toISOString(),
+          user: {
+            id: user.id || '1',
+            firstName: user.firstName || 'System',
+            lastName: user.lastName || 'User'
+          }
+        }));
+        
+        // Update logs state
+        const updatedLogs = [...newLogs, ...projectLogs];
+        setProjectLogs(updatedLogs);
+        
+        // Save logs to localStorage
+        localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
+        
+        // Update availableUsers to remove the newly added team members
+        setAvailableUsers(prevUsers => 
+          prevUsers.filter(u => !selectedTeamMembers.includes(u.id))
+        );
+        
+        // Show success message
+        showSnackbar(`Added ${newTeamMembers.length} team member${newTeamMembers.length > 1 ? 's' : ''}`, 'success');
+      }
       
       handleCloseAddTeamMemberDialog();
     } catch (err) {
       console.error('Error adding team members:', err);
+      showSnackbar('Failed to add team members', 'error');
     } finally {
       setAddingTeamMembers(false);
+      setSelectedTeamMembers([]);
     }
   };
 
@@ -853,53 +1643,9 @@ const ProjectDetailPage: React.FC = () => {
     }
   };
 
-  // Handle file upload button click
-  const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
-  };
-
   // Remove a selected file before upload
   const handleRemoveSelectedFile = (index: number) => {
     setSelectedFiles(prevFiles => prevFiles.filter((_, i) => i !== index));
-  };
-
-  // Upload files to the server
-  const handleUploadFiles = async () => {
-    if (!id || !user?.token || selectedFiles.length === 0) return;
-    
-    setUploadingFile(true);
-    try {
-      // In a real app, you would upload the files to the API
-      // For now, we'll just simulate a delay and add them to our mock data
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Create new mock attachments
-      const newAttachments: Attachment[] = selectedFiles.map((file, index) => ({
-        id: `new-${Date.now()}-${index}`,
-        name: file.name,
-        filename: file.name,
-        type: file.type,
-        size: file.size,
-        url: URL.createObjectURL(file), // In a real app, this would be the URL from the server
-        uploadedBy: {
-          id: user?.id || '0',
-          firstName: user?.firstName || 'Unknown',
-          lastName: user?.lastName || 'User'
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      }));
-      
-      setProjectAttachments([...projectAttachments, ...newAttachments]);
-      setSelectedFiles([]);
-      setIsUploadDialogOpen(false);
-    } catch (err) {
-      console.error('Error uploading files:', err);
-    } finally {
-      setUploadingFile(false);
-    }
   };
 
   // Format file size for display
@@ -934,34 +1680,149 @@ const ProjectDetailPage: React.FC = () => {
     if (!id || !user?.token) return;
     
     try {
-      // In a real app, you would call the API to delete the attachment
-      // For now, we'll just update our local state
-      setProjectAttachments(prevAttachments => 
-        prevAttachments.filter(att => att.id !== attachmentId)
-      );
+      // Find the attachment to be deleted
+      const attachmentToDelete = projectAttachments.find(att => att.id === attachmentId);
+      if (!attachmentToDelete) {
+        console.error('Attachment not found:', attachmentId);
+        return;
+      }
+      
+      // Remove the attachment from the state
+      const updatedAttachments = projectAttachments.filter(att => att.id !== attachmentId);
+      setProjectAttachments(updatedAttachments);
+      
+      // Also update the project if we have it in state
+      if (project) {
+        const updatedProject = {
+          ...project,
+          attachments: updatedAttachments
+        };
+        setProject(updatedProject);
+      }
+      
+      // Save to localStorage for persistence
+      localStorage.setItem(`project_${id}_attachments`, JSON.stringify(updatedAttachments));
+      
+      // Create a log for the deletion
+      const newLog = {
+        id: `log-${Date.now()}-file-delete`,
+        action: AuditAction.DELETE,
+        details: `File deleted: ${attachmentToDelete.name}`,
+        timestamp: new Date().toISOString(),
+        user: {
+          id: user.id || '1',
+          firstName: user.firstName || 'System',
+          lastName: user.lastName || 'User'
+        }
+      };
+      
+      // Update logs state
+      const updatedLogs = [newLog, ...projectLogs];
+      setProjectLogs(updatedLogs);
+      
+      // Save logs to localStorage
+      localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
+      
+      // Show success message
+      showSnackbar('File deleted successfully', 'success');
     } catch (err) {
       console.error('Error deleting attachment:', err);
+      showSnackbar('Failed to delete file', 'error');
     }
   };
 
-  // Update the handleAddTaskOpen function
-  const handleAddTaskOpen = (status?: TaskStatus) => {
-    if (status) {
-      setNewTaskStatus(status);
+  // Upload files to the server
+  const handleUploadFiles = async () => {
+    if (!selectedFiles.length || !id || !user?.token) {
+      return;
     }
-    setIsAddTaskDialogOpen(true);
+    
+    setUploadingFile(true);
+    
+    try {
+      // Simulate uploading files to a server
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      
+      // Create attachment objects for each file
+      const newAttachments: Attachment[] = selectedFiles.map((file, index) => {
+        return {
+          id: `attachment-${Date.now()}-${index}`,
+          name: file.name,
+          filename: file.name,
+          type: file.type,
+          size: file.size,
+          url: URL.createObjectURL(file), // In a real app, this would be a server URL
+          uploadedBy: {
+            id: user?.id || '1',
+            firstName: user?.firstName || 'System',
+            lastName: user?.lastName || 'User'
+          },
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+      });
+      
+      // Update attachments state
+      const updatedAttachments = [...projectAttachments, ...newAttachments];
+      setProjectAttachments(updatedAttachments);
+      
+      // Update project with new attachments if project exists
+      if (project) {
+        const updatedProject = {
+          ...project,
+          attachments: [...(project.attachments || []), ...newAttachments]
+        };
+        
+        // Update project state
+        setProject(updatedProject);
+      }
+      
+      // Save to localStorage
+      localStorage.setItem(`project_${id}_attachments`, JSON.stringify(updatedAttachments));
+      
+      // Update projectData in localStorage for persistence
+      const projectDataJson = localStorage.getItem(`project_${id}`);
+      if (projectDataJson) {
+        const projectData = JSON.parse(projectDataJson);
+        projectData.attachments = [...(projectData.attachments || []), ...newAttachments];
+        localStorage.setItem(`project_${id}`, JSON.stringify(projectData));
+      }
+      
+      // Create new log entries for each upload
+      const newLogs: ProjectLog[] = newAttachments.map((attachment, index) => ({
+        id: `log-${Date.now()}-file-${index}`,
+        action: AuditAction.CREATE,
+        details: `Attachment uploaded: ${attachment.name}`,
+        timestamp: new Date().toISOString(),
+        user: {
+          id: user.id,
+          firstName: user.firstName,
+          lastName: user.lastName
+        }
+      }));
+      
+      // Update logs state
+      const updatedLogs = [...newLogs, ...projectLogs];
+      setProjectLogs(updatedLogs);
+      
+      // Save logs to localStorage
+      localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
+      
+      // Show success message
+      showSnackbar(`Successfully uploaded ${newAttachments.length} file${newAttachments.length > 1 ? 's' : ''}`, 'success');
+      
+      // Reset form after upload
+      setSelectedFiles([]);
+      setIsUploadDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to upload files:', error);
+      showSnackbar('Failed to upload files', 'error');
+    } finally {
+      setUploadingFile(false);
+    }
   };
 
-  // Add this function along with your other handlers
-  const handleGanttTaskClick = (task: Task) => {
-    console.log('Task clicked from Gantt:', task);
-    // Do something with the task, e.g. show details
-  };
-
-  const handleRequestTask = () => {
-    setIsRequestTaskDialogOpen(true);
-  };
-
+  // Handle a request for a task
   const handleRequestTaskSubmit = async (taskData: Partial<Task>) => {
     try {
       // In a real app, you would send this to a task request endpoint
@@ -972,139 +1833,251 @@ const ProjectDetailPage: React.FC = () => {
     }
   };
 
-  // Fix for the TaskClick handler
-  const handleTaskClick = (taskId: string) => {
-    console.log('Task clicked:', taskId);
-    // Do something with the task, e.g. show details
-  };
-
-  // Add a state for selected task view
-  const [activeTaskView, setActiveTaskView] = useState<'kanban' | 'gantt' | 'mindmap'>('kanban');
-  
-  // Add shared task state to be used across all views
-  const [projectTasks, setProjectTasks] = useState<Task[]>([]);
-
-  // Sync tasks from context to local state
-  useEffect(() => {
-    if (contextTasks) {
-      setProjectTasks(contextTasks);
-      console.log('Task state synchronized across views:', contextTasks);
+  // Handle opening the edit task dialog
+  const handleEditTask = (taskId: string) => {
+    const taskToEdit = projectTasks.find(task => task.id === taskId);
+    if (taskToEdit) {
+      setSelectedTaskForEdit(taskToEdit);
+      setIsEditTaskDialogOpen(true);
     }
-  }, [contextTasks]);
-
-  // Add snackbar state
-  const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
-    open: false,
-    message: '',
-    severity: 'success'
-  });
-
-  // Show snackbar function
-  const showSnackbar = (message: string, severity: 'success' | 'error') => {
-    setSnackbar({
-      open: true,
-      message,
-      severity
-    });
   };
 
-  // Close snackbar function
-  const handleSnackbarClose = () => {
-    setSnackbar(prev => ({ ...prev, open: false }));
-  };
-  
-  // Update the handleTaskAdded function to ensure synchronization
-  const handleTaskAdded = async (newTask: Task) => {
+  // Handle task update (edit)
+  const handleUpdateTaskDetails = async (taskId: string, updatedTask: Partial<Task>): Promise<void> => {
     try {
-      // Add task through context which will update the global task state
-      await addTask(newTask);
-      showSnackbar('Task added successfully', 'success');
-    } catch (error) {
-      console.error('Error adding task:', error);
-      showSnackbar('Failed to add task', 'error');
-    }
-  };
-
-  // Create a wrapper function that matches the expected signature for AddTaskDialog
-  const handleTaskAddedWrapper = (success: boolean) => {
-    if (success) {
-      showSnackbar('Task added successfully', 'success');
-    } else {
-      showSnackbar('Failed to add task', 'error');
-    }
-  };
-
-  // Handle log pagination
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
-  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Get action color
-  const getActionColor = (action: AuditAction) => {
-    switch(action) {
-      case AuditAction.CREATE: return 'success';
-      case AuditAction.UPDATE: return 'primary';
-      case AuditAction.DELETE: return 'error';
-      case AuditAction.APPROVE: return 'success';
-      case AuditAction.REJECT: return 'error';
-      case AuditAction.SUBMIT: return 'info';
-      default: return 'default';
-    }
-  };
-
-  // Change request handlers
-  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const [changeRequestType, setChangeRequestType] = useState<string | null>(null);
-  const openChangeRequestMenu = Boolean(anchorEl);
-  
-  const handleChangeRequestMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
-  };
-
-  const handleChangeRequestMenuClose = () => {
-    setAnchorEl(null);
-  };
-
-  const handleChangeRequestOpen = (type: string | null = null) => {
-    setChangeRequestType(type);
-    setIsChangeRequestDialogOpen(true);
-    handleChangeRequestMenuClose();
-  };
-
-  const handleChangeRequestClose = () => {
-    setIsChangeRequestDialogOpen(false);
-  };
-
-  const handleChangeRequestSubmitted = () => {
-    showSnackbar('Change request submitted successfully!', 'success');
-  };
-
-  // Add state for change request menu and dialog
-  const [isChangeRequestDialogOpen, setIsChangeRequestDialogOpen] = useState(false);
-
-  // Add state for audit results
-  const [auditResult, setAuditResult] = useState<AuditResult | null>(null);
-
-  // Run audit on page load to verify compliance with ClientTerms
-  useEffect(() => {
-    // Only run audit for admin users
-    if (user?.role === UserRole.ADMIN) {
-      const result = runFullAudit();
-      setAuditResult(result);
-      if (!result.passed) {
-        showSnackbar('Audit found compliance issues. Check the console for details.', 'error');
-        console.warn('Audit results:', result);
+      await handleUpdateTask(taskId, updatedTask);
+      setSnackbar({
+        open: true,
+        message: 'Task updated successfully',
+        severity: 'success'
+      });
+      
+      // Update the local state for the selected task
+      if (selectedTask && selectedTask.id === taskId) {
+        setSelectedTask({
+          ...selectedTask,
+          ...updatedTask
+        });
       }
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: 'Failed to update task',
+        severity: 'error'
+      });
+      console.error('Error updating task:', error);
     }
-  }, [user?.role]);
+  };
+
+  const [isEditTaskDialogOpen, setIsEditTaskDialogOpen] = useState(false);
+  const [selectedTaskForEdit, setSelectedTaskForEdit] = useState<Task | null>(null);
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+  const [isTaskDetailDialogOpen, setIsTaskDetailDialogOpen] = useState(false);
+  const [isDeleteTaskDialogOpen, setIsDeleteTaskDialogOpen] = useState(false);
+  const [selectedTaskForDelete, setSelectedTaskForDelete] = useState<Task | null>(null);
+
+  const handleDeleteTaskClick = (taskId: string) => {
+    const taskToDelete = projectTasks.find(task => task.id === taskId);
+    if (taskToDelete) {
+      setSelectedTaskForDelete(taskToDelete);
+      setIsDeleteTaskDialogOpen(true);
+    }
+  };
+
+  // Add new helper functions for weekly update management
+  const handleAddUpdateComment = (updateId: string) => {
+    if (!updateComment.trim() || !user) return;
+    
+    try {
+      // Find the update to add the comment to
+      const updatedWeeklyUpdates = weeklyUpdates.map(update => {
+        if (update.id === updateId) {
+          // Add the new comment
+          const newComment = {
+            id: `comment-${Date.now()}`,
+            text: updateComment,
+            author: {
+              id: user.id || '1',
+              firstName: user.firstName || 'System',
+              lastName: user.lastName || 'User'
+            },
+            createdAt: new Date().toISOString()
+          };
+          
+          return {
+            ...update,
+            comments: [...update.comments, newComment]
+          };
+        }
+        return update;
+      });
+      
+      // Update state
+      setWeeklyUpdates(updatedWeeklyUpdates);
+      
+      // Save to localStorage
+      localStorage.setItem(`project_${id}_weekly_updates`, JSON.stringify(updatedWeeklyUpdates));
+      
+      // Add log entry
+      const newLog = {
+        id: `log-${Date.now()}-update-comment`,
+        action: AuditAction.UPDATE,
+        details: `Comment added to weekly update`,
+        timestamp: new Date().toISOString(),
+        user: {
+          id: user.id || '1',
+          firstName: user.firstName || 'System',
+          lastName: user.lastName || 'User'
+        }
+      };
+      
+      const updatedLogs = [newLog, ...projectLogs];
+      setProjectLogs(updatedLogs);
+      localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
+      
+      // Clear the comment input
+      setUpdateComment('');
+      setSelectedUpdateId(null);
+      
+      // Show success message
+      showSnackbar('Comment added successfully', 'success');
+    } catch (err) {
+      console.error('Error adding comment to update:', err);
+      showSnackbar('Failed to add comment', 'error');
+    }
+  };
+
+  const handleUpdateFileSelect = () => {
+    if (updateFileInputRef.current) {
+      updateFileInputRef.current.click();
+    }
+  };
+
+  const handleUpdateFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setUpdateFiles(Array.from(e.target.files));
+      e.target.value = '';
+    }
+  };
+
+  const handleAddUpdateAttachments = (updateId: string) => {
+    if (!updateFiles.length || !user) return;
+    
+    try {
+      // Create attachment objects
+      const newAttachments = updateFiles.map((file, index) => ({
+        id: `attachment-${Date.now()}-${index}`,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        url: URL.createObjectURL(file),
+        uploadedBy: {
+          id: user.id || '1',
+          firstName: user.firstName || 'System',
+          lastName: user.lastName || 'User'
+        },
+        createdAt: new Date().toISOString()
+      }));
+      
+      // Update the weekly updates
+      const updatedWeeklyUpdates = weeklyUpdates.map(update => {
+        if (update.id === updateId) {
+          return {
+            ...update,
+            attachments: [...update.attachments, ...newAttachments]
+          };
+        }
+        return update;
+      });
+      
+      // Update state
+      setWeeklyUpdates(updatedWeeklyUpdates);
+      
+      // Save to localStorage
+      localStorage.setItem(`project_${id}_weekly_updates`, JSON.stringify(updatedWeeklyUpdates));
+      
+      // Add log entry
+      const newLog = {
+        id: `log-${Date.now()}-update-attachment`,
+        action: AuditAction.UPDATE,
+        details: `Attachment added to weekly update`,
+        timestamp: new Date().toISOString(),
+        user: {
+          id: user.id || '1',
+          firstName: user.firstName || 'System',
+          lastName: user.lastName || 'User'
+        }
+      };
+      
+      const updatedLogs = [newLog, ...projectLogs];
+      setProjectLogs(updatedLogs);
+      localStorage.setItem(`project_${id}_logs`, JSON.stringify(updatedLogs));
+      
+      // Clear files
+      setUpdateFiles([]);
+      
+      // Show success message
+      showSnackbar('Attachments added successfully', 'success');
+    } catch (err) {
+      console.error('Error adding attachments to update:', err);
+      showSnackbar('Failed to add attachments', 'error');
+    }
+  };
+
+  const fetchTeamMembers = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Use the imported mock users instead of API call
+      setTimeout(() => {
+        // Split the imported mock users - first 5 as team members, rest as available
+        const teamMembers = importedMockUsers.slice(0, 5);
+        const availableUsers = importedMockUsers.slice(5);
+        
+        // Update state with the mock data
+        setProject(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            team: teamMembers
+          };
+        });
+        
+        setAvailableUsers(availableUsers);
+        setIsLoading(false);
+      }, 500);
+      
+      // Comment out the original API call for now
+      /*
+      const response = await fetch(`${API_BASE_URL}/api/projects/${id}/team`, {
+        headers: {
+          'Authorization': `Bearer ${user?.token}`
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch team members');
+      }
+      
+      const data = await response.json();
+      setTeamMembers(data.teamMembers || []);
+      setAvailableUsers(data.availableUsers || []);
+      */
+    } catch (error) {
+      console.error('Error fetching team members:', error);
+      // Use a standard snackbar instead of toast
+      setSnackbar({
+        open: true,
+        message: 'Failed to load team members',
+        severity: 'error'
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
-    <Box>
+    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {auditResult && !auditResult.passed && (
         <Alert 
           severity="warning" 
@@ -1130,12 +2103,12 @@ const ProjectDetailPage: React.FC = () => {
         <Stack direction="row" justifyContent="space-between" alignItems="center">
           <Stack direction="row" spacing={2} alignItems="center">
             <Typography variant="h4" component="h1">
-              {mockProject.name}
+              {projectData.name}
             </Typography>
-            <Tooltip title={`Status: ${getStatusLabel(mockProject.status)}${isOverdue ? ' (Overdue)' : ''}`}>
+            <Tooltip title={`Status: ${getStatusLabel(projectData.status)}${isOverdue ? ' (Overdue)' : ''}`}>
               <Chip 
-                label={getStatusLabel(mockProject.status)} 
-                color={getStatusColor(mockProject.status, mockProject.endDate) as any}
+                label={getStatusLabel(projectData.status)} 
+                color={getStatusColor(projectData.status, projectData.endDate) as any}
                 sx={{ fontWeight: 'bold' }}
               />
             </Tooltip>
@@ -1161,41 +2134,29 @@ const ProjectDetailPage: React.FC = () => {
                       sx: { minWidth: 200 }
                     }}
                   >
-                    <MenuItem onClick={() => handleChangeRequestOpen('SCHEDULE')}>
-                      <ListItemIcon>
-                        <EventIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>Extend Project</ListItemText>
+                    <MenuItem onClick={() => handleChangeRequestMenuItemClick(ChangeRequestType.SCHEDULE)}>
+                      <ListItemIcon><EventIcon fontSize="small" /></ListItemIcon>
+                      <ListItemText>Schedule Change</ListItemText>
                     </MenuItem>
-                    <MenuItem onClick={() => handleChangeRequestOpen('CLOSURE')}>
-                      <ListItemIcon>
-                        <CloseIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>Close Project</ListItemText>
+                    <MenuItem onClick={() => handleChangeRequestMenuItemClick(ChangeRequestType.CLOSURE)}>
+                      <ListItemIcon><TaskAltIcon fontSize="small" /></ListItemIcon>
+                      <ListItemText>Project Closure</ListItemText>
                     </MenuItem>
-                    <MenuItem onClick={() => handleChangeRequestOpen('SCOPE')}>
-                      <ListItemIcon>
-                        <SubjectIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>Change Project Scope</ListItemText>
+                    <MenuItem onClick={() => handleChangeRequestMenuItemClick(ChangeRequestType.SCOPE)}>
+                      <ListItemIcon><ZoomOutMapIcon fontSize="small" /></ListItemIcon>
+                      <ListItemText>Scope Change</ListItemText>
                     </MenuItem>
-                    <MenuItem onClick={() => handleChangeRequestOpen('BUDGET')}>
-                      <ListItemIcon>
-                        <AttachMoneyIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>Change Project Cost</ListItemText>
+                    <MenuItem onClick={() => handleChangeRequestMenuItemClick(ChangeRequestType.BUDGET)}>
+                      <ListItemIcon><AccountBalanceWalletIcon fontSize="small" /></ListItemIcon>
+                      <ListItemText>Budget Change</ListItemText>
                     </MenuItem>
-                    <MenuItem onClick={() => handleChangeRequestOpen('RESOURCE')}>
-                      <ListItemIcon>
-                        <PersonIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>Delegate Project</ListItemText>
+                    <MenuItem onClick={() => handleChangeRequestMenuItemClick(ChangeRequestType.RESOURCE)}>
+                      <ListItemIcon><PeopleIcon fontSize="small" /></ListItemIcon>
+                      <ListItemText>Resource Change</ListItemText>
                     </MenuItem>
-                    <MenuItem onClick={() => handleChangeRequestOpen('OTHER')}>
-                      <ListItemIcon>
-                        <MoreHorizIcon fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText>Other Changes</ListItemText>
+                    <MenuItem onClick={() => handleChangeRequestMenuItemClick(ChangeRequestType.OTHER)}>
+                      <ListItemIcon><CategoryIcon fontSize="small" /></ListItemIcon>
+                      <ListItemText>Other Change</ListItemText>
                     </MenuItem>
                   </Menu>
                 </>
@@ -1204,7 +2165,7 @@ const ProjectDetailPage: React.FC = () => {
                 <Button
                   variant="contained"
                   startIcon={<AddIcon />}
-                  onClick={() => setIsAddTaskDialogOpen(true)}
+                  onClick={() => handleAddTaskOpen()}
                 >
                   Add Task
                 </Button>
@@ -1221,7 +2182,7 @@ const ProjectDetailPage: React.FC = () => {
           </Box>
         </Stack>
         <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-          {mockProject.description}
+          {projectData.description}
         </Typography>
       </Box>
 
@@ -1229,20 +2190,20 @@ const ProjectDetailPage: React.FC = () => {
         <Box sx={{ flex: '1 1 200px' }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle2" color="text.secondary">Manager</Typography>
-            <Typography variant="body1">{mockProject.projectManager.firstName} {mockProject.projectManager.lastName}</Typography>
+            <Typography variant="body1">{projectData.projectManager.firstName} {projectData.projectManager.lastName}</Typography>
           </Paper>
         </Box>
         <Box sx={{ flex: '1 1 200px' }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle2" color="text.secondary">Department</Typography>
-            <Typography variant="body1">{mockProject.department.name}</Typography>
+            <Typography variant="body1">{projectData.department.name}</Typography>
           </Paper>
         </Box>
         <Box sx={{ flex: '1 1 200px' }}>
           <Paper sx={{ p: 2 }}>
             <Typography variant="subtitle2" color="text.secondary">Timeline</Typography>
             <Typography variant="body1">
-              {new Date(mockProject.startDate).toLocaleDateString()} - {new Date(mockProject.endDate).toLocaleDateString()}
+              {new Date(projectData.startDate).toLocaleDateString()} - {new Date(projectData.endDate).toLocaleDateString()}
             </Typography>
           </Paper>
         </Box>
@@ -1264,80 +2225,173 @@ const ProjectDetailPage: React.FC = () => {
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="project tabs">
             <Tab icon={<CalendarIcon />} label="Overview" {...a11yProps(0)} />
             <Tab icon={<TeamIcon />} label="Team" {...a11yProps(1)} />
-            <Tab icon={<KanbanIcon />} label="Kanban" {...a11yProps(2)} />
-            <Tab icon={<GanttIcon />} label="Gantt Chart" {...a11yProps(3)} />
-            <Tab icon={<MindMapIcon />} label="Mind Map" {...a11yProps(4)} />
-            <Tab icon={<UploadIcon />} label="Attachments" {...a11yProps(5)} />
-            <Tab icon={<SummarizeIcon />} label="Weekly Updates" {...a11yProps(6)} />
-            <Tab icon={<LogIcon />} label="Logs" {...a11yProps(7)} />
+            <Tab icon={<KanbanIcon />} label="Tasks" {...a11yProps(2)} />
+            <Tab icon={<UploadIcon />} label="Attachments" {...a11yProps(3)} />
+            <Tab icon={<SummarizeIcon />} label="Weekly Updates" {...a11yProps(4)} />
+            <Tab icon={<LogIcon />} label="Logs" {...a11yProps(5)} />
           </Tabs>
         </Box>
         
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            {/* Add the ProjectDependencies component */}
-            <ProjectDependencies project={convertToFullProject(mockProject)} />
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+            <Box sx={{ flex: '1 1 400px' }}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">Project Overview</Typography>
+                  </Box>
+                  <Divider sx={{ mb: 2 }} />
+                  
+                  {/* Status */}
+                  <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Status
+                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Chip 
+                          label={getStatusLabel(projectData.status)} 
+                          color={getStatusColor(projectData.status, projectData.endDate) as any}
+                          size="small"
+                          sx={{ mr: 1 }}
+                        />
+                        <Typography variant="body1">{getStatusLabel(projectData.status)}</Typography>
+                      </Box>
+                    </Box>
+                    {userCanManageProjects && (
+                      <IconButton 
+                        size="small"
+                        color="primary"
+                        onClick={() => {
+                          setUpdatedStatus(projectData.status);
+                          setIsEditStatusDialogOpen(true);
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                  
+                  {/* Budget */}
+                  <Box sx={{ mb: 2.5 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Budget
+                    </Typography>
+                    <Typography variant="body1">${projectData.budget.toLocaleString()}</Typography>
+                  </Box>
+                  
+                  {/* Actual Cost */}
+                  <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Actual Cost
+                      </Typography>
+                      <Typography variant="body1">${projectData.actualCost.toLocaleString()}</Typography>
+                    </Box>
+                    {userCanManageProjects && (
+                      <IconButton 
+                        size="small"
+                        color="primary"
+                        onClick={() => {
+                          setUpdatedCost(projectData.actualCost);
+                          setIsEditCostDialogOpen(true);
+                        }}
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </Box>
+                  
+                  {/* Remaining Budget */}
+                  <Box sx={{ mb: 2.5 }}>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Remaining
+                    </Typography>
+                    <Typography variant="body1">${(projectData.budget - projectData.actualCost).toLocaleString()}</Typography>
+                  </Box>
+                  
+                  {/* Days Remaining */}
+                  <Box>
+                    <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                      Days Remaining
+                    </Typography>
+                    <Typography variant="body1">{daysRemaining} days</Typography>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Box>
             
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
-              <Box sx={{ flex: '1 1 400px' }}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>Project Overview</Typography>
-                    <Divider sx={{ mb: 2 }} />
+            <Box sx={{ flex: '1 1 400px' }}>
+              <Card>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6">Recent Tasks</Typography>
+                    {userCanAddTasks && (
+                      <Button
+                        size="small"
+                        startIcon={<AddIcon />}
+                        onClick={() => setIsAddTaskDialogOpen(true)}
+                      >
+                        Add Task
+                      </Button>
+                    )}
+                  </Box>
+                  <Divider sx={{ mb: 2 }} />
+                  
+                  {isLoading || tasksLoading ? (
+                    <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+                      <CircularProgress size={24} />
+                    </Box>
+                  ) : contextTasks && contextTasks.filter(task => task.projectId === id).length > 0 ? (
                     <Stack spacing={2}>
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">Budget</Typography>
-                        <Typography variant="body1">${mockProject.budget.toLocaleString()}</Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">Actual Cost</Typography>
-                        <Typography variant="body1">${mockProject.actualCost.toLocaleString()}</Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">Remaining</Typography>
-                        <Typography variant="body1">${(mockProject.budget - mockProject.actualCost).toLocaleString()}</Typography>
-                      </Box>
-                      <Box>
-                        <Typography variant="subtitle2" color="text.secondary">Days Remaining</Typography>
-                        <Typography variant="body1">{daysRemaining} days</Typography>
-                      </Box>
-                    </Stack>
-                  </CardContent>
-                </Card>
-              </Box>
-              <Box sx={{ flex: '1 1 400px' }}>
-                <Card>
-                  <CardContent>
-                    <Typography variant="h6" gutterBottom>Recent Tasks</Typography>
-                    <Divider sx={{ mb: 2 }} />
-                    <Stack spacing={2}>
-                      {mockTasks.slice(0, 3).map(task => (
-                        <Box key={task.id}>
-                          <Typography variant="subtitle2">{task.title}</Typography>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <Typography variant="body2" color="text.secondary">
-                              Assigned to: {task.assignee}
-                            </Typography>
-                            <Chip 
-                              label={task.status.replace('_', ' ')} 
-                              size="small"
-                              color={
-                                task.dueDate && new Date(task.dueDate) < new Date() 
-                                  ? 'error' 
-                                  : task.status === 'DONE' 
-                                    ? 'success' 
-                                    : task.status === 'IN_PROGRESS' 
-                                      ? 'primary' 
-                                      : 'default'
-                              }
-                            />
+                      {contextTasks
+                        .filter(task => task.projectId === id)
+                        .slice(0, 3)
+                        .map(task => (
+                          <Box key={task.id}>
+                            <Typography variant="subtitle2">{task.title}</Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Assigned to: {typeof task.assignee === 'string' 
+                                  ? task.assignee 
+                                  : task.assignee?.firstName 
+                                    ? `${task.assignee.firstName} ${task.assignee.lastName}` 
+                                    : 'Unassigned'}
+                              </Typography>
+                              <Chip 
+                                label={formatEnumValue(String(task.status))} 
+                                size="small"
+                                color={
+                                  task.dueDate && new Date(task.dueDate) < new Date() 
+                                    ? 'error' 
+                                    : String(task.status) === 'DONE' || String(task.status) === String(TaskStatus.DONE)
+                                      ? 'success' 
+                                      : String(task.status) === 'IN_PROGRESS' || String(task.status) === String(TaskStatus.IN_PROGRESS)
+                                        ? 'primary' 
+                                        : 'default'
+                                }
+                              />
+                            </Box>
                           </Box>
-                        </Box>
-                      ))}
+                        ))}
                     </Stack>
-                  </CardContent>
-                </Card>
-              </Box>
+                  ) : (
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography color="text.secondary">No tasks found for this project</Typography>
+                      {userCanAddTasks && (
+                        <Button
+                          variant="outlined"
+                          startIcon={<AddIcon />}
+                          onClick={() => handleAddTaskOpen()}
+                          sx={{ mt: 1 }}
+                        >
+                          Add First Task
+                        </Button>
+                      )}
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
             </Box>
           </Box>
         </TabPanel>
@@ -1354,18 +2408,71 @@ const ProjectDetailPage: React.FC = () => {
             </Button>
           </Box>
           <Divider sx={{ mb: 3 }} />
+          
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
-            {(mockProject.team || []).map((user) => (
+            {/* Always display the project manager */}
+            <Box key={projectData.projectManager.id} sx={{ width: { xs: '100%', sm: '48%', md: '31%' } }}>
+              <Card>
+                <CardContent>
+                  <Stack direction="row" spacing={2} alignItems="center">
+                    <Avatar sx={{ bgcolor: stringToColor(projectData.projectManager.firstName + projectData.projectManager.lastName) }}>
+                      {projectData.projectManager.firstName[0]}{projectData.projectManager.lastName[0]}
+                    </Avatar>
+                    <Box>
+                      <Typography variant="h6">{projectData.projectManager.firstName} {projectData.projectManager.lastName}</Typography>
+                      <Typography color="text.secondary">Project Manager</Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        {projectData.department?.name || 'Department not specified'}
+                      </Typography>
+                    </Box>
+                  </Stack>
+                </CardContent>
+              </Card>
+            </Box>
+            
+            {/* Display other team members if any */}
+            {projectData.team && projectData.team.length > 0 && projectData.team.map((user) => (
               <Box key={user.id} sx={{ width: { xs: '100%', sm: '48%', md: '31%' } }}>
                 <Card>
                   <CardContent>
-                    <Typography variant="h6">{user.firstName} {user.lastName}</Typography>
-                    <Typography color="text.secondary">{user.role} - {user.department.name}</Typography>
+                    <Stack direction="row" spacing={2} alignItems="center">
+                      <Avatar sx={{ bgcolor: stringToColor(user.firstName + user.lastName) }}>
+                        {user.firstName[0]}{user.lastName[0]}
+                      </Avatar>
+                      <Box>
+                        <Typography variant="h6">{user.firstName} {user.lastName}</Typography>
+                        <Typography color="text.secondary">{user.role || 'Team Member'}</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          {user.department?.name || 'Department not specified'}
+                        </Typography>
+                        {user.email && (
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            {user.email}
+                          </Typography>
+                        )}
+                      </Box>
+                    </Stack>
                   </CardContent>
                 </Card>
               </Box>
             ))}
           </Box>
+          
+          {projectData.team.length === 0 && (
+            <Paper sx={{ p: 3, textAlign: 'center', mt: 3 }}>
+              <Typography color="text.secondary">
+                No additional team members have been added to this project yet
+              </Typography>
+              <Button
+                variant="outlined"
+                startIcon={<PersonAddIcon />}
+                onClick={handleOpenAddTeamMemberDialog}
+                sx={{ mt: 2 }}
+              >
+                Add Team Member
+              </Button>
+            </Paper>
+          )}
         </TabPanel>
         
         <TabPanel value={tabValue} index={2}>
@@ -1380,92 +2487,156 @@ const ProjectDetailPage: React.FC = () => {
             </Alert>
           ) : (
             <Box>
-              <Typography variant="h6" gutterBottom>Kanban Board</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Manage tasks by dragging them between the columns to update their status.
-              </Typography>
-              
-              <KanbanBoard
-                {...{
-                  project: convertToFullProject(mockProject),
-                  tasks: contextTasks,
-                  onTaskUpdate: handleMoveTask,
-                  onTaskClick: handleTaskClick,
-                  onAddTask: userCanAddTasks ? () => setIsAddTaskDialogOpen(true) : undefined,
-                  onRequestTask: userCanRequestTasks ? handleRequestTask : undefined
-                } as CustomKanbanBoardProps}
-              />
+              <Typography variant="h6" gutterBottom>Task Views</Typography>
+              <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <ToggleButtonGroup
+                  value={activeTaskView}
+                  exclusive
+                  onChange={(e, newView) => {
+                    if (newView) setActiveTaskView(newView);
+                  }}
+                  aria-label="task view"
+                  size="small"
+                >
+                  <ToggleButton value="kanban" aria-label="kanban view">
+                    <KanbanIcon sx={{ mr: 1 }} /> Kanban Board
+                  </ToggleButton>
+                  <ToggleButton value="gantt" aria-label="gantt view">
+                    <GanttIcon sx={{ mr: 1 }} /> Gantt Chart
+                  </ToggleButton>
+                  <ToggleButton value="mindmap" aria-label="mindmap view">
+                    <MindMapIcon sx={{ mr: 1 }} /> Mind Map
+                  </ToggleButton>
+                </ToggleButtonGroup>
+                <Button 
+                  startIcon={<RefreshIcon />}
+                  onClick={async () => {
+                    try {
+                      await refreshTasks();
+                      if (contextTasks && id) {
+                        const filteredTasks = contextTasks.filter(task => task.projectId === id);
+                        setTasks(filteredTasks);
+                        setProjectTasks(filteredTasks);
+                        setSnackbar({
+                          open: true,
+                          message: 'Tasks refreshed successfully',
+                          severity: 'success'
+                        });
+                      }
+                    } catch (err) {
+                      console.error('Error refreshing tasks:', err);
+                      setSnackbar({
+                        open: true,
+                        message: 'Failed to refresh tasks',
+                        severity: 'error'
+                      });
+                    }
+                  }}
+                  variant="outlined"
+                  size="small"
+                >
+                  Refresh Tasks
+                </Button>
+              </Box>
+
+              {activeTaskView === 'kanban' && (
+                <>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Manage tasks by dragging them between the columns to update their status.
+                  </Typography>
+                  
+                  <DragDropContext
+                    onDragEnd={(result: DropResult) => {
+                      const { destination, source, draggableId } = result;
+                      
+                      // Dropped outside the list
+                      if (!destination) {
+                        return;
+                      }
+                      
+                      // Dropped in the same place
+                      if (
+                        destination.droppableId === source.droppableId &&
+                        destination.index === source.index
+                      ) {
+                        return;
+                      }
+                      
+                      // Handle the status change
+                      if (destination.droppableId !== source.droppableId) {
+                        const newStatus = destination.droppableId as TaskStatus;
+                        handleMoveTask(draggableId, newStatus);
+                      }
+                    }}
+                  >
+                    <KanbanBoard
+                      project={convertToFullProject(projectData)}
+                      tasks={projectTasks}
+                      onTaskUpdate={handleMoveTask}
+                      onTaskClick={(taskId) => {
+                        const task = projectTasks.find(t => t.id === taskId);
+                        if (task) {
+                          setSelectedTask(task);
+                          setIsTaskDetailDialogOpen(true);
+                        }
+                      }}
+                      onAddComment={async (taskId, comment) => {
+                        console.log('Adding comment to task:', taskId, comment);
+                        return Promise.resolve();
+                      }}
+                      onUpdateProgress={(taskId, progress, newStatus) => {
+                        handleMoveTask(taskId, newStatus);
+                      }}
+                      onAddTask={userCanAddTasks ? () => handleAddTaskOpen() : undefined}
+                      onRequestTask={userCanRequestTasks ? handleRequestTask : undefined}
+                      onEdit={userCanAddTasks ? handleEditTask : undefined}
+                      onDelete={userCanAddTasks ? handleDeleteTaskClick : undefined}
+                      onAttach={(taskId) => {
+                        console.log('Attach files to task:', taskId);
+                        // In a real app, you would open a file picker dialog here
+                      }}
+                    />
+                  </DragDropContext>
+                </>
+              )}
+
+              {activeTaskView === 'gantt' && (
+                <>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    View tasks in a timeline format showing dependencies and milestones.
+                  </Typography>
+                  
+                  <ErrorBoundary onError={handleGanttError}>
+                    <Box sx={{ position: 'relative', height: '600px' }}>
+                      <GanttChart
+                        project={convertToFullProject(projectData)}
+                        tasks={projectTasks}
+                        onTaskClick={handleGanttTaskClick}
+                      />
+                    </Box>
+                  </ErrorBoundary>
+                </>
+              )}
+
+              {activeTaskView === 'mindmap' && (
+                <>
+                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+                    Visualize project structure, tasks, and relationships in a mind map.
+                  </Typography>
+                  
+                  <Box sx={{ height: '600px' }}>
+                    <MindMapView 
+                      project={convertToFullProject(projectData)}
+                      tasks={projectTasks}
+                    />
+                  </Box>
+                </>
+              )}
             </Box>
           )}
         </TabPanel>
         
         <TabPanel value={tabValue} index={3}>
-          {tasksLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              <AlertTitle>Error</AlertTitle>
-              {error}
-            </Alert>
-          ) : ganttError ? (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              <AlertTitle>Error</AlertTitle>
-              {ganttError}
-              <Box sx={{ mt: 2 }}>
-                <Button variant="contained" onClick={() => setGanttError(null)}>
-                  Try Again
-                </Button>
-              </Box>
-            </Alert>
-          ) : (
-            <Box sx={{ height: '600px' }}>
-              <Typography variant="h6" gutterBottom>Gantt Chart</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                View tasks in a timeline format showing dependencies and milestones.
-              </Typography>
-              
-              <ErrorBoundary onError={handleGanttError}>
-                <Box sx={{ position: 'relative' }}>
-                  <GanttChart
-                    project={convertToFullProject(mockProject)}
-                    tasks={contextTasks}
-                    onTaskClick={handleGanttTaskClick}
-                  />
-                </Box>
-              </ErrorBoundary>
-            </Box>
-          )}
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={4}>
-          {tasksLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '300px' }}>
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Alert severity="error" sx={{ mb: 3 }}>
-              <AlertTitle>Error</AlertTitle>
-              {error}
-            </Alert>
-          ) : (
-            <Box sx={{ height: '600px' }}>
-              <Typography variant="h6" gutterBottom>Mind Map</Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                Visualize project structure, tasks, and relationships in a mind map.
-              </Typography>
-              
-              <MindMapView 
-                project={convertToFullProject(mockProject)}
-                tasks={contextTasks}
-              />
-            </Box>
-          )}
-        </TabPanel>
-
-        {/* Attachments Tab */}
-        <TabPanel value={tabValue} index={5}>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
             <Typography variant="h6">Project Attachments</Typography>
             <Button
@@ -1477,10 +2648,16 @@ const ProjectDetailPage: React.FC = () => {
             </Button>
           </Box>
 
-          {projectAttachments.length === 0 ? (
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-              <Typography color="text.secondary">
-                No attachments have been uploaded for this project
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : projectAttachments.length === 0 ? (
+            <Paper sx={{ p: 4, textAlign: 'center' }}>
+              <FolderIcon color="disabled" sx={{ fontSize: 60, opacity: 0.5, mb: 2 }} />
+              <Typography variant="h6" color="text.secondary">No Attachments</Typography>
+              <Typography color="text.secondary" sx={{ mb: 2 }}>
+                No files have been uploaded for this project yet
               </Typography>
               <Button
                 variant="outlined"
@@ -1492,14 +2669,15 @@ const ProjectDetailPage: React.FC = () => {
               </Button>
             </Paper>
           ) : (
-            <Box>
-              <Paper>
-                <List>
-                  {projectAttachments.map((attachment) => (
-                    <ListItem
-                      key={attachment.id}
-                      secondaryAction={
-                        <Box>
+            <Paper elevation={1}>
+              <List>
+                {projectAttachments.map((attachment) => (
+                  <ListItem
+                    key={attachment.id}
+                    divider
+                    secondaryAction={
+                      <Box>
+                        <Tooltip title="Download File">
                           <IconButton 
                             aria-label="download" 
                             onClick={() => handleDownloadAttachment(attachment)}
@@ -1507,6 +2685,8 @@ const ProjectDetailPage: React.FC = () => {
                           >
                             <DownloadIcon />
                           </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Delete File">
                           <IconButton 
                             aria-label="delete" 
                             onClick={() => handleDeleteAttachment(attachment.id)}
@@ -1514,35 +2694,312 @@ const ProjectDetailPage: React.FC = () => {
                           >
                             <DeleteIcon />
                           </IconButton>
-                        </Box>
+                        </Tooltip>
+                      </Box>
+                    }
+                  >
+                    <ListItemIcon>
+                      {getFileIcon(attachment.type)}
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={attachment.filename}
+                      secondary={
+                        <Typography component="span" variant="body2" color="text.secondary">
+                          {formatFileSize(attachment.size)} • Uploaded by {attachment.uploadedBy.firstName} {attachment.uploadedBy.lastName} • {
+                            formatDistanceToNow(new Date(attachment.createdAt), { addSuffix: true })
+                          }
+                        </Typography>
                       }
-                    >
-                      <ListItemIcon>
-                        {getFileIcon(attachment.type)}
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={attachment.filename}
-                        secondary={
-                          <>
-                            <Typography component="span" variant="body2" color="text.secondary">
-                              {formatFileSize(attachment.size)} • Uploaded by {attachment.uploadedBy.firstName} {attachment.uploadedBy.lastName} • {new Date(attachment.createdAt).toLocaleDateString()}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            </Paper>
+          )}
+        </TabPanel>
+
+        <TabPanel value={tabValue} index={4}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h6" gutterBottom>Weekly Project Updates</Typography>
+            <Typography variant="body2" color="text.secondary">
+              Track and manage weekly progress for this project.
+            </Typography>
+          </Box>
+          
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box>
+              <Paper sx={{ p: 3, mb: 3 }}>
+                <Typography variant="subtitle1" gutterBottom>This Week's Update</Typography>
+                <Divider sx={{ mb: 2 }} />
+                
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Progress Update
+                  </Typography>
+                  <Typography variant="body1">
+                    {projectData.progress}% complete. {
+                      isOverdue 
+                        ? 'Project is currently behind schedule.' 
+                        : 'Project is currently on track.'
+                    }
+                  </Typography>
+                </Box>
+                
+                <Box sx={{ mb: 2 }}>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Budget Update
+                  </Typography>
+                  <Typography variant="body1">
+                    ${projectData.actualCost.toLocaleString()} spent of ${projectData.budget.toLocaleString()} budget 
+                    ({Math.round(projectData.actualCost / projectData.budget * 100)}% of budget used).
+                  </Typography>
+                </Box>
+                
+                <Box>
+                  <Typography variant="body2" color="text.secondary" gutterBottom>
+                    Timeline
+                  </Typography>
+                  <Typography variant="body1">
+                    {daysRemaining} days remaining until project deadline.
+                  </Typography>
+                </Box>
+              </Paper>
+              
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 3 }}>
+                <Button 
+                  variant="contained" 
+                  onClick={() => {
+                    // Generate a new weekly update
+                    const now = new Date();
+                    const newUpdate = {
+                      id: `weekly-update-${Date.now()}`,
+                      week: `Week of ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
+                      progressUpdate: `${projectData.progress}% complete. ${
+                        isOverdue 
+                          ? 'Project is currently behind schedule.' 
+                          : 'Project is currently on track.'
+                      }`,
+                      budgetUpdate: `$${projectData.actualCost.toLocaleString()} spent of $${projectData.budget.toLocaleString()} budget 
+                        (${Math.round(projectData.actualCost / projectData.budget * 100)}% of budget used).`,
+                      timeline: `${daysRemaining} days remaining until project deadline.`,
+                      createdAt: now.toISOString(),
+                      comments: [],
+                      attachments: []
+                    };
+                    
+                    const updatedWeeklyUpdates = [newUpdate, ...weeklyUpdates];
+                    setWeeklyUpdates(updatedWeeklyUpdates);
+                    
+                    // Save to localStorage
+                    localStorage.setItem(`project_${id}_weekly_updates`, JSON.stringify(updatedWeeklyUpdates));
+                    
+                    // Show success message
+                    showSnackbar('Weekly update added successfully', 'success');
+                  }}
+                >
+                  Add Weekly Update
+                </Button>
+              </Box>
+              
+              {/* Hidden file input for update attachments */}
+              <input
+                type="file"
+                multiple
+                style={{ display: 'none' }}
+                ref={updateFileInputRef}
+                onChange={handleUpdateFileChange}
+              />
+              
+              <Paper>
+                <List>
+                  {weeklyUpdates.length > 0 ? (
+                    weeklyUpdates.map((update, index) => (
+                      <ListItem 
+                        key={update.id} 
+                        divider={index < weeklyUpdates.length - 1}
+                        alignItems="flex-start"
+                        sx={{ flexDirection: 'column', py: 2 }}
+                      >
+                        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                          <Typography variant="subtitle1" fontWeight="bold">
+                            {update.week}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">
+                            {new Date(update.createdAt).toLocaleString()}
+                          </Typography>
+                        </Box>
+                        
+                        <Box sx={{ width: '100%', mt: 1 }}>
+                          <Typography component="div" variant="body2" gutterBottom>
+                            <strong>Progress:</strong> {update.progressUpdate}
+                          </Typography>
+                          <Typography component="div" variant="body2" gutterBottom>
+                            <strong>Budget:</strong> {update.budgetUpdate}
+                          </Typography>
+                          <Typography component="div" variant="body2" gutterBottom>
+                            <strong>Timeline:</strong> {update.timeline}
+                          </Typography>
+                        </Box>
+                        
+                        {/* Attachments section */}
+                        {update.attachments.length > 0 && (
+                          <Box sx={{ width: '100%', mt: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Attachments ({update.attachments.length})
                             </Typography>
-                          </>
-                        }
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                              {update.attachments.map(attachment => (
+                                <Chip 
+                                  key={attachment.id}
+                                  label={attachment.name}
+                                  variant="outlined"
+                                  size="small"
+                                  icon={getFileIcon(attachment.type) as any}
+                                  onClick={() => window.open(attachment.url, '_blank')}
+                                />
+                              ))}
+                            </Box>
+                          </Box>
+                        )}
+                        
+                        {/* Comments section */}
+                        {update.comments.length > 0 && (
+                          <Box sx={{ width: '100%', mt: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                              Comments ({update.comments.length})
+                            </Typography>
+                            <List sx={{ bgcolor: 'background.default', borderRadius: 1, mt: 1 }}>
+                              {update.comments.map(comment => (
+                                <ListItem key={comment.id} sx={{ py: 1 }}>
+                                  <ListItemAvatar>
+                                    <Avatar sx={{ bgcolor: stringToColor(comment.author.firstName + comment.author.lastName) }}>
+                                      {comment.author.firstName[0]}{comment.author.lastName[0]}
+                                    </Avatar>
+                                  </ListItemAvatar>
+                                  <ListItemText
+                                    primary={
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <Typography variant="subtitle2">
+                                          {comment.author.firstName} {comment.author.lastName}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                          {new Date(comment.createdAt).toLocaleString()}
+                                        </Typography>
+                                      </Box>
+                                    }
+                                    secondary={comment.text}
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                        )}
+                        
+                        {/* Add comment and attachment section */}
+                        <Box sx={{ width: '100%', mt: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                          {selectedUpdateId === update.id ? (
+                            <>
+                              <TextField
+                                fullWidth
+                                label="Add a comment"
+                                variant="outlined"
+                                multiline
+                                rows={2}
+                                value={updateComment}
+                                onChange={(e) => setUpdateComment(e.target.value)}
+                              />
+                              
+                              {updateFiles.length > 0 && (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                                  {updateFiles.map((file, i) => (
+                                    <Chip 
+                                      key={i}
+                                      label={file.name}
+                                      variant="outlined"
+                                      size="small"
+                                      onDelete={() => setUpdateFiles(files => files.filter((_, index) => index !== i))}
+                                    />
+                                  ))}
+                                </Box>
+                              )}
+                              
+                              <Box sx={{ display: 'flex', gap: 2, justifyContent: 'flex-end' }}>
+                                <Button 
+                                  variant="outlined"
+                                  size="small"
+                                  startIcon={<UploadIcon />}
+                                  onClick={handleUpdateFileSelect}
+                                >
+                                  Attach Files
+                                </Button>
+                                
+                                <Button 
+                                  variant="contained"
+                                  size="small"
+                                  onClick={() => {
+                                    // If there are files, add them as attachments
+                                    if (updateFiles.length > 0) {
+                                      handleAddUpdateAttachments(update.id);
+                                    }
+                                    
+                                    // If there's a comment, add it
+                                    if (updateComment.trim()) {
+                                      handleAddUpdateComment(update.id);
+                                    } else {
+                                      // If no comment, just clear selection
+                                      setSelectedUpdateId(null);
+                                      setUpdateFiles([]);
+                                    }
+                                  }}
+                                >
+                                  Submit
+                                </Button>
+                                
+                                <Button 
+                                  variant="text"
+                                  size="small"
+                                  onClick={() => {
+                                    setSelectedUpdateId(null);
+                                    setUpdateComment('');
+                                    setUpdateFiles([]);
+                                  }}
+                                >
+                                  Cancel
+                                </Button>
+                              </Box>
+                            </>
+                          ) : (
+                            <Button 
+                              variant="outlined" 
+                              size="small"
+                              startIcon={<CommentIcon />}
+                              onClick={() => setSelectedUpdateId(update.id)}
+                            >
+                              Add Comment or Attachment
+                            </Button>
+                          )}
+                        </Box>
+                      </ListItem>
+                    ))
+                  ) : (
+                    <ListItem>
+                      <ListItemText
+                        primary="No updates yet"
+                        secondary="Weekly updates will appear here once they are added."
                       />
                     </ListItem>
-                  ))}
+                  )}
                 </List>
               </Paper>
             </Box>
           )}
         </TabPanel>
 
-        <TabPanel value={tabValue} index={6}>
-          <WeeklyUpdates projectId={mockProject.id} />
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={7}>
+        <TabPanel value={tabValue} index={5}>
           <Box sx={{ mb: 3 }}>
             <Typography variant="h6" gutterBottom>Project Activity Logs</Typography>
             <Typography variant="body2" color="text.secondary">
@@ -1550,75 +3007,98 @@ const ProjectDetailPage: React.FC = () => {
             </Typography>
           </Box>
 
-          <TableContainer component={Paper}>
-            <Table sx={{ minWidth: 650 }} aria-label="project logs table">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Action</TableCell>
-                  <TableCell>Details</TableCell>
-                  <TableCell>User</TableCell>
-                  <TableCell>Date & Time</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {projectLogs
-                  .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                  .map((log) => (
-                    <TableRow key={log.id} hover>
-                      <TableCell>
-                        <Chip
-                          label={log.action.replace('_', ' ')}
-                          size="small"
-                          color={getActionColor(log.action) as any}
-                        />
-                      </TableCell>
-                      <TableCell>{log.details}</TableCell>
-                      <TableCell>
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                          <Avatar sx={{ width: 24, height: 24, mr: 1 }}>
-                            {log.user.firstName.charAt(0)}
-                            {log.user.lastName.charAt(0)}
-                          </Avatar>
-                          {log.user.firstName} {log.user.lastName}
+          {isLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <TableContainer component={Paper}>
+              <Table sx={{ minWidth: 650 }} aria-label="project logs table">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Action</TableCell>
+                    <TableCell>Details</TableCell>
+                    <TableCell>User</TableCell>
+                    <TableCell>Date & Time</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {projectLogs.length > 0 ? (
+                    projectLogs
+                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                      .map((log) => (
+                        <TableRow key={log.id} hover>
+                          <TableCell>
+                            <Chip
+                              label={log.action.replace('_', ' ')}
+                              size="small"
+                              color={getActionColor(log.action) as any}
+                            />
+                          </TableCell>
+                          <TableCell>{log.details}</TableCell>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Avatar 
+                                sx={{ 
+                                  width: 24, 
+                                  height: 24, 
+                                  mr: 1,
+                                  bgcolor: stringToColor(log.user?.firstName + log.user?.lastName)
+                                }}
+                              >
+                                {log.user?.firstName.charAt(0)}
+                                {log.user?.lastName.charAt(0)}
+                              </Avatar>
+                              {log.user?.firstName} {log.user?.lastName}
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString()}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={4} align="center">
+                        <Box sx={{ py: 4, textAlign: 'center' }}>
+                          <LogIcon color="disabled" sx={{ fontSize: 60, opacity: 0.5, mb: 2 }} />
+                          <Typography variant="h6" color="text.secondary">No Activity Logs</Typography>
+                          <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
+                            No activity logs have been recorded for this project yet.
+                          </Typography>
                         </Box>
                       </TableCell>
-                      <TableCell>
-                        {new Date(log.timestamp).toLocaleDateString()} {new Date(log.timestamp).toLocaleTimeString()}
-                      </TableCell>
                     </TableRow>
-                  ))}
-                {projectLogs.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={4} align="center">
-                      <Typography variant="body1" sx={{ py: 2 }}>
-                        No activity logs found for this project
-                      </Typography>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25]}
-              component="div"
-              count={projectLogs.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
-          </TableContainer>
+                  )}
+                </TableBody>
+              </Table>
+              {projectLogs.length > 0 && (
+                <TablePagination
+                  rowsPerPageOptions={[5, 10, 25]}
+                  component="div"
+                  count={projectLogs.length}
+                  rowsPerPage={rowsPerPage}
+                  page={page}
+                  onPageChange={handleChangePage}
+                  onRowsPerPageChange={handleChangeRowsPerPage}
+                />
+              )}
+            </TableContainer>
+          )}
         </TabPanel>
       </Paper>
 
-      <AddTaskDialog
-        open={isAddTaskDialogOpen}
-        onClose={() => setIsAddTaskDialogOpen(false)}
-        projectId={mockProject.id}
-        initialStatus={newTaskStatus}
-        onTaskAdded={handleTaskAddedWrapper}
-        projectUsers={mockProject.team}
-      />
+      {/* Task Dialogs */}
+      {isAddTaskDialogOpen && (
+        <AddTaskDialog
+          open={isAddTaskDialogOpen}
+          onClose={() => setIsAddTaskDialogOpen(false)}
+          projectId={id || ''}
+          projectUsers={project?.team || []}
+          initialStatus={newTaskStatus}
+          onTaskAdded={handleTaskAddedWrapper}
+        />
+      )}
 
       {/* Add Team Member Dialog */}
       <Dialog open={isAddTeamMemberDialogOpen} onClose={handleCloseAddTeamMemberDialog} maxWidth="sm" fullWidth>
@@ -1758,20 +3238,148 @@ const ProjectDetailPage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      <RequestTaskDialog
-        open={isRequestTaskDialogOpen}
-        onClose={() => setIsRequestTaskDialogOpen(false)}
-        projectId={mockProject.id}
-      />
+      {/* Request Task Dialog */}
+      <Dialog open={isRequestTaskDialogOpen} onClose={() => setIsRequestTaskDialogOpen(false)}>
+        <DialogTitle>Request Task</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2, width: '500px', maxWidth: '100%' }}>
+            <TextField 
+              fullWidth
+              label="Task Title"
+              margin="normal"
+              name="title"
+            />
+            <TextField 
+              fullWidth
+              label="Task Description"
+              margin="normal"
+              name="description"
+              multiline
+              rows={4}
+            />
+            <TextField 
+              fullWidth
+              label="Reason for Request"
+              margin="normal"
+              name="requestReason"
+              multiline
+              rows={2}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsRequestTaskDialogOpen(false)}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            onClick={() => {
+              handleRequestTaskSubmit({
+                title: 'Requested Task',
+                description: 'This is a task requested by a user',
+                projectId: projectData.id
+              });
+              setIsRequestTaskDialogOpen(false);
+            }}
+          >
+            Submit Request
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Change Request Dialog */}
       <ChangeRequestDialog
         open={isChangeRequestDialogOpen}
         onClose={handleChangeRequestClose}
-        projectId={mockProject.id}
+        projectId={projectData.id}
         onSubmitted={handleChangeRequestSubmitted}
         changeRequestType={changeRequestType}
       />
+
+      {/* Project Status Update Dialog */}
+      <Dialog 
+        open={isEditStatusDialogOpen} 
+        onClose={() => !isUpdating && setIsEditStatusDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Update Project Status</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel id="update-status-label">Status</InputLabel>
+              <Select
+                labelId="update-status-label"
+                value={updatedStatus || ''}
+                label="Status"
+                onChange={(e) => setUpdatedStatus(e.target.value as ProjectStatus)}
+                disabled={isUpdating}
+              >
+                {Object.values(ProjectStatus).map((status) => (
+                  <MenuItem key={status} value={status}>
+                    <Chip 
+                      label={getStatusLabel(status)} 
+                      color={getStatusColor(status) as any}
+                      size="small"
+                      sx={{ mr: 1 }}
+                    />
+                    {getStatusLabel(status)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsEditStatusDialogOpen(false)} disabled={isUpdating}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleUpdateProjectStatus} 
+            variant="contained"
+            disabled={isUpdating || !updatedStatus || (project && updatedStatus === project.status)}
+            startIcon={isUpdating ? <CircularProgress size={20} /> : null}
+          >
+            {isUpdating ? 'Updating...' : 'Update Status'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Project Cost Update Dialog */}
+      <Dialog 
+        open={isEditCostDialogOpen} 
+        onClose={() => !isUpdating && setIsEditCostDialogOpen(false)}
+        fullWidth
+        maxWidth="sm"
+      >
+        <DialogTitle>Update Project Cost</DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              label="Actual Cost"
+              type="number"
+              fullWidth
+              value={updatedCost || ''}
+              onChange={(e) => setUpdatedCost(Number(e.target.value))}
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              }}
+              disabled={isUpdating}
+            />
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setIsEditCostDialogOpen(false)} disabled={isUpdating}>
+            Cancel
+          </Button>
+          <Button 
+            onClick={handleUpdateProjectCost} 
+            variant="contained"
+            disabled={isUpdating || updatedCost === null || (project && updatedCost === project.actualCost)}
+            startIcon={isUpdating ? <CircularProgress size={20} /> : null}
+          >
+            {isUpdating ? 'Updating...' : 'Update Cost'}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Add Snackbar for notifications */}
       <Snackbar
@@ -1787,21 +3395,47 @@ const ProjectDetailPage: React.FC = () => {
           {snackbar.message}
         </Alert>
       </Snackbar>
+
+      {/* Add this near the bottom of the component, along with the other dialogs */}
+      {selectedTaskForEdit && (
+        <EditTaskDialog
+          open={isEditTaskDialogOpen}
+          onClose={() => setIsEditTaskDialogOpen(false)}
+          onTaskUpdated={handleUpdateTaskDetails}
+          task={selectedTaskForEdit}
+          projectUsers={projectData.team || []}
+        />
+      )}
+      {selectedTask && (
+        <TaskDetailDialog
+          open={isTaskDetailDialogOpen}
+          onClose={() => setIsTaskDetailDialogOpen(false)}
+          task={selectedTask}
+          onEdit={handleEditTask}
+          onDelete={handleDeleteTask}
+          onAddComment={async (taskId, comment) => {
+            try {
+              // For now, just add the comment to the local state
+              // In a real app, you would call an API to save the comment
+              console.log('Adding comment to task:', taskId, comment);
+              return Promise.resolve();
+            } catch (error) {
+              console.error('Error adding comment:', error);
+              return Promise.reject(error);
+            }
+          }}
+        />
+      )}
+      {selectedTaskForDelete && (
+        <DeleteTaskDialog
+          open={isDeleteTaskDialogOpen}
+          onClose={() => setIsDeleteTaskDialogOpen(false)}
+          onConfirm={handleDeleteTask}
+          task={selectedTaskForDelete}
+        />
+      )}
     </Box>
   );
 };
-
-// Create mock components for missing imports
-const RequestTaskDialog = ({ open, onClose, projectId }: { open: boolean, onClose: () => void, projectId: string }) => (
-  <Dialog open={open} onClose={onClose}>
-    <DialogTitle>Request Task (Mock)</DialogTitle>
-    <DialogContent>
-      <Typography>This is a mock component for RequestTaskDialog</Typography>
-    </DialogContent>
-    <DialogActions>
-      <Button onClick={onClose}>Close</Button>
-    </DialogActions>
-  </Dialog>
-);
 
 export default ProjectDetailPage; 

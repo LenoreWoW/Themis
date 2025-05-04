@@ -37,17 +37,33 @@ const ProjectDependencies: React.FC<ProjectDependenciesProps> = ({ project }) =>
         setLoading(true);
         // Check if dependency data exists
         if (project.dependsOnProjects && project.dependsOnProjects.length > 0) {
-          const dependsOnData = await Promise.all(
-            project.dependsOnProjects.map(id => projectService.getProjectById(id))
+          // Fetch all projects and filter out any null results
+          const dependsOnPromises = project.dependsOnProjects.map(id => 
+            projectService.getProjectById(id).catch(err => {
+              console.error(`Error fetching project ${id}:`, err);
+              return null;
+            })
           );
-          setDependsOnProjects(dependsOnData);
+          
+          const dependsOnResults = await Promise.all(dependsOnPromises);
+          // Filter out null results
+          const validDependsOnProjects = dependsOnResults.filter(project => project !== null) as Project[];
+          setDependsOnProjects(validDependsOnProjects);
         }
 
         if (project.projectsDependingOnThis && project.projectsDependingOnThis.length > 0) {
-          const dependingOnData = await Promise.all(
-            project.projectsDependingOnThis.map(id => projectService.getProjectById(id))
+          // Fetch all projects and filter out any null results
+          const dependingOnPromises = project.projectsDependingOnThis.map(id => 
+            projectService.getProjectById(id).catch(err => {
+              console.error(`Error fetching project ${id}:`, err);
+              return null;
+            })
           );
-          setProjectsDependingOn(dependingOnData);
+          
+          const dependingOnResults = await Promise.all(dependingOnPromises);
+          // Filter out null results
+          const validDependingOnProjects = dependingOnResults.filter(project => project !== null) as Project[];
+          setProjectsDependingOn(validDependingOnProjects);
         }
       } catch (err) {
         console.error('Error fetching project dependencies:', err);

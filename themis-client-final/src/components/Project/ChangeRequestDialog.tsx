@@ -28,7 +28,10 @@ import {
   List,
   ListItem,
   ListItemIcon,
-  ListItemText
+  ListItemText,
+  Stack,
+  AlertTitle,
+  Divider
 } from '@mui/material';
 import { DatePicker as MuiDatePicker, LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
@@ -41,6 +44,8 @@ import { ApprovalStatus } from '../../context/AuthContext';
 import api from '../../services/api';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import { hasFinalApprovalAuthority, canApproveProjects } from '../../utils/permissions';
+import changeRequestsService from '../../services/changeRequests';
 
 // Simple hook to fetch users
 const useFetchAllUsers = () => {
@@ -103,7 +108,7 @@ interface ChangeRequestDialogProps {
   onClose: () => void;
   projectId: string;
   onSubmitted: () => void;
-  changeRequestType?: string | null;
+  changeRequestType: ChangeRequestType | null;
 }
 
 interface ChangeRequestFormData {
@@ -126,9 +131,9 @@ const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
   onClose,
   projectId,
   onSubmitted,
-  changeRequestType = null,
+  changeRequestType
 }) => {
-  const { user } = useAuth();
+  const { user, token } = useAuth();
   const { users } = useFetchAllUsers();
   const theme = useTheme();
   
@@ -205,19 +210,17 @@ const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
+    
     try {
-      const validationErrors = await validateForm();
-      if (validationErrors) {
-        setError(validationErrors);
+      setLoading(true);
+      
+      // Validate the form data
+      const validationError = await validateForm();
+      if (validationError) {
+        setError(validationError);
         setLoading(false);
         return;
       }
-
-      // Mock API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
       
       // Create a new request in local data
       const changeRequest = {
@@ -230,32 +233,104 @@ const ChangeRequestDialog: React.FC<ChangeRequestDialogProps> = ({
         requestedById: user?.id || '',
         requestedByName: `${user?.firstName} ${user?.lastName}`,
         requestedDate: new Date().toISOString(),
+        requestedBy: {
+          id: user?.id || '',
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || ''
+        },
         // Add specific fields based on type
         details: {
-          ...(formData.type === ChangeRequestType.SCHEDULE && { newEndDate: formData.newEndDate }),
-          ...(formData.type === ChangeRequestType.BUDGET && { newCost: formData.newCost }),
-          ...(formData.type === ChangeRequestType.SCOPE && { newScopeDescription: formData.newScopeDescription }),
-          ...(formData.type === ChangeRequestType.RESOURCE && { newProjectManagerId: formData.newProjectManagerId }),
+          ...(formData.type === ChangeRequestType.SCHEDULE && { 
+            newEndDate: formData.newEndDate ? formData.newEndDate.toISOString() : null 
+          }),
+          ...(formData.type === ChangeRequestType.BUDGET && { 
+            newCost: formData.newCost ? Number(formData.newCost) : 0 
+          }),
+          ...(formData.type === ChangeRequestType.SCOPE && { 
+            newScopeDescription: formData.newScopeDescription 
+          }),
+          ...(formData.type === ChangeRequestType.RESOURCE && { 
+            newProjectManagerId: formData.newProjectManagerId 
+          }),
+          ...(formData.type === ChangeRequestType.CLOSURE && { 
+            closureReason: formData.closureReason 
+          }),
         },
+        // Add top-level properties for backward compatibility
+        ...(formData.type === ChangeRequestType.SCHEDULE && { 
+          newEndDate: formData.newEndDate ? formData.newEndDate.toISOString() : null 
+        }),
+        ...(formData.type === ChangeRequestType.BUDGET && { 
+          newCost: formData.newCost ? Number(formData.newCost) : 0 
+        }),
+        ...(formData.type === ChangeRequestType.SCOPE && { 
+          newScopeDescription: formData.newScopeDescription 
+        }),
+        ...(formData.type === ChangeRequestType.RESOURCE && { 
+          newProjectManagerId: formData.newProjectManagerId 
+        }),
+        ...(formData.type === ChangeRequestType.CLOSURE && { 
+          closureReason: formData.closureReason 
+        }),
         attachments: formData.attachments.map(file => ({ name: file.name, size: file.size })),
+        // Required for approval process
+        approvalLevel: 'SUB_PMO',
+        finalApproval: false
       };
+      
+      // Call the API to create the change request
+      const response = await api.changeRequests.createChangeRequest(changeRequest, token || '');
+      
+      if (!response.success) {
+        setError(response.error || 'Failed to submit change request');
+        setLoading(false);
+        return;
+      }
 
-      // Save to localStorage (mock)
-      const existingRequests = JSON.parse(localStorage.getItem('changeRequests') || '[]');
-      localStorage.setItem('changeRequests', JSON.stringify([...existingRequests, changeRequest]));
-
-      // Create audit log entry
-      const auditLogEntry = {
-        id: `audit-${Date.now()}`,
-        projectId,
-        action: 'CHANGE_REQUEST_SUBMITTED',
-        description: getAuditLogDescription(formData.type, formData.title),
-        userId: user?.id || '',
-        userName: `${user?.firstName} ${user?.lastName}`,
+      // Don't save to localStorage again - the API already does this
+      
+      // Create audit log entry using our new utility
+      const auditLogDescription = getAuditLogDescription(formData.type, formData.title);
+      
+      // Create audit log entry properly with details relevant to the type of change request
+      await api.auditLogs.createAuditLog({
+        action: 'CHANGE_REQUEST_CREATED',
+        details: auditLogDescription,
+        entityType: 'CHANGE_REQUEST',
+        entityId: response.data.id,
+        projectId: projectId,
+        department: user?.department,
+        user: {
+          id: user?.id || '',
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || ''
+        },
         timestamp: new Date().toISOString(),
-      };
-      const existingLogs = JSON.parse(localStorage.getItem('auditLogs') || '[]');
-      localStorage.setItem('auditLogs', JSON.stringify([...existingLogs, auditLogEntry]));
+        // Add specific fields based on type for better filtering
+        metadata: {
+          type: formData.type,
+          title: formData.title,
+          description: formData.description,
+          // Format specific fields based on type
+          ...(formData.type === ChangeRequestType.SCHEDULE && { 
+            newEndDate: formData.newEndDate ? formData.newEndDate.toISOString() : null 
+          }),
+          ...(formData.type === ChangeRequestType.BUDGET && { 
+            newCost: formData.newCost ? Number(formData.newCost) : null 
+          }),
+          ...(formData.type === ChangeRequestType.SCOPE && { 
+            newScopeDescription: formData.newScopeDescription || '' 
+          }),
+          ...(formData.type === ChangeRequestType.RESOURCE && { 
+            newProjectManagerId: formData.newProjectManagerId || '',
+            managerName: users.find(u => u.id === formData.newProjectManagerId)?.firstName || ''
+          }),
+          ...(formData.type === ChangeRequestType.CLOSURE && { 
+            closureReason: formData.closureReason || '',
+            closureDate: formData.newEndDate ? formData.newEndDate.toISOString() : null
+          }),
+        }
+      }, token || '');
 
       onSubmitted();
       onClose();

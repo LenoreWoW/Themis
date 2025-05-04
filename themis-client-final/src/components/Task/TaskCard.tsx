@@ -26,25 +26,45 @@ import {
   Comment as CommentIcon, 
   ExpandMore, 
   ExpandLess,
-  Send as SendIcon
+  Send as SendIcon,
+  MoreVert as MoreIcon
 } from '@mui/icons-material';
 import { Task, TaskStatus, TaskPriority, TaskComment } from '../../types';
 import { format } from 'date-fns';
 import { useAuth } from '../../context/AuthContext';
+import { Draggable } from 'react-beautiful-dnd';
+import TaskContextMenu from './TaskContextMenu';
+import { formatEnumValue } from '../../utils/helpers';
 
 interface TaskCardProps {
   task: Task;
+  index?: number;
   onClick?: () => void;
   onAddComment?: (taskId: string, comment: string) => Promise<void>;
   onUpdateProgress?: (taskId: string, progress: number, newStatus: TaskStatus) => void;
+  onEdit?: (taskId: string) => void;
+  onDelete?: (taskId: string) => void;
+  onComplete?: (taskId: string) => void;
+  onAttach?: (taskId: string) => void;
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onAddComment, onUpdateProgress }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ 
+  task, 
+  index = 0, 
+  onClick, 
+  onAddComment, 
+  onUpdateProgress,
+  onEdit,
+  onDelete,
+  onComplete,
+  onAttach
+}) => {
   const { user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [newComment, setNewComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [localComments, setLocalComments] = useState<TaskComment[]>(task.comments || []);
+  const [contextMenuAnchor, setContextMenuAnchor] = useState<HTMLElement | null>(null);
 
   const handleExpandClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -213,228 +233,304 @@ const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onAddComment, onUpda
     onUpdateProgress(task.id, value, newStatus);
   };
 
+  const handleContextMenu = (event: React.MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    setContextMenuAnchor(event.currentTarget);
+  };
+
+  const handleCloseContextMenu = () => {
+    setContextMenuAnchor(null);
+  };
+
+  const handleComplete = () => {
+    if (onComplete) {
+      onComplete(task.id);
+    } else if (onUpdateProgress) {
+      onUpdateProgress(task.id, 100, TaskStatus.DONE);
+    }
+  };
+
   return (
-    <Card 
-      sx={{ 
-        borderLeft: 5, 
-        borderColor: getBorderColor(),
-        cursor: onClick && !expanded ? 'pointer' : 'default',
-        '&:hover': !expanded && onClick ? { 
-          transform: 'translateY(-4px)',
-          boxShadow: 3,
-          transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out'
-        } : {},
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column'
-      }}
-      onClick={expanded ? undefined : onClick}
-    >
-      <CardContent sx={{ flexGrow: 1, pb: 1 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-          <Chip 
-            label={task.status} 
-            size="small" 
-            color={getStatusColor(task.status)}
-          />
-          <Chip 
-            label={task.priority} 
-            size="small" 
-            color={getPriorityColor(task.priority)}
-            variant="outlined"
-          />
-        </Box>
-
-        {calculateDaysUntilDeadline() < 0 && task.status !== TaskStatus.DONE && (
-          <Chip 
-            label="OVERDUE" 
-            size="small" 
-            color="error"
-            sx={{ mt: 1, mb: 1, fontWeight: 'bold' }}
-          />
-        )}
-
-        <Typography variant="h6" component="div" sx={{ mb: 1 }}>
-          {task.title}
-        </Typography>
-        
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          {!expanded && task.description?.length > 100 
-            ? `${task.description.substring(0, 100)}...` 
-            : task.description}
-        </Typography>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
-          <Person fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-          <Typography variant="body2">
-            {task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : 'Unassigned'}
-          </Typography>
-        </Box>
-        
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <CalendarToday fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
-          <Typography variant="body2">
-            {formatDate(task.startDate)} - {formatDate(task.dueDate)}
-          </Typography>
-        </Box>
-        
-        <Box sx={{ mt: 'auto' }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
-            <Typography variant="body2" color="text.secondary">Progress</Typography>
-            <Typography 
-              variant="body2" 
-              color={calculateDaysUntilDeadline() < 0 && task.status !== TaskStatus.DONE ? 'error.main' : 'text.secondary'}
-              fontWeight={calculateDaysUntilDeadline() < 0 && task.status !== TaskStatus.DONE ? 'bold' : 'normal'}
-            >
-              {getDeadlineMessage()}
-            </Typography>
-          </Box>
-          
-          {/* Replace the LinearProgress with a Slider when onUpdateProgress is provided */}
-          {onUpdateProgress ? (
-            <MuiTooltip title={`${progressValue}% complete`}>
-              <Slider
-                value={progressValue}
-                onChange={handleProgressChange}
-                aria-labelledby="task-progress-slider"
-                size="small"
-                step={10}
-                marks
-                min={0}
-                max={100}
-                sx={{ height: 8, pt: 1, pb: 1 }}
-                color={task.status === TaskStatus.DONE ? 'success' : 
-                      calculateDaysUntilDeadline() < 0 ? 'error' : 
-                      calculateDaysUntilDeadline() <= 2 ? 'warning' : 'primary'}
-                onClick={(e) => e.stopPropagation()}
-              />
-            </MuiTooltip>
-          ) : (
-            <LinearProgress 
-              variant="determinate" 
-              value={getProgress()} 
-              color={task.status === TaskStatus.DONE ? 'success' : 
-                    calculateDaysUntilDeadline() < 0 ? 'error' : 
-                    calculateDaysUntilDeadline() <= 2 ? 'warning' : 'primary'}
-              sx={{ height: 6, borderRadius: 3 }}
-            />
-          )}
-        </Box>
-        
-        <Box 
-          sx={{ 
-            display: 'flex', 
-            justifyContent: 'center', 
-            mt: 2, 
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            pt: 1
-          }}
-        >
-          <IconButton 
-            onClick={handleExpandClick}
-            aria-expanded={expanded}
-            aria-label="show more"
-            size="small"
-            sx={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+    <>
+      <Draggable draggableId={task.id} index={index}>
+        {(provided, snapshot) => (
+          <Card 
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            {...provided.dragHandleProps}
+            sx={{ 
+              borderLeft: 5, 
+              borderColor: getBorderColor(),
+              cursor: onClick && !expanded ? 'pointer' : 'default',
+              '&:hover': !expanded && onClick ? { 
+                transform: snapshot.isDragging ? 'none' : 'translateY(-4px)',
+                boxShadow: snapshot.isDragging ? 4 : 3,
+                transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out'
+              } : {},
+              backgroundColor: snapshot.isDragging ? '#f5f5f5' : 'white',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              position: 'relative' // Added for context menu positioning
+            }}
+            onClick={(e) => {
+              if (expanded) return;
+              if (onClick) onClick();
+            }}
+            onContextMenu={handleContextMenu}
           >
-            {expanded ? <ExpandLess /> : <ExpandMore />}
-          </IconButton>
-        </Box>
-      </CardContent>
-      
-      <Collapse in={expanded} timeout="auto" unmountOnExit>
-        <Divider />
-        <Box sx={{ p: 2 }}>
-          <Typography variant="subtitle1" display="flex" alignItems="center" gutterBottom>
-            <CommentIcon sx={{ mr: 1, fontSize: 'small' }} />
-            Comments ({localComments.length})
-          </Typography>
-          
-          <List sx={{ maxHeight: '300px', overflow: 'auto', mb: 2 }}>
-            {localComments.length > 0 ? (
-              localComments.map((comment) => (
-                <ListItem key={comment.id} alignItems="flex-start" sx={{ px: 0 }}>
-                  <ListItemAvatar>
-                    <Avatar sx={{ width: 32, height: 32, fontSize: '0.875rem' }}>
-                      {comment.author.firstName.charAt(0)}{comment.author.lastName.charAt(0)}
-                    </Avatar>
-                  </ListItemAvatar>
-                  <ListItemText
-                    primary={
-                      <Box display="flex" justifyContent="space-between">
-                        <Typography variant="body2" fontWeight="bold">
-                          {comment.author.firstName} {comment.author.lastName}
-                        </Typography>
-                        <Typography variant="caption" color="text.secondary">
-                          {formatTime(comment.createdAt)}
-                        </Typography>
-                      </Box>
-                    }
-                    secondary={
-                      <Paper 
-                        variant="outlined" 
-                        sx={{ 
-                          p: 1, 
-                          mt: 0.5, 
-                          bgcolor: 'background.default',
-                          whiteSpace: 'pre-wrap',
-                          fontSize: '0.875rem'
-                        }}
-                      >
-                        {comment.text}
-                      </Paper>
-                    }
+            {/* Add a three dot menu icon in the top right corner */}
+            <IconButton 
+              size="small" 
+              sx={{ position: 'absolute', top: 5, right: 5 }}
+              onClick={(e) => {
+                e.stopPropagation();
+                setContextMenuAnchor(e.currentTarget);
+              }}
+            >
+              <MoreIcon fontSize="small" />
+            </IconButton>
+
+            <CardContent sx={{ flexGrow: 1, pb: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                <Chip 
+                  label={formatEnumValue(String(task.status))}
+                  size="small"
+                  color={getStatusColor(task.status)}
+                  sx={{ minWidth: '85px', textAlign: 'center' }}
+                />
+                {task.priority && (
+                  <Chip
+                    label={formatEnumValue(String(task.priority))}
+                    size="small"
+                    color={getPriorityColor(task.priority)}
+                    variant="outlined"
+                    sx={{ minWidth: '75px', textAlign: 'center' }}
                   />
-                </ListItem>
-              ))
-            ) : (
-              <Box sx={{ textAlign: 'center', py: 2 }}>
-                <Typography variant="body2" color="text.secondary">
-                  No comments yet. Be the first to comment!
+                )}
+              </Box>
+
+              {calculateDaysUntilDeadline() < 0 && task.status !== TaskStatus.DONE && (
+                <Chip 
+                  label="OVERDUE" 
+                  size="small" 
+                  color="error"
+                  sx={{ mt: 1, mb: 1, fontWeight: 'bold' }}
+                />
+              )}
+
+              <Typography variant="h6" component="div" sx={{ mb: 1 }}>
+                {task.title}
+              </Typography>
+              
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                {!expanded && task.description?.length > 100 
+                  ? `${task.description.substring(0, 100)}...` 
+                  : task.description}
+              </Typography>
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Person fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                <Typography variant="body2">
+                  {task.assignee ? `${task.assignee.firstName} ${task.assignee.lastName}` : 'Unassigned'}
                 </Typography>
               </Box>
-            )}
-          </List>
-          
-          <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
-            <Avatar 
-              sx={{ mr: 1, width: 32, height: 32, fontSize: '0.875rem' }}
-              alt={user?.firstName ? `${user.firstName} ${user.lastName}` : 'User'}
-            >
-              {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-            </Avatar>
-            <TextField
-              fullWidth
-              multiline
-              rows={2}
-              placeholder="Add a comment..."
-              value={newComment}
-              onChange={handleCommentChange}
-              onKeyPress={handleKeyPress}
-              variant="outlined"
-              size="small"
-              sx={{ fontSize: '0.875rem' }}
-              InputProps={{
-                endAdornment: (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    size="small"
-                    onClick={handleAddComment}
-                    disabled={!newComment.trim() || !user || submitting}
-                    startIcon={<SendIcon />}
-                    sx={{ ml: 1, mt: 0.5 }}
+              
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                <CalendarToday fontSize="small" sx={{ mr: 1, color: 'text.secondary' }} />
+                <Typography variant="body2">
+                  {formatDate(task.startDate)} - {formatDate(task.dueDate)}
+                </Typography>
+              </Box>
+              
+              <Box sx={{ mt: 'auto' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                  <Typography variant="body2" color="text.secondary">Progress</Typography>
+                  <Typography 
+                    variant="body2" 
+                    color={calculateDaysUntilDeadline() < 0 && task.status !== TaskStatus.DONE ? 'error.main' : 'text.secondary'}
+                    fontWeight={calculateDaysUntilDeadline() < 0 && task.status !== TaskStatus.DONE ? 'bold' : 'normal'}
                   >
-                    Send
-                  </Button>
-                )
-              }}
-            />
-          </Box>
-        </Box>
-      </Collapse>
-    </Card>
+                    {getDeadlineMessage()}
+                  </Typography>
+                </Box>
+                
+                {/* Replace the LinearProgress with a Slider when onUpdateProgress is provided */}
+                {onUpdateProgress ? (
+                  <MuiTooltip title={`${progressValue}% complete`}>
+                    <Slider
+                      value={progressValue}
+                      onChange={handleProgressChange}
+                      aria-labelledby="task-progress-slider"
+                      size="small"
+                      step={10}
+                      marks
+                      min={0}
+                      max={100}
+                      sx={{ height: 8, pt: 1, pb: 1 }}
+                      color={task.status === TaskStatus.DONE ? 'success' : 
+                            calculateDaysUntilDeadline() < 0 ? 'error' : 
+                            calculateDaysUntilDeadline() <= 2 ? 'warning' : 'primary'}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </MuiTooltip>
+                ) : (
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={getProgress()} 
+                    color={task.status === TaskStatus.DONE ? 'success' : 
+                          calculateDaysUntilDeadline() < 0 ? 'error' : 
+                          calculateDaysUntilDeadline() <= 2 ? 'warning' : 'primary'}
+                    sx={{ height: 6, borderRadius: 3 }}
+                  />
+                )}
+              </Box>
+              
+              <Box 
+                sx={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  mt: 2, 
+                  borderTop: '1px solid',
+                  borderColor: 'divider',
+                  pt: 1
+                }}
+              >
+                <IconButton 
+                  onClick={handleExpandClick}
+                  aria-expanded={expanded}
+                  aria-label="show more"
+                  size="small"
+                  sx={{ transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)' }}
+                >
+                  {expanded ? <ExpandLess /> : <ExpandMore />}
+                </IconButton>
+              </Box>
+            </CardContent>
+            
+            <Collapse in={expanded} timeout="auto" unmountOnExit>
+              <Divider />
+              <Box sx={{ p: 2 }}>
+                <Typography variant="subtitle1" display="flex" alignItems="center" gutterBottom>
+                  <CommentIcon sx={{ mr: 1, fontSize: 'small' }} />
+                  Comments ({localComments.length})
+                </Typography>
+                
+                <List sx={{ maxHeight: '300px', overflow: 'auto', mb: 2 }}>
+                  {localComments.length > 0 ? (
+                    localComments.map((comment) => (
+                      <ListItem key={comment.id} alignItems="flex-start" sx={{ px: 0 }}>
+                        <ListItemAvatar>
+                          <Avatar sx={{ width: 32, height: 32, fontSize: '0.875rem' }}>
+                            {comment.author.firstName.charAt(0)}{comment.author.lastName.charAt(0)}
+                          </Avatar>
+                        </ListItemAvatar>
+                        <ListItemText
+                          primary={
+                            <Box display="flex" justifyContent="space-between">
+                              <Typography variant="body2" fontWeight="bold">
+                                {comment.author.firstName} {comment.author.lastName}
+                              </Typography>
+                              <Typography variant="caption" color="text.secondary">
+                                {formatTime(comment.createdAt)}
+                              </Typography>
+                            </Box>
+                          }
+                          secondary={
+                            <Paper 
+                              variant="outlined" 
+                              sx={{ 
+                                p: 1, 
+                                mt: 0.5, 
+                                bgcolor: 'background.default',
+                                whiteSpace: 'pre-wrap',
+                                fontSize: '0.875rem'
+                              }}
+                            >
+                              {comment.text}
+                            </Paper>
+                          }
+                        />
+                      </ListItem>
+                    ))
+                  ) : (
+                    <Box sx={{ textAlign: 'center', py: 2 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No comments yet. Be the first to comment!
+                      </Typography>
+                    </Box>
+                  )}
+                </List>
+                
+                <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+                  <Avatar 
+                    sx={{ mr: 1, width: 32, height: 32, fontSize: '0.875rem' }}
+                    alt={user?.firstName ? `${user.firstName} ${user.lastName}` : 'User'}
+                  >
+                    {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                  </Avatar>
+                  <TextField
+                    fullWidth
+                    multiline
+                    rows={2}
+                    placeholder="Add a comment..."
+                    value={newComment}
+                    onChange={handleCommentChange}
+                    onKeyPress={handleKeyPress}
+                    variant="outlined"
+                    size="small"
+                    sx={{ fontSize: '0.875rem' }}
+                    InputProps={{
+                      endAdornment: (
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          size="small"
+                          onClick={handleAddComment}
+                          disabled={!newComment.trim() || !user || submitting}
+                          startIcon={<SendIcon />}
+                          sx={{ ml: 1, mt: 0.5 }}
+                        >
+                          Send
+                        </Button>
+                      )
+                    }}
+                  />
+                </Box>
+              </Box>
+            </Collapse>
+          </Card>
+        )}
+      </Draggable>
+
+      {/* Add the context menu */}
+      <TaskContextMenu
+        anchorEl={contextMenuAnchor}
+        open={Boolean(contextMenuAnchor)}
+        onClose={handleCloseContextMenu}
+        onEdit={() => onEdit && onEdit(task.id)}
+        onDelete={() => onDelete && onDelete(task.id)}
+        onComplete={handleComplete}
+        onAddComment={() => {
+          handleCloseContextMenu();
+          setExpanded(true);
+        }}
+        onAttach={() => onAttach && onAttach(task.id)}
+        onMove={(status) => {
+          if (onUpdateProgress) {
+            let progress = 0;
+            switch (status) {
+              case TaskStatus.TODO: progress = 0; break;
+              case TaskStatus.IN_PROGRESS: progress = 50; break;
+              case TaskStatus.REVIEW: progress = 80; break;
+              case TaskStatus.DONE: progress = 100; break;
+            }
+            onUpdateProgress(task.id, progress, status);
+          }
+        }}
+        currentStatus={task.status}
+      />
+    </>
   );
 };
 

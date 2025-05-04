@@ -106,6 +106,30 @@ export const TaskService = {
   },
 
   /**
+   * Create a new independent task (not associated with a project)
+   */
+  createIndependentTask: async (taskData: Partial<Task>, token: string): Promise<Task> => {
+    try {
+      // Map the frontend status to backend status before sending
+      const backendTaskData = {
+        ...taskData,
+        status: mapToBackendStatus(taskData.status as TaskStatus)
+      };
+      
+      const response = await api.tasks.createIndependentTask(backendTaskData, token) as ApiResponse<any>;
+      
+      // Map the backend status back to frontend status in the response
+      return {
+        ...response.data,
+        status: mapToFrontendStatus(response.data.status)
+      };
+    } catch (error) {
+      console.error('Error creating independent task:', error);
+      throw error;
+    }
+  },
+
+  /**
    * Update an existing task
    */
   updateTask: async (projectId: string, taskId: string, taskData: Partial<Task>, token: string): Promise<Task> => {

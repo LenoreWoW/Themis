@@ -100,9 +100,18 @@
     "unassigned": "غير معين",
     "createNewToStart": "أنشئ مشروعًا جديدًا للبدء",
     "dependsOn": "المشاريع التي يعتمد عليها هذا المشروع",
-    "dependedBy": "المشاريع التي تعتمد على هذا المشروع",
+    "dependingOnThis": "المشاريع التي تعتمد على هذا المشروع",
     "dependencies": "اعتمادات المشروع",
-    "goalsLink": "رابط لأهداف المشروع"
+    "dependsOnHelper": "حدد المشاريع التي يعتمد عليها هذا المشروع للبدء أو الإكمال",
+    "dependingOnThisHelper": "حدد المشاريع التي تعتمد على هذا المشروع للبدء أو الإكمال",
+    "goalsLink": "رابط لأهداف المشروع",
+    "attachments": "المرفقات",
+    "supportedTypes": "أنواع الملفات المدعومة: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, TXT",
+    "clickToSelect": "انقر أو اسحب الملفات للتحميل",
+    "errorUploading": "خطأ في تحميل الملفات",
+    "addNew": "إضافة مشروع جديد",
+    "fillDetails": "املأ تفاصيل المشروع لإنشاء مشروع جديد",
+    "budget": "الميزانية"
   },
   "task": {
     "title": "عنوان المهمة",
@@ -206,6 +215,7 @@
     "delete": "حذف",
     "edit": "تعديل",
     "create": "إنشاء",
+    "creating": "جاري الإنشاء...",
     "update": "تحديث",
     "view": "عرض",
     "search": "بحث",

@@ -2,11 +2,11 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/assets/images/LogoClickUP.png" />
+    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#000000" />
-    <meta name="description" content="Themis - Complete Project Management Solution" />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/assets/images/LogoClickUP.png" />
+    <meta name="description" content="Themis Project Management System" />
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <!--
       manifest.json provides metadata used when your web app is installed on a
       user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
@@ -21,7 +21,57 @@
       work correctly both with client-side routing and a non-root public URL.
       Learn how to configure a non-root public URL by running `npm run build`.
     -->
-    <title>Themis - Project Management</title>
+    <title>Themis | Project Management System</title>
+    
+    <!-- Force reset local storage data -->
+    <script>
+      // Check for URL parameters - adding ?reset=true to the URL will force a reset
+      const urlParams = new URLSearchParams(window.location.search);
+      const shouldReset = urlParams.get('reset') === 'true';
+      
+      // Always reset changeRequests
+      console.log('Running emergency cleanup of localStorage data...');
+      
+      // Save language preference
+      const language = localStorage.getItem('themisLanguage');
+      
+      // If reset parameter is present, do a complete clear
+      if (shouldReset) {
+        console.log('Full reset requested via URL parameter');
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Restore language
+        if (language) {
+          localStorage.setItem('themisLanguage', language);
+        }
+      }
+      
+      // Always reset these values
+      localStorage.removeItem('changeRequests');
+      localStorage.setItem('changeRequests', JSON.stringify([]));
+      
+      // Initialize other common arrays
+      const initializeEmptyArrays = [
+        'auditLogs',
+        'themis_reviews',
+        'themis_approvals'
+      ];
+      
+      initializeEmptyArrays.forEach(key => {
+        if (!localStorage.getItem(key)) {
+          localStorage.setItem(key, JSON.stringify([]));
+        }
+      });
+      
+      console.log('Initial localStorage cleanup complete');
+      
+      // Remove the reset parameter from URL if it exists
+      if (shouldReset) {
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

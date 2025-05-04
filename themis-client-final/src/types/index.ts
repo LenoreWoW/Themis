@@ -1,6 +1,3 @@
-// Add this import at the top of the file
-import { ApprovalStatus } from '../context/AuthContext';
-
 // User-related types
 export enum UserRole {
   ADMIN = 'ADMIN',
@@ -12,6 +9,13 @@ export enum UserRole {
   TEAM_LEAD = 'TEAM_LEAD',
   DEVELOPER = 'DEVELOPER',
   PENDING = 'PENDING'
+}
+
+// Add approval status enum
+export enum ApprovalStatus {
+  PENDING = 'PENDING',
+  APPROVED = 'APPROVED',
+  REJECTED = 'REJECTED'
 }
 
 // Helper functions for role-based permissions
@@ -90,23 +94,21 @@ export enum ProjectStatus {
   CANCELLED = 'CANCELLED'
 }
 
-// Define project template types
-export enum ProjectTemplateType {
-  DEFAULT = 'DEFAULT',
-  ERP = 'ERP',
-  MARKETING = 'MARKETING',
-  FINANCE = 'FINANCE',
-  SUPPLY_CHAIN = 'SUPPLY_CHAIN',
-  WEBSITE = 'WEBSITE',
-  INFRASTRUCTURE = 'INFRASTRUCTURE',
-  CUSTOM = 'CUSTOM'
-}
-
 export enum ProjectPriority {
   LOW = 'LOW',
   MEDIUM = 'MEDIUM',
   HIGH = 'HIGH',
   CRITICAL = 'CRITICAL'
+}
+
+export enum ProjectTemplateType {
+  DEFAULT = 'DEFAULT',
+  ERP = 'ERP',
+  MARKETING = 'MARKETING',
+  INFRASTRUCTURE = 'INFRASTRUCTURE',
+  WEBSITE = 'WEBSITE',
+  FINANCE = 'FINANCE',
+  SUPPLY_CHAIN = 'SUPPLY_CHAIN'
 }
 
 export enum ProjectRiskLevel {
@@ -137,33 +139,40 @@ export interface Project {
   id: string;
   name: string;
   description: string;
+  department: Department;
+  status: ProjectStatus;
+  priority: ProjectPriority;
   startDate: string;
   endDate: string;
-  status: ProjectStatus;
-  projectManager?: User;
-  department?: Department;
+  projectManager: User;
   budget: number;
-  goalsLink?: string;
-  client?: string;
-  actualCost?: number;
-  priority: ProjectPriority;
+  actualCost: number;
+  progress: number;
   createdAt: string;
   updatedAt: string;
-  // Add approval workflow properties
+  templateType: ProjectTemplateType;
   approvalStatus?: ApprovalStatus;
+  approvalNotes?: string;
+  approver?: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    role: UserRole;
+  };
+  lastReviewDate?: string;
+  submissionDate?: string;
+  // Fields for project dependencies
+  dependsOnProjects?: string[];
+  projectsDependingOnThis?: string[];
+  // Legacy project properties
+  legacyImport?: boolean;
+  isDraft?: boolean;
+  goalsLink?: string;
+  client?: string;
   comments?: string;
   reviewHistory?: ReviewComment[];
   lastReviewedBy?: User;
   lastReviewedAt?: string;
-  progress?: number;
-  // Project dependencies
-  dependsOnProjects?: string[]; // IDs of projects this one depends on
-  projectsDependingOnThis?: string[]; // IDs of projects depending on this one
-  // Legacy project properties
-  legacyImport?: boolean;
-  isDraft?: boolean;
-  // Template type for determining the detail page layout
-  templateType?: ProjectTemplateType;
 }
 
 // Task-related types
@@ -563,4 +572,8 @@ export interface ReviewComment {
 }
 
 export * from './project-closure';
-export * from './change-request'; 
+export * from './change-request';
+
+// Define the possible change request types
+// The line below is removed because it conflicts with the enum declaration above
+// export type ChangeRequestType = 'SCHEDULE' | 'BUDGET' | 'SCOPE' | 'RESOURCE' | 'STATUS' | 'CLOSURE' | 'OTHER'; 

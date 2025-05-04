@@ -1,12 +1,25 @@
 import { ProjectStatus, UserRole } from '../types';
 
 export const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return new Intl.DateTimeFormat('en-US', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  }).format(date);
+  try {
+    if (!dateString) return 'N/A';
+    
+    const date = new Date(dateString);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) {
+      return 'Invalid date';
+    }
+    
+    return new Intl.DateTimeFormat('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    }).format(date);
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid date';
+  }
 };
 
 export const getStatusColor = (status: ProjectStatus, endDate?: string): string => {
@@ -124,4 +137,26 @@ export const getDashboardAccess = (role?: UserRole): DashboardAccess => {
     default:
       return defaultAccess;
   }
+};
+
+// Add a formatter for enum values
+export const formatEnumValue = (value: string): string => {
+  if (!value) return '';
+  
+  // Handle values with underscores (like IN_PROGRESS)
+  if (value.includes('_')) {
+    return value
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
+  
+  // Handle camelCase values (like inProgress)
+  return value
+    // Insert a space before all uppercase letters that are followed by lowercase letters
+    .replace(/([A-Z](?=[a-z]))/g, ' $1')
+    // Capitalize the first letter
+    .replace(/^./, str => str.toUpperCase())
+    // Remove any leading space
+    .trim();
 }; 

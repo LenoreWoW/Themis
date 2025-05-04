@@ -33,6 +33,7 @@ import { useTranslation } from 'react-i18next';
 import AssignmentCard from '../components/Assignment/AssignmentCard';
 import AssignmentDetailDialog from '../components/Assignment/AssignmentDetailDialog';
 import AssignmentEditDialog from '../components/Assignment/AssignmentEditDialog';
+import { mockUsers } from '../services/mockData';
 
 interface AssignmentFormData {
   title: string;
@@ -74,12 +75,19 @@ const AssignmentsPage: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
+      // First try to get from API
       const response = await api.users.getAllUsers('');
-      if (response.success && response.data) {
+      if (response.success && response.data && response.data.length > 0) {
         setUsers(response.data);
+      } else {
+        // If API fails or returns empty, use mock users
+        console.log('Using mock users for assignments page');
+        setUsers(mockUsers);
       }
     } catch (error) {
       console.error('Error fetching users:', error);
+      // Use mock users as fallback
+      setUsers(mockUsers);
     }
   };
 

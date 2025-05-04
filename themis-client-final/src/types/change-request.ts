@@ -1,11 +1,12 @@
-// Change Request Types
+// Define the possible change request types
 export enum ChangeRequestType {
   SCHEDULE = 'SCHEDULE',
-  SCOPE = 'SCOPE',
   BUDGET = 'BUDGET',
+  SCOPE = 'SCOPE',
   RESOURCE = 'RESOURCE',
+  STATUS = 'STATUS',
   CLOSURE = 'CLOSURE',
-  OTHER = 'OTHER',
+  OTHER = 'OTHER'
 }
 
 export enum ChangeRequestStatus {
@@ -16,81 +17,51 @@ export enum ChangeRequestStatus {
 }
 
 export interface ChangeRequest {
-  id?: string;
+  id: string;
   projectId: string;
-  title: string;
+  type: ChangeRequestType | string;
   description: string;
-  type: ChangeRequestType;
-  status: ChangeRequestStatus;
-  submittedDate: string;
-  requesterName: string;
-  reviewedDate?: string;
-  reviewNotes?: string;
-  reviewerId?: string;
-  
-  // Type-specific fields
-  // For SCHEDULE type
-  currentEndDate?: string;
-  proposedEndDate?: string;
-  
-  // For BUDGET type
-  currentBudget?: number;
-  proposedBudget?: number;
-  
-  // For SCOPE type
-  scopeChanges?: string;
-  
-  // For RESOURCE type
-  resourceChanges?: string;
-  
-  // For CLOSURE type
-  closureJustification?: string;
-  
-  // Legacy nested objects for backward compatibility
-  scheduleChange?: {
-    currentEndDate: string;
-    proposedEndDate: string;
+  justification: string;
+  newEndDate?: string;
+  newBudget?: number;
+  newStatus?: string;
+  newManager?: string;
+  documentsAffected?: string;
+  requestedBy: {
+    id: string;
+    firstName: string;
+    lastName: string;
   };
-  
-  budgetChange?: {
-    currentBudget: number;
-    proposedBudget: number;
+  requestedAt: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  approvalLevel: 'SUB_PMO' | 'MAIN_PMO';
+  approvedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
   };
-  
-  scopeChange?: {
-    changes: string;
+  approvedAt?: string;
+  rejectedBy?: {
+    id: string;
+    firstName: string;
+    lastName: string;
   };
-  
-  resourceChange?: {
-    changes: string;
-  };
-  
-  closureRequest?: {
-    justification: string;
-  };
-  
-  // New alternative objects structure
-  schedule?: {
-    currentEndDate: string;
-    proposedEndDate: string;
-  };
-  
-  budget?: {
-    currentBudget: number;
-    proposedBudget: number;
-  };
-  
-  scope?: {
-    changes: string;
-  };
-  
-  resource?: {
-    changes: string;
-  };
-  
-  closure?: {
-    justification: string;
-  };
+  rejectedAt?: string;
+  rejectionReason?: string;
+  finalApproval: boolean;
+}
+
+export interface ChangeRequestSubmitData {
+  projectId: string;
+  type: ChangeRequestType | string;
+  description: string;
+  justification: string;
+  newEndDate?: string;
+  newBudget?: number;
+  newStatus?: string;
+  newManager?: string;
+  documentsAffected?: string;
+  approvalLevel?: 'SUB_PMO' | 'MAIN_PMO';
 }
 
 // Additional interfaces for change request related functionality

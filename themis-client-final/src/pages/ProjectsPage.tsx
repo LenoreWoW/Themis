@@ -54,7 +54,7 @@ import StatusBadge from '../components/common/StatusBadge';
 import SkeletonLoader from '../components/common/SkeletonLoader';
 import CircularProgressWithLabel from '../components/common/CircularProgressWithLabel';
 import { GridItem, GridContainer } from '../components/common/MuiGridWrapper';
-import { mockProjects, mockUsers, mockDepartments } from '../services/mockData';
+import { mockUsers, mockDepartments } from '../services/mockData';
 import { canManageProjects } from '../utils/permissions';
 import { alpha } from '@mui/material/styles';
 
@@ -160,31 +160,35 @@ const ProjectsPage: React.FC = () => {
       try {
         setLoading(true);
         
-        // Get mock projects
-        setTimeout(() => {
-          setProjects(mockProjects);
-          
-          // Get unique departments
-          const departmentSet = new Set<string>(
-            mockDepartments.map(dept => dept.name)
-          );
-          
-          // Convert Set to Array and add 'All' at the beginning
-          const deptOptions = ['All', ...Array.from(departmentSet)];
-          setDepartmentOptions(deptOptions);
-          setDepartments(mockDepartments);
-          setLoading(false);
-        }, 1000); // Simulate loading delay
+        // Fetch projects from API
+        if (token) {
+          const projectsResponse = await api.projects.getAllProjects(token);
+          if (projectsResponse.success && projectsResponse.data) {
+            setProjects(projectsResponse.data);
+          }
+        }
+        
+        // Get unique departments
+        const departmentSet = new Set<string>(
+          mockDepartments.map(dept => dept.name)
+        );
+        
+        // Convert Set to Array and add 'All' at the beginning
+        const deptOptions = ['All', ...Array.from(departmentSet)];
+        setDepartmentOptions(deptOptions);
+        setDepartments(mockDepartments);
+        setLoading(false);
         
       } catch (error) {
         console.error('Error fetching projects:', error);
         setProjects([]);
         setLoading(false);
+        setError('Failed to load projects. Please try again later.');
       }
     };
 
     fetchData();
-  }, []);
+  }, [token]);
   
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
@@ -220,42 +224,8 @@ const ProjectsPage: React.FC = () => {
   };
   
   const handleProjectClick = (id: string) => {
-    // Find the project to determine its template type
-    const project = projects.find(p => p.id === id);
-    
-    if (!project) {
-      // If project not found, navigate to default project detail page
-      navigate(`/projects/${id}`);
-      return;
-    }
-    
-    // Ensure templateType has a value, defaulting to DEFAULT if missing
-    const templateType = project.templateType || ProjectTemplateType.DEFAULT;
-    
-    // Navigate to the specialized route based on template type
-    switch (templateType) {
-      case ProjectTemplateType.ERP:
-        navigate(`/projects/${id}/erp`);
-        break;
-      case ProjectTemplateType.MARKETING:
-        navigate(`/projects/${id}/marketing`);
-        break;
-      case ProjectTemplateType.FINANCE:
-        navigate(`/projects/${id}/finance`);
-        break;
-      case ProjectTemplateType.SUPPLY_CHAIN:
-        navigate(`/projects/${id}/supply-chain`);
-        break;
-      case ProjectTemplateType.WEBSITE:
-        navigate(`/projects/${id}/website`);
-        break;
-      case ProjectTemplateType.INFRASTRUCTURE:
-        navigate(`/projects/${id}/infrastructure`);
-        break;
-      default:
-        // Fall back to default project detail page
-        navigate(`/projects/${id}`);
-    }
+    // No longer navigate to specialized template pages - always go to the main ProjectDetailPage
+    navigate(`/projects/${id}`);
   };
   
   // Filter projects based on search query and filters

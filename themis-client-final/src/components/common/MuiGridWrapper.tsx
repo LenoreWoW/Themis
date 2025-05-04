@@ -1,9 +1,14 @@
-import React from 'react';
-import { Box } from '@mui/material';
-import { SxProps, Theme } from '@mui/material/styles';
+import React, { ReactNode } from 'react';
+import { Grid, Box, SxProps, Theme } from '@mui/material';
+
+interface GridContainerProps {
+  children: ReactNode;
+  spacing?: number;
+  sx?: SxProps<Theme>;
+}
 
 interface GridItemProps {
-  children: React.ReactNode;
+  children: ReactNode;
   xs?: number | boolean;
   sm?: number | boolean;
   md?: number | boolean;
@@ -12,64 +17,35 @@ interface GridItemProps {
   sx?: SxProps<Theme>;
 }
 
-export const GridItem: React.FC<GridItemProps> = (props) => {
-  const { children, xs, sm, md, lg, xl, sx, ...rest } = props;
-  
-  // Determine flex basis based on columns (12 grid system)
-  const getFlexBasis = (columns: number | boolean | undefined) => {
-    if (columns === undefined) return undefined;
-    if (columns === true) return '0 0 auto';
-    if (columns === false) return undefined;
-    return `${(columns / 12) * 100}%`;
-  };
-
+export const GridContainer: React.FC<GridContainerProps> = ({
+  children,
+  spacing = 2,
+  sx = {},
+}) => {
   return (
-    <Box
-      sx={{
-        flexGrow: 0,
-        flexBasis: {
-          xs: getFlexBasis(xs),
-          sm: getFlexBasis(sm),
-          md: getFlexBasis(md),
-          lg: getFlexBasis(lg),
-          xl: getFlexBasis(xl),
-        },
-        maxWidth: {
-          xs: xs ? (xs === true ? '100%' : `${(Number(xs) / 12) * 100}%`) : undefined,
-          sm: sm ? (sm === true ? '100%' : `${(Number(sm) / 12) * 100}%`) : undefined,
-          md: md ? (md === true ? '100%' : `${(Number(md) / 12) * 100}%`) : undefined,
-          lg: lg ? (lg === true ? '100%' : `${(Number(lg) / 12) * 100}%`) : undefined,
-          xl: xl ? (xl === true ? '100%' : `${(Number(xl) / 12) * 100}%`) : undefined,
-        },
-        ...sx
-      }}
-      {...rest}
-    >
+    <Grid container spacing={spacing} sx={sx}>
       {children}
-    </Box>
+    </Grid>
   );
 };
 
-export const GridContainer: React.FC<{
-  children: React.ReactNode;
-  spacing?: number;
-  sx?: SxProps<Theme>;
-}> = ({ children, spacing = 2, sx, ...rest }) => {
-  // Convert spacing to margin/padding
-  const gap = spacing * 8; // MUI spacing unit is 8px
-  
+export const GridItem: React.FC<GridItemProps> = ({
+  children,
+  xs = 12,
+  sm,
+  md,
+  lg,
+  xl,
+  sx = {},
+}) => {
   return (
-    <Box
-      sx={{
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: `${gap}px`,
-        width: '100%',
-        ...sx,
-      }}
-      {...rest}
-    >
-      {children}
-    </Box>
+    <Grid item xs={xs} sm={sm} md={md} lg={lg} xl={xl} sx={sx}>
+      <Box sx={sx}>
+        {children}
+      </Box>
+    </Grid>
   );
-}; 
+};
+
+// Mark this as a module
+export {}; 

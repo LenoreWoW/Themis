@@ -22,22 +22,30 @@ import {
   Alert,
   IconButton,
   Tabs,
-  Tab
+  Tab,
+  Collapse,
+  Grid
 } from '@mui/material';
 import { 
   CheckCircle as ApproveIcon,
   Cancel as RejectIcon,
   Edit as EditIcon,
   Close as CloseIcon,
-  Refresh as RefreshIcon
+  Refresh as RefreshIcon,
+  KeyboardArrowUp as KeyboardArrowUpIcon,
+  KeyboardArrowDown as KeyboardArrowDownIcon
 } from '@mui/icons-material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { Project, ProjectStatus, UserRole } from '../types';
 import { ApprovalStatus, getNextApprovalStatus } from '../context/AuthContext';
 import { formatDate } from '../utils/helpers';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import { ChangeRequest, ChangeRequestType, ChangeRequestStatus } from '../types/change-request';
+import changeRequestsService from '../services/changeRequests';
+import { canApproveProjects } from '../utils/permissions';
+import { cleanupMockData } from '../utils/cleanupUtils';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -65,25 +73,44 @@ const ApprovalsPage: React.FC = () => {
   const { t } = useTranslation();
   const { user, token } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<Project[]>([]);
   const [completedApprovals, setCompletedApprovals] = useState<Project[]>([]);
+  const [changeRequests, setChangeRequests] = useState<ChangeRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [crLoading, setCrLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tabValue, setTabValue] = useState(0);
+  
+  // Get the initial tab value from location state if available
+  const initialTab = location.state?.activeTab ?? 0;
+  const [tabValue, setTabValue] = useState(initialTab);
 
   // Dialog states
   const [openDialog, setOpenDialog] = useState(false);
   const [dialogType, setDialogType] = useState<'approve' | 'reject'>('approve');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedChangeRequest, setSelectedChangeRequest] = useState<ChangeRequest | null>(null);
   const [comments, setComments] = useState('');
   const [rejectReason, setRejectReason] = useState('');
   const [submitLoading, setSubmitLoading] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  
+  // Track expanded state for each change request
+  const [expandedState, setExpandedState] = useState<Record<string, boolean>>({});
+  
+  // Toggle expanded state for a change request
+  const toggleExpanded = (requestId: string) => {
+    setExpandedState(prev => ({
+      ...prev,
+      [requestId]: !prev[requestId]
+    }));
+  };
 
   useEffect(() => {
     fetchApprovals();
+    fetchChangeRequests();
   }, [token]);
 
   const fetchApprovals = async () => {
@@ -127,8 +154,36 @@ const ApprovalsPage: React.FC = () => {
     }
   };
 
+  const fetchChangeRequests = async () => {
+    if (!token || !user) return;
+
+    setCrLoading(true);
+    setError(null);
+
+    try {
+      // In a real app, we would fetch only pending change requests that the current user can approve
+      const response = await changeRequestsService.getAllChangeRequests(token);
+      if (response.success && response.data) {
+        // Filter to only show pending change requests that require approval
+        const pendingRequests = response.data.filter(cr => cr.status === 'PENDING');
+        setChangeRequests(pendingRequests);
+      } else {
+        setError('Failed to fetch change requests');
+      }
+    } catch (err) {
+      setError('An error occurred while fetching change requests');
+      console.error(err);
+    } finally {
+      setCrLoading(false);
+    }
+  };
+
   const handleRefresh = () => {
+    // Clean up mock data first
+    cleanupMockData();
+    // Then fetch fresh data
     fetchApprovals();
+    fetchChangeRequests();
   };
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
@@ -141,6 +196,17 @@ const ApprovalsPage: React.FC = () => {
 
   const handleOpenDialog = (project: Project, type: 'approve' | 'reject') => {
     setSelectedProject(project);
+    setSelectedChangeRequest(null);
+    setDialogType(type);
+    setComments('');
+    setRejectReason('');
+    setSubmitError(null);
+    setOpenDialog(true);
+  };
+
+  const handleOpenChangeRequestDialog = (changeRequest: ChangeRequest, type: 'approve' | 'reject') => {
+    setSelectedChangeRequest(changeRequest);
+    setSelectedProject(null);
     setDialogType(type);
     setComments('');
     setRejectReason('');
@@ -151,78 +217,138 @@ const ApprovalsPage: React.FC = () => {
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedProject(null);
+    setSelectedChangeRequest(null);
   };
 
   const handleApproveReject = async () => {
-    if (!selectedProject || !token || !user) {
-      setSubmitError('Invalid project or user session');
-      return;
-    }
-
-    // Validate reject reason is provided when rejecting
-    if (dialogType === 'reject' && !rejectReason.trim()) {
-      setSubmitError('Rejection reason is required');
-      return;
-    }
-
-    setSubmitLoading(true);
-    setSubmitError(null);
-
-    try {
-      let nextStatus: ApprovalStatus | null;
-      const action = dialogType === 'approve' ? 'APPROVE' : 'REJECT';
-      const currentStatus = (selectedProject as any).approvalStatus || ApprovalStatus.SUBMITTED;
-      
-      nextStatus = getNextApprovalStatus(currentStatus, user.role, action);
-      
-      if (!nextStatus) {
-        setSubmitError('Cannot determine next approval status');
-        setSubmitLoading(false);
+    // Handle project approval
+    if (selectedProject && !selectedChangeRequest) {
+      if (!token || !user) {
+        setSubmitError('Invalid project or user session');
         return;
       }
 
-      // Prepare reviewComments, combining comments with rejection reason if applicable
-      const reviewComments = dialogType === 'reject' 
-        ? `${comments ? comments + '\n\n' : ''}REJECTION REASON: ${rejectReason}`
-        : comments;
-
-      // Prepare project data with review history
-      const projectData = {
-        ...selectedProject,
-        approvalStatus: nextStatus,
-        reviewHistory: [
-          ...((selectedProject as any)?.reviewHistory || []),
-          {
-            id: Date.now().toString(),
-            text: reviewComments,
-            createdAt: new Date().toISOString(),
-            user: user,
-            action: action
-          }
-        ],
-        lastReviewedBy: user,
-        lastReviewedAt: new Date().toISOString(),
-        comments: reviewComments
-      };
-
-      // Update project
-      const response = await api.projects.updateProject(
-        selectedProject.id, 
-        projectData,
-        localStorage.getItem('token') || ''
-      );
-
-      if (response.data) {
-        handleCloseDialog();
-        fetchApprovals();
-      } else {
-        setSubmitError('Failed to update project');
+      // Validate reject reason is provided when rejecting
+      if (dialogType === 'reject' && !rejectReason.trim()) {
+        setSubmitError('Rejection reason is required');
+        return;
       }
-    } catch (err) {
-      setSubmitError('An error occurred while updating project');
-      console.error(err);
-    } finally {
-      setSubmitLoading(false);
+
+      setSubmitLoading(true);
+      setSubmitError(null);
+
+      try {
+        let nextStatus: ApprovalStatus | null;
+        const action = dialogType === 'approve' ? 'APPROVE' : 'REJECT';
+        const currentStatus = (selectedProject as any).approvalStatus || ApprovalStatus.SUBMITTED;
+        
+        nextStatus = getNextApprovalStatus(currentStatus, user.role, action);
+        
+        if (!nextStatus) {
+          setSubmitError('Cannot determine next approval status');
+          setSubmitLoading(false);
+          return;
+        }
+
+        // Prepare reviewComments, combining comments with rejection reason if applicable
+        const reviewComments = dialogType === 'reject' 
+          ? `${comments ? comments + '\n\n' : ''}REJECTION REASON: ${rejectReason}`
+          : comments;
+
+        // Prepare project data with review history
+        const projectData = {
+          ...selectedProject,
+          approvalStatus: nextStatus,
+          reviewHistory: [
+            ...((selectedProject as any)?.reviewHistory || []),
+            {
+              id: Date.now().toString(),
+              text: reviewComments,
+              createdAt: new Date().toISOString(),
+              user: user,
+              action: action
+            }
+          ],
+          lastReviewedBy: user,
+          lastReviewedAt: new Date().toISOString(),
+          comments: reviewComments
+        };
+
+        // Update project
+        const response = await api.projects.updateProject(
+          selectedProject.id, 
+          projectData,
+          localStorage.getItem('token') || ''
+        );
+
+        if (response.data) {
+          handleCloseDialog();
+          fetchApprovals();
+        } else {
+          setSubmitError('Failed to update project');
+        }
+      } catch (err) {
+        setSubmitError('An error occurred while updating project');
+        console.error(err);
+      } finally {
+        setSubmitLoading(false);
+      }
+    } 
+    // Handle change request approval
+    else if (selectedChangeRequest && !selectedProject) {
+      if (!token || !user) {
+        setSubmitError('Invalid change request or user session');
+        return;
+      }
+
+      // Validate reject reason is provided when rejecting
+      if (dialogType === 'reject' && !rejectReason.trim()) {
+        setSubmitError('Rejection reason is required');
+        return;
+      }
+
+      setSubmitLoading(true);
+      setSubmitError(null);
+
+      try {
+        if (dialogType === 'approve') {
+          const response = await changeRequestsService.approveChangeRequest(
+            selectedChangeRequest.id,
+            user.id,
+            `${user.firstName} ${user.lastName}`,
+            user.role === UserRole.MAIN_PMO || user.role === UserRole.ADMIN,
+            comments,
+            token
+          );
+
+          if (response.success) {
+            handleCloseDialog();
+            fetchChangeRequests();
+          } else {
+            setSubmitError(response.message || 'Failed to approve change request');
+          }
+        } else {
+          const response = await changeRequestsService.rejectChangeRequest(
+            selectedChangeRequest.id,
+            user.id,
+            `${user.firstName} ${user.lastName}`,
+            rejectReason,
+            token
+          );
+
+          if (response.success) {
+            handleCloseDialog();
+            fetchChangeRequests();
+          } else {
+            setSubmitError(response.message || 'Failed to reject change request');
+          }
+        }
+      } catch (err) {
+        setSubmitError('An error occurred while processing the change request');
+        console.error(err);
+      } finally {
+        setSubmitLoading(false);
+      }
     }
   };
 
@@ -250,6 +376,30 @@ const ApprovalsPage: React.FC = () => {
     return false;
   };
 
+  const canApproveChangeRequest = (changeRequest: ChangeRequest): boolean => {
+    if (!user) return false;
+    if (!changeRequest) return false;
+    if (!changeRequest.requestedBy) return false;
+    
+    // Cannot approve your own change request
+    if (changeRequest.requestedBy.id === user.id) return false;
+    
+    // Admin can approve anything
+    if (user.role === UserRole.ADMIN) return true;
+    
+    // Check based on approvalLevel
+    if (changeRequest.approvalLevel === 'SUB_PMO' && user.role === UserRole.SUB_PMO) {
+      return true;
+    }
+    
+    if (changeRequest.approvalLevel === 'MAIN_PMO' && user.role === UserRole.MAIN_PMO) {
+      return true;
+    }
+    
+    // General permission check
+    return canApproveProjects(user.role);
+  };
+
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'DRAFT':
@@ -268,6 +418,8 @@ const ApprovalsPage: React.FC = () => {
         return t('status.rejected');
       case 'CHANGES_REQUESTED':
         return t('status.changesRequested');
+      case 'PENDING':
+        return t('status.pending');
       default:
         return status;
     }
@@ -280,6 +432,7 @@ const ApprovalsPage: React.FC = () => {
       case 'SUBMITTED':
       case 'SUB_PMO_REVIEW':
       case 'MAIN_PMO_REVIEW':
+      case 'PENDING':
         return 'info';
       case 'SUB_PMO_APPROVED':
         return 'secondary';
@@ -291,6 +444,25 @@ const ApprovalsPage: React.FC = () => {
         return 'warning';
       default:
         return 'default';
+    }
+  };
+
+  const getChangeRequestTypeLabel = (type: string) => {
+    switch (type) {
+      case ChangeRequestType.SCHEDULE:
+        return t('changeRequest.types.schedule', 'Schedule Change');
+      case ChangeRequestType.BUDGET:
+        return t('changeRequest.types.budget', 'Budget Change');
+      case ChangeRequestType.SCOPE:
+        return t('changeRequest.types.scope', 'Scope Change');
+      case ChangeRequestType.RESOURCE:
+        return t('changeRequest.types.resource', 'Resource Change');
+      case ChangeRequestType.STATUS:
+        return t('changeRequest.types.status', 'Status Change');
+      case ChangeRequestType.CLOSURE:
+        return t('changeRequest.types.closure', 'Project Closure');
+      default:
+        return t('changeRequest.types.other', 'Other Change');
     }
   };
 
@@ -310,11 +482,11 @@ const ApprovalsPage: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              <TableCell>{t('project.name')}</TableCell>
-              <TableCell>{t('project.department')}</TableCell>
-              <TableCell>{t('project.projectManager')}</TableCell>
-              <TableCell>{t('project.submittedDate')}</TableCell>
-              <TableCell>{t('project.status')}</TableCell>
+              <TableCell>{t('common.name')}</TableCell>
+              <TableCell>{t('common.id')}</TableCell>
+              <TableCell>{t('common.projectManager')}</TableCell>
+              <TableCell>{t('common.department')}</TableCell>
+              <TableCell>{t('common.status')}</TableCell>
               <TableCell align="right">{t('common.actions')}</TableCell>
             </TableRow>
           </TableHead>
@@ -322,18 +494,16 @@ const ApprovalsPage: React.FC = () => {
             {items.map((project) => (
               <TableRow key={project.id}>
                 <TableCell>{project.name}</TableCell>
-                <TableCell>{project.department?.name || t('common.none')}</TableCell>
+                <TableCell>{project.id.substring(0, 8)}</TableCell>
                 <TableCell>
-                  {project.projectManager ? 
-                    `${project.projectManager.firstName} ${project.projectManager.lastName}` : 
-                    t('common.unassigned')}
+                  {project.projectManager?.firstName} {project.projectManager?.lastName}
                 </TableCell>
-                <TableCell>{formatDate(project.createdAt || '')}</TableCell>
+                <TableCell>{project.department?.name}</TableCell>
                 <TableCell>
                   <Chip 
-                    label={getStatusLabel((project as any).approvalStatus || String(project.status))} 
-                    color={getStatusColor((project as any).approvalStatus || String(project.status)) as any} 
-                    size="small" 
+                    label={getStatusLabel(String(project.status))} 
+                    color={getStatusColor(String(project.status)) as any}
+                    size="small"
                   />
                 </TableCell>
                 <TableCell align="right">
@@ -376,17 +546,218 @@ const ApprovalsPage: React.FC = () => {
     );
   };
 
+  const renderChangeRequestsTable = () => {
+    if (changeRequests.length === 0) {
+      return (
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography color="textSecondary">
+            {t('approvals.noChangeRequestsFound', 'No pending change requests found')}
+          </Typography>
+        </Paper>
+      );
+    }
+
+    return (
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell width="5%"></TableCell>
+              <TableCell>{t('common.type')}</TableCell>
+              <TableCell>{t('common.project')}</TableCell>
+              <TableCell>{t('common.requestedBy')}</TableCell>
+              <TableCell>{t('common.requestedAt')}</TableCell>
+              <TableCell>{t('common.status')}</TableCell>
+              <TableCell>{t('common.approvalLevel')}</TableCell>
+              <TableCell align="right">{t('common.actions')}</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {changeRequests.map((request) => {
+              // Find project name instead of showing just the ID
+              const project = pendingApprovals.find(p => p.id === request.projectId) || 
+                            completedApprovals.find(p => p.id === request.projectId);
+              const projectName = project ? project.name : request.projectId;
+              
+              // Format the approval level to be more readable
+              const formattedApprovalLevel = request.approvalLevel === 'SUB_PMO' 
+                ? t('common.subPMO', 'Sub PMO')
+                : request.approvalLevel === 'MAIN_PMO'
+                  ? t('common.mainPMO', 'Main PMO')
+                  : request.approvalLevel;
+
+              // Check if this item is expanded
+              const isExpanded = expandedState[request.id] || false;
+
+              return (
+                <React.Fragment key={request.id}>
+                  <TableRow 
+                    hover
+                    onClick={() => toggleExpanded(request.id)}
+                    sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'rgba(0, 0, 0, 0.04)' } }}
+                  >
+                    <TableCell>
+                      <IconButton
+                        size="small"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpanded(request.id);
+                        }}
+                      >
+                        {isExpanded ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                      </IconButton>
+                    </TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getChangeRequestTypeLabel(request.type)} 
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>{projectName}</TableCell>
+                    <TableCell>
+                      {request.requestedBy?.firstName} {request.requestedBy?.lastName}
+                    </TableCell>
+                    <TableCell>{formatDate(request.requestedAt)}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        label={getStatusLabel(request.status)} 
+                        color={getStatusColor(request.status) as any}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>{formattedApprovalLevel}</TableCell>
+                    <TableCell align="right">
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleViewProject(request.projectId);
+                        }}
+                        sx={{ mr: 1 }}
+                      >
+                        {t('common.viewProject')}
+                      </Button>
+                      
+                      {canApproveChangeRequest(request) && (
+                        <>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="success"
+                            startIcon={<ApproveIcon />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenChangeRequestDialog(request, 'approve');
+                            }}
+                            sx={{ mr: 1 }}
+                          >
+                            {t('approvals.approve')}
+                          </Button>
+                          
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="error"
+                            startIcon={<RejectIcon />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenChangeRequestDialog(request, 'reject');
+                            }}
+                          >
+                            {t('approvals.reject')}
+                          </Button>
+                        </>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                  <TableRow>
+                    <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={8}>
+                      <Collapse in={isExpanded} timeout="auto" unmountOnExit>
+                        <Box sx={{ margin: 2 }}>
+                          <Typography variant="h6" gutterBottom component="div">
+                            {t('changeRequest.details', 'Change Request Details')}
+                          </Typography>
+                          <Grid container spacing={2} sx={{ mb: 2 }}>
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                {t('changeRequest.description', 'Description')}:
+                              </Typography>
+                              <Typography variant="body1">
+                                {request.description || '-'}
+                              </Typography>
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <Typography variant="subtitle2" color="text.secondary">
+                                {t('changeRequest.justification', 'Justification')}:
+                              </Typography>
+                              <Typography variant="body1">
+                                {request.justification || '-'}
+                              </Typography>
+                            </Grid>
+
+                            {/* Type-specific details */}
+                            {request.type === ChangeRequestType.SCHEDULE && request.newEndDate && (
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">
+                                  {t('changeRequest.newEndDate', 'New End Date')}:
+                                </Typography>
+                                <Typography variant="body1">
+                                  {new Date(request.newEndDate).toLocaleDateString()}
+                                </Typography>
+                              </Grid>
+                            )}
+                            
+                            {request.type === ChangeRequestType.BUDGET && request.newBudget && (
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">
+                                  {t('changeRequest.newBudget', 'New Budget')}:
+                                </Typography>
+                                <Typography variant="body1">
+                                  ${request.newBudget.toLocaleString()}
+                                </Typography>
+                              </Grid>
+                            )}
+                            
+                            {request.type === ChangeRequestType.RESOURCE && request.newManager && (
+                              <Grid item xs={12} sm={6}>
+                                <Typography variant="subtitle2" color="text.secondary">
+                                  {t('changeRequest.newManager', 'New Project Manager')}:
+                                </Typography>
+                                <Typography variant="body1">
+                                  {request.newManager}
+                                </Typography>
+                              </Grid>
+                            )}
+                          </Grid>
+                        </Box>
+                      </Collapse>
+                    </TableCell>
+                  </TableRow>
+                </React.Fragment>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
   return (
     <Container maxWidth="xl">
       <Box sx={{ py: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" component="h1">
-            {t('approvals.title', 'Project Approvals')}
+            {t('approvals.title', 'Approvals')}
           </Typography>
           
-          <IconButton onClick={handleRefresh} disabled={loading}>
-            {loading ? <CircularProgress size={24} /> : <RefreshIcon />}
-          </IconButton>
+          <Box>
+            <IconButton onClick={handleRefresh} disabled={loading || crLoading}>
+              {loading || crLoading ? <CircularProgress size={24} /> : <RefreshIcon />}
+            </IconButton>
+          </Box>
         </Box>
         
         {error && (
@@ -397,8 +768,9 @@ const ApprovalsPage: React.FC = () => {
         
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
           <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab label={t('approvals.pending', 'Pending')} />
-            <Tab label={t('approvals.completed', 'Completed')} />
+            <Tab label={t('approvals.pendingProjects', 'Pending Projects')} />
+            <Tab label={t('approvals.completedProjects', 'Completed Projects')} />
+            <Tab label={t('approvals.changeRequests', 'Change Requests')} />
           </Tabs>
         </Box>
         
@@ -421,16 +793,41 @@ const ApprovalsPage: React.FC = () => {
             renderApprovalsTable(completedApprovals)
           )}
         </TabPanel>
+        
+        <TabPanel value={tabValue} index={2}>
+          {crLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            renderChangeRequestsTable()
+          )}
+        </TabPanel>
       </Box>
       
       {/* Approval/Rejection Dialog */}
-      <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
+      <Dialog 
+        open={openDialog} 
+        onClose={handleCloseDialog}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>
-          {dialogType === 'approve' ? t('approvals.approveProject') : t('approvals.rejectProject')}
+          {dialogType === 'approve' 
+            ? t('approvals.approveTitle', 'Approve') 
+            : t('approvals.rejectTitle', 'Reject')}
+          {' '}
+          {selectedProject 
+            ? t('approvals.project', 'Project') 
+            : t('approvals.changeRequest', 'Change Request')}
           <IconButton
             aria-label="close"
             onClick={handleCloseDialog}
-            sx={{ position: 'absolute', right: 8, top: 8 }}
+            sx={{
+              position: 'absolute',
+              right: 8,
+              top: 8,
+            }}
           >
             <CloseIcon />
           </IconButton>
@@ -438,66 +835,122 @@ const ApprovalsPage: React.FC = () => {
         
         <DialogContent>
           {selectedProject && (
-            <>
-              <Box sx={{ mb: 3 }}>
-                <Typography variant="h6">{selectedProject.name}</Typography>
-                <Typography variant="body2" color="textSecondary">
-                  {t('project.id')}: {selectedProject.id}
-                </Typography>
-              </Box>
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight="bold">
+                {selectedProject.name}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {t('common.id')}: {selectedProject.id.substring(0, 8)}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {t('common.projectManager')}: {selectedProject.projectManager?.firstName} {selectedProject.projectManager?.lastName}
+              </Typography>
+            </Box>
+          )}
+          
+          {selectedChangeRequest && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle1" fontWeight="bold">
+                {getChangeRequestTypeLabel(selectedChangeRequest.type)}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {t('common.projectId')}: {selectedChangeRequest.projectId}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {t('common.requestedBy')}: {selectedChangeRequest.requestedBy?.firstName} {selectedChangeRequest.requestedBy?.lastName}
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {t('common.requestedAt')}: {formatDate(selectedChangeRequest.requestedAt)}
+              </Typography>
               
               <Divider sx={{ my: 2 }} />
               
+              <Typography variant="body1">
+                {t('common.description')}: {selectedChangeRequest.description}
+              </Typography>
+              <Typography variant="body1" sx={{ mt: 1 }}>
+                {t('common.justification')}: {selectedChangeRequest.justification}
+              </Typography>
+              
+              {selectedChangeRequest.type === ChangeRequestType.SCHEDULE && selectedChangeRequest.newEndDate && (
+                <Typography variant="body1" sx={{ mt: 1 }}>
+                  {t('common.newEndDate')}: {formatDate(selectedChangeRequest.newEndDate)}
+                </Typography>
+              )}
+              
+              {selectedChangeRequest.type === ChangeRequestType.BUDGET && selectedChangeRequest.newBudget && (
+                <Typography variant="body1" sx={{ mt: 1 }}>
+                  {t('common.newBudget')}: ${selectedChangeRequest.newBudget.toLocaleString()}
+                </Typography>
+              )}
+            </Box>
+          )}
+          
+          <Divider sx={{ my: 2 }} />
+          
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            {t('approvals.comments')}:
+          </Typography>
+          
+          <TextField
+            fullWidth
+            multiline
+            rows={3}
+            variant="outlined"
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            placeholder={t('approvals.commentsPlaceholder', 'Enter your comments (optional)')}
+          />
+          
+          {dialogType === 'reject' && (
+            <>
+              <Typography variant="subtitle2" sx={{ mt: 2, mb: 1 }}>
+                {t('approvals.rejectionReason')}*:
+              </Typography>
+              
               <TextField
-                label={t('approvals.comments')}
-                multiline
-                rows={4}
                 fullWidth
+                multiline
+                rows={3}
                 variant="outlined"
-                value={comments}
-                onChange={(e) => setComments(e.target.value)}
-                sx={{ mb: 3 }}
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder={t('approvals.rejectionReasonPlaceholder', 'Enter reason for rejection')}
+                required
+                error={submitError?.includes('Rejection reason')}
+                helperText={submitError?.includes('Rejection reason') ? submitError : ''}
               />
-              
-              {dialogType === 'reject' && (
-                <TextField
-                  label={t('approvals.rejectionReason')}
-                  multiline
-                  rows={4}
-                  fullWidth
-                  variant="outlined"
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  required
-                  error={submitError?.includes('reason')}
-                  helperText={submitError?.includes('reason') ? t('approvals.reasonRequired') : t('approvals.reasonHelp')}
-                />
-              )}
-              
-              {submitError && !submitError.includes('reason') && (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  {submitError}
-                </Alert>
-              )}
             </>
+          )}
+          
+          {submitError && !submitError.includes('Rejection reason') && (
+            <Alert severity="error" sx={{ mt: 2 }}>
+              {submitError}
+            </Alert>
           )}
         </DialogContent>
         
         <DialogActions>
-          <Button onClick={handleCloseDialog}>{t('common.cancel')}</Button>
+          <Button onClick={handleCloseDialog}>
+            {t('common.cancel')}
+          </Button>
+          
           <Button 
             onClick={handleApproveReject}
             color={dialogType === 'approve' ? 'success' : 'error'}
             variant="contained"
-            disabled={submitLoading || (dialogType === 'reject' && !rejectReason.trim())}
+            disabled={submitLoading}
+            startIcon={
+              submitLoading 
+                ? <CircularProgress size={24} />
+                : dialogType === 'approve' 
+                  ? <ApproveIcon /> 
+                  : <RejectIcon />
+            }
           >
-            {submitLoading ? (
-              <CircularProgress size={24} />
-            ) : dialogType === 'approve' ? (
-              t('approvals.approve')
-            ) : (
-              t('approvals.reject')
-            )}
+            {dialogType === 'approve' 
+              ? t('approvals.approve', 'Approve') 
+              : t('approvals.reject', 'Reject')}
           </Button>
         </DialogActions>
       </Dialog>

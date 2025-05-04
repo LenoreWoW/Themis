@@ -1,0 +1,1 @@
+localStorage.clear(); localStorage.setItem('changeRequests', JSON.stringify([])); console.log('Reset complete');

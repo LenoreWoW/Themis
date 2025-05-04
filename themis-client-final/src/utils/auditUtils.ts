@@ -1,6 +1,6 @@
 import { User, UserRole } from '../types';
 import { ChangeRequest, ChangeRequestType, ChangeRequestStatus } from '../types/change-request';
-import { canApproveProjects } from './permissions';
+import { canApproveProjects } from '../utils/permissions';
 
 /**
  * Utility to audit the application's compliance with ClientTerms
@@ -109,11 +109,12 @@ export const runFullAudit = (): AuditResult => {
   
   // Check if all current change requests follow approval flows
   if (changeRequests.length > 0) {
-    changeRequests.forEach((cr: ChangeRequest) => {
-      if (cr.reviewerId) {
-        const approver = users.find((u: User) => u.id === cr.reviewerId);
+    changeRequests.forEach((cr: any) => {
+      // Use approvedBy instead of reviewerId
+      if (cr.approvedBy?.id) {
+        const approver = users.find((u: User) => u.id === cr.approvedBy.id);
         if (approver) {
-          const crAudit = validateChangeRequestApproval(cr, approver);
+          const crAudit = validateChangeRequestApproval(cr as ChangeRequest, approver);
           if (!crAudit.passed) {
             result.passed = false;
             result.issues.push(...crAudit.issues);
@@ -124,32 +125,62 @@ export const runFullAudit = (): AuditResult => {
       // Check for specific change request types and their requirements
       switch(cr.type) {
         case ChangeRequestType.SCHEDULE:
-          if (!cr.scheduleChange?.proposedEndDate && !cr.proposedEndDate) {
+          // Check for newEndDate in all possible locations
+          const hasNewEndDate = 
+            cr.newEndDate !== undefined || 
+            cr.details?.newEndDate !== undefined ||
+            cr.newEndDate !== null || 
+            cr.details?.newEndDate !== null;
+          
+          if (!hasNewEndDate) {
             result.passed = false;
             result.issues.push(`Schedule change request ${cr.id} is missing a new end date`);
           }
           break;
         case ChangeRequestType.BUDGET:
-          if (!cr.budgetChange?.proposedBudget && !cr.proposedBudget) {
+          // Check for budget fields in all possible locations
+          const hasBudgetInfo = 
+            cr.newBudget !== undefined || 
+            cr.newCost !== undefined || 
+            cr.details?.newBudget !== undefined || 
+            cr.details?.newCost !== undefined;
+          
+          if (!hasBudgetInfo) {
             result.passed = false;
             result.issues.push(`Budget change request ${cr.id} is missing a new cost value`);
           }
           break;
         case ChangeRequestType.SCOPE:
-          if (!cr.scopeChange?.changes && !cr.scopeChanges) {
+          // Check for scope description in both locations
+          const hasScopeDescription = 
+            (cr.newScopeDescription && cr.newScopeDescription.length > 0) || 
+            (cr.details?.newScopeDescription && cr.details?.newScopeDescription.length > 0);
+          
+          if (!hasScopeDescription) {
             result.passed = false;
             result.issues.push(`Scope change request ${cr.id} is missing scope description`);
           }
           break;
         case ChangeRequestType.RESOURCE:
-          if (!cr.resourceChange?.changes && !cr.resourceChanges) {
+          // Check for manager fields in all possible locations
+          const hasManagerInfo = 
+            cr.newManager || 
+            cr.newProjectManagerId || 
+            cr.details?.newManager || 
+            cr.details?.newProjectManagerId;
+          
+          if (!hasManagerInfo) {
             result.passed = false;
             result.issues.push(`Resource change request ${cr.id} is missing required resources`);
           }
           break;
         case ChangeRequestType.CLOSURE:
-          // For closure type, just check if there's a description since we don't have a dedicated field
-          if (cr.description.length < 10) {
+          // Check for closure reason in both locations
+          const hasClosureReason = 
+            (cr.closureReason && cr.closureReason.length > 0) || 
+            (cr.details?.closureReason && cr.details?.closureReason.length > 0);
+          
+          if (!hasClosureReason) {
             result.passed = false;
             result.issues.push(`Closure request ${cr.id} is missing sufficient closure reason`);
           }
@@ -162,7 +193,7 @@ export const runFullAudit = (): AuditResult => {
   const closedProjects = projects.filter((p: any) => p.status === 'CLOSED');
   closedProjects.forEach((project: any) => {
     const closureRequests = changeRequests.filter(
-      (cr: ChangeRequest) => cr.projectId === project.id && cr.type === ChangeRequestType.CLOSURE
+      (cr: any) => cr.projectId === project.id && cr.type === ChangeRequestType.CLOSURE
     );
     
     if (closureRequests.length === 0) {

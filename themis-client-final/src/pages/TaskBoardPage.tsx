@@ -13,7 +13,6 @@ import KanbanBoard from '../components/Kanban/KanbanBoard';
 import { useAuth } from '../context/AuthContext';
 import { Task, Project, ProjectStatus, User, UserRole, TaskStatus } from '../types';
 import { TaskService } from '../services/TaskService';
-import AddTaskDialog from '../components/Task/AddTaskDialog';
 import { ProjectPriority, ProjectTemplateType } from '../types/index';
 
 // Need to define our own interface for KanbanBoard props that includes tasks
@@ -30,7 +29,6 @@ const TaskBoardPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [project, setProject] = useState<Project | null>(null);
-  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
   const [snackbar, setSnackbar] = useState<{open: boolean; message: string; severity: 'success' | 'error'}>({
     open: false,
     message: '',
@@ -159,21 +157,6 @@ const TaskBoardPage: React.FC = () => {
     setSnackbar(prev => ({ ...prev, open: false }));
   };
 
-  // Handle adding a new task
-  const handleTaskAdded = () => {
-    // Reload tasks after a task is added
-    if (projectId && token) {
-      TaskService.getAllTasks(projectId, token)
-        .then(taskData => {
-          setTasks(taskData);
-          showSnackbar('Task created successfully', 'success');
-        })
-        .catch(err => {
-          console.error('Error refreshing tasks:', err);
-        });
-    }
-  };
-
   if (loading && tasks.length === 0) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
@@ -208,17 +191,6 @@ const TaskBoardPage: React.FC = () => {
           onTaskClick: handleTaskClick
         } as CustomKanbanBoardProps}
       />
-
-      {/* Add Task Dialog */}
-      {isAddTaskDialogOpen && (
-        <AddTaskDialog
-          open={isAddTaskDialogOpen}
-          onClose={() => setIsAddTaskDialogOpen(false)}
-          projectId={projectId || ''}
-          projectUsers={[]} // In a real app, you would fetch project users
-          onTaskAdded={handleTaskAdded}
-        />
-      )}
 
       {/* Snackbar for notifications */}
       <Snackbar

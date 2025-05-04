@@ -14,12 +14,13 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
-import ERPProjectDetailPage from './pages/projects/ERPProjectDetailPage';
-import MarketingProjectDetailPage from './pages/projects/MarketingProjectDetailPage';
-import FinanceProjectDetailPage from './pages/projects/FinanceProjectDetailPage';
-import SupplyChainProjectDetailPage from './pages/projects/SupplyChainProjectDetailPage';
-import WebsiteProjectDetailPage from './pages/projects/WebsiteProjectDetailPage';
-import InfrastructureProjectDetailPage from './pages/projects/InfrastructureProjectDetailPage';
+// We no longer need these specialized project detail pages
+// import ERPProjectDetailPage from './pages/projects/ERPProjectDetailPage';
+// import MarketingProjectDetailPage from './pages/projects/MarketingProjectDetailPage';
+// import FinanceProjectDetailPage from './pages/projects/FinanceProjectDetailPage';
+// import SupplyChainProjectDetailPage from './pages/projects/SupplyChainProjectDetailPage';
+// import WebsiteProjectDetailPage from './pages/projects/WebsiteProjectDetailPage';
+// import InfrastructureProjectDetailPage from './pages/projects/InfrastructureProjectDetailPage';
 import TasksPage from './pages/TasksPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -35,7 +36,7 @@ import LegacyProjectPage from './pages/LegacyProjectPage';
 import AuditPage from './pages/AuditPage';
 import AuditLogPage from './pages/AuditLogPage';
 import { useTranslation } from 'react-i18next';
-import { initializeCleanApplication, isAppClean } from './utils/cleanupUtils';
+import { initializeCleanApplication, isAppClean, cleanupMockData } from './utils/cleanupUtils';
 
 // Import i18n configuration
 import './i18n';
@@ -117,6 +118,12 @@ const AppContent: React.FC = () => {
   // Choose the right cache based on direction
   const cache = direction === 'rtl' ? rtlCache : ltrCache;
 
+  // Clean up mock data on application startup
+  useEffect(() => {
+    // Remove mock data from localStorage
+    cleanupMockData();
+  }, []);
+
   if (!isAppReady) {
     return null; // Don't render until app is cleaned
   }
@@ -128,7 +135,7 @@ const AppContent: React.FC = () => {
         <NotificationProvider>
           <AuthProvider>
             <ProjectProvider>
-              <TaskProvider projectId="default">
+              <TaskProvider key="global-task-provider">
                 <TaskRequestProvider>
                   <Routes>
                     <Route path="/login" element={<LoginPage />} />
@@ -136,13 +143,11 @@ const AppContent: React.FC = () => {
                       <Route index element={<Navigate to="/dashboard" replace />} />
                       <Route path="dashboard" element={<PrivateRoute roleRequired={['ADMIN']}><DashboardPage /></PrivateRoute>} />
                       <Route path="projects" element={<ProjectsPage />} />
-                      <Route path="projects/:id" element={<ProjectDetailPage />} />
-                      <Route path="projects/:id/erp" element={<ERPProjectDetailPage />} />
-                      <Route path="projects/:id/marketing" element={<MarketingProjectDetailPage />} />
-                      <Route path="projects/:id/finance" element={<FinanceProjectDetailPage />} />
-                      <Route path="projects/:id/supply-chain" element={<SupplyChainProjectDetailPage />} />
-                      <Route path="projects/:id/website" element={<WebsiteProjectDetailPage />} />
-                      <Route path="projects/:id/infrastructure" element={<InfrastructureProjectDetailPage />} />
+                      <Route path="projects/:id" element={
+                        <TaskProvider key="project-task-provider">
+                          <ProjectDetailPage />
+                        </TaskProvider>
+                      } />
                       <Route path="tasks" element={<TasksPage />} />
                       <Route path="assignments" element={<AssignmentsPage />} />
                       <Route path="profile" element={<ProfilePage />} />

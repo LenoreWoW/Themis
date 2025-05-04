@@ -23,8 +23,7 @@ import {
   Search as SearchIcon,
   Assignment as AssignmentIcon,
   ViewList as ListIcon,
-  ViewKanban as KanbanIcon,
-  Add as AddIcon
+  ViewKanban as KanbanIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { Task, TaskStatus, TaskPriority, User, Project, ProjectStatus, ProjectPriority, Department, UserRole, ProjectTemplateType } from '../types';
@@ -33,7 +32,7 @@ import { useTranslation } from 'react-i18next';
 import TaskDetailDialog from '../components/Task/TaskDetailDialog';
 import TaskEditDialog from '../components/Task/TaskEditDialog';
 import KanbanBoard from '../components/Kanban/KanbanBoard';
-import AddTaskDialog from '../components/Task/AddTaskDialog';
+import { DragDropContext, DropResult } from 'react-beautiful-dnd';
 
 // Mock data for tasks
 const mockTasks = [
@@ -141,7 +140,6 @@ const TasksPage: React.FC = () => {
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false);
   const [isTaskEditOpen, setIsTaskEditOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'kanban'>('list');
-  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
   
   const { user, token } = useAuth();
   const { t } = useTranslation();
@@ -194,10 +192,13 @@ const TasksPage: React.FC = () => {
     setSelectedTask(null);
   };
   
-  const handleEditTask = (task: Task) => {
-    setSelectedTask(task);
-    setIsTaskDetailOpen(false);
-    setIsTaskEditOpen(true);
+  const handleEditTask = (taskId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      setSelectedTask(task);
+      setIsTaskDetailOpen(false);
+      setIsTaskEditOpen(true);
+    }
   };
   
   const handleCloseTaskEdit = () => {
@@ -281,89 +282,6 @@ const TasksPage: React.FC = () => {
     }
   };
   
-  const handleAddTaskDialogOpen = () => {
-    setIsAddTaskDialogOpen(true);
-  };
-
-  const handleAddTaskDialogClose = () => {
-    setIsAddTaskDialogOpen(false);
-  };
-
-  const handleTaskAdded = (success: boolean) => {
-    if (success) {
-      // In a real app, you would refresh the tasks list here
-      console.log('Task added successfully');
-      // Simulate adding a new task with a fetch
-      const fetchTasks = async () => {
-        try {
-          // Mock update - in a real app this would be an API call
-          setTimeout(() => {
-            const mockDepartment: Department = {
-              id: '1',
-              name: 'IT Department',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            };
-            
-            const mockUser: User = {
-              id: '1',
-              username: 'manager',
-              firstName: 'Project',
-              lastName: 'Manager',
-              email: 'manager@example.com',
-              role: UserRole.PROJECT_MANAGER,
-              department: mockDepartment,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            };
-            
-            const mockProject: Project = {
-              id: '1',
-              name: 'Digital Transformation',
-              description: 'Company-wide digital transformation initiative',
-              status: ProjectStatus.IN_PROGRESS,
-              priority: ProjectPriority.HIGH,
-              startDate: '2023-01-01',
-              endDate: '2023-12-31',
-              projectManager: mockUser,
-              department: mockDepartment,
-              progress: 50,
-              budget: 500000,
-              actualCost: 250000,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              templateType: ProjectTemplateType.DEFAULT
-            };
-            
-            // Add new task to existing tasks
-            const newTask: Task = {
-              id: `task-${Date.now()}`,
-              title: "New Added Task",
-              description: "This task was just added",
-              projectId: '1',
-              status: TaskStatus.TODO,
-              priority: TaskPriority.MEDIUM,
-              startDate: new Date().toISOString(),
-              dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-              assignee: mockUser,
-              project: mockProject,
-              createdBy: mockUser,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              isMilestone: false
-            };
-            
-            setTasks(prevTasks => [...prevTasks, newTask]);
-          }, 500);
-        } catch (err) {
-          console.error('Error fetching tasks:', err);
-        }
-      };
-      
-      fetchTasks();
-    }
-  };
-  
   // Filter tasks based on search query and current user
   const filteredTasks = tasks.filter((task) => {
     // Only show tasks assigned to the current user (for this demo, show all if user is admin)
@@ -388,14 +306,6 @@ const TasksPage: React.FC = () => {
             View and manage tasks assigned to you
           </Typography>
         </div>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={handleAddTaskDialogOpen}
-        >
-          Add Task
-        </Button>
       </Box>
       
       <Paper sx={{ mb: 3, p: 2 }}>
@@ -534,12 +444,39 @@ const TasksPage: React.FC = () => {
             />
           </>
         ) : (
-          <KanbanBoard 
-            tasks={filteredTasks}
-            onTaskClick={handleTaskClick}
-            onAddComment={handleAddComment}
-            onUpdateProgress={handleUpdateProgress}
-          />
+          <DragDropContext
+            onDragEnd={(result: DropResult) => {
+              const { destination, source, draggableId } = result;
+              
+              // Dropped outside the list
+              if (!destination) {
+                return;
+              }
+              
+              // Dropped in the same place
+              if (
+                destination.droppableId === source.droppableId &&
+                destination.index === source.index
+              ) {
+                return;
+              }
+              
+              // Handle the status change
+              if (destination.droppableId !== source.droppableId) {
+                const newStatus = destination.droppableId as TaskStatus;
+                handleUpdateProgress(draggableId, 0, newStatus);
+              }
+            }}
+          >
+            <KanbanBoard 
+              tasks={filteredTasks}
+              onTaskClick={handleTaskClick}
+              onAddComment={handleAddComment}
+              onUpdateProgress={handleUpdateProgress}
+              onEdit={handleEditTask}
+              onDelete={(taskId) => console.log('Delete task:', taskId)}
+            />
+          </DragDropContext>
         )}
       </Paper>
       
@@ -559,15 +496,6 @@ const TasksPage: React.FC = () => {
         onClose={handleCloseTaskEdit}
         onSave={handleSaveTask}
         users={tasks.map(t => t.assignee).filter((a): a is User => !!a)}
-      />
-      
-      {/* Add Task Dialog */}
-      <AddTaskDialog
-        open={isAddTaskDialogOpen}
-        onClose={handleAddTaskDialogClose}
-        onTaskAdded={handleTaskAdded}
-        isIndependentTask={true}
-        allUsers={tasks.map(t => t.assignee).filter((a): a is User => !!a)}
       />
     </Box>
   );

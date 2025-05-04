@@ -48,24 +48,32 @@ const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onDirectionChange }
   };
   
   const handleLanguageChange = (langCode: string, direction: Direction) => {
+    // Change language
     i18n.changeLanguage(langCode);
+    // Save to localStorage
     localStorage.setItem('themisLanguage', langCode);
+    // Change direction
     onDirectionChange(direction);
+    // Close menu
     handleClose();
     
     // Preserve auth state when changing language
     if (auth.isAuthenticated && auth.user) {
-      // Save minimal auth data to sessionStorage (temporary storage)
+      // Save auth data to sessionStorage
       const authState = {
         isPreserved: true,
         userId: auth.user.id,
-        username: auth.user.username
+        username: auth.user.username,
+        token: auth.token,
+        user: auth.user
       };
       sessionStorage.setItem('themis_preserve_auth', JSON.stringify(authState));
     }
     
-    // Force a page reload to ensure all components update with the new language
-    window.location.reload();
+    // Force window reload to apply all translations
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
   };
 
   return (

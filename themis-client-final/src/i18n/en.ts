@@ -185,7 +185,8 @@ export const enTranslations = {
     deleteSuccess: "Task deleted successfully",
     createFailed: "Failed to create task",
     updateFailed: "Failed to update task",
-    deleteFailed: "Failed to delete task"
+    deleteFailed: "Failed to delete task",
+    milestone: "Milestone"
   },
   status: {
     planning: "Planning",
@@ -201,11 +202,23 @@ export const enTranslations = {
     rejected: "Rejected",
     submitted: "Submitted"
   },
+  taskStatus: {
+    TODO: "To Do",
+    IN_PROGRESS: "In Progress",
+    REVIEW: "In Review",
+    DONE: "Done"
+  },
   priority: {
     low: "Low",
     medium: "Medium",
     high: "High",
     critical: "Critical"
+  },
+  taskPriority: {
+    LOW: "Low",
+    MEDIUM: "Medium",
+    HIGH: "High",
+    CRITICAL: "Critical"
   },
   departments: {
     title: "Departments",

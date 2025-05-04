@@ -8,12 +8,13 @@ import App from './App';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
 import { EasterEggProvider } from './context/EasterEggContext';
+import { cleanupMockData } from './utils/cleanupUtils';
 
-// Clear localStorage in development mode to fix DOM rendering issues
-if (process.env.NODE_ENV === 'development') {
-  console.log('Clearing localStorage in development mode to prevent DOM errors');
-  localStorage.clear();
-}
+// FORCE CLEAN: Remove all mock data by directly purging localStorage
+// This is a brute force approach to clean up corrupt data
+console.log('FORCE CLEAN: Purging localStorage of corrupt mock data');
+localStorage.removeItem('changeRequests');
+localStorage.setItem('changeRequests', JSON.stringify([]));
 
 // Set initial direction before app renders
 const savedLanguage = localStorage.getItem('themisLanguage');

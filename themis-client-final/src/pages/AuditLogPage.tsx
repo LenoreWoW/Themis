@@ -26,7 +26,8 @@ import {
   Alert,
   Card,
   CardContent,
-  Divider
+  Divider,
+  Container
 } from '@mui/material';
 import { GridContainer, GridItem } from '../components/common/MuiGridWrapper';
 import {
@@ -47,6 +48,8 @@ import { AuditAction, AuditLog, fetchAuditLogsWithFilters, getAuditActionDescrip
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import api from '../services/api';
+import { PageHeader } from '../components/common/PageHeader';
 
 const AuditLogPage: React.FC = () => {
   const { t } = useTranslation();
@@ -73,10 +76,35 @@ const AuditLogPage: React.FC = () => {
     byUser: {} as Record<string, number>
   });
 
-  // Check if user has permission to view this page
-  const hasPermission = user?.role === UserRole.ADMIN || 
-                        user?.role === UserRole.MAIN_PMO || 
-                        user?.role === UserRole.SUB_PMO;
+  // All users should have access to the audit logs page, but with different visibility
+  // Each role has different level of access:
+  // - PROJECT_MANAGER can see only logs related to their projects
+  // - SUB_PMO & MAIN_PMO can see logs for their department
+  // - ADMIN, EXECUTIVE, etc. can see all logs
+  const hasPermission = user && [
+    UserRole.ADMIN,
+    UserRole.EXECUTIVE,
+    UserRole.MAIN_PMO,
+    UserRole.SUB_PMO,
+    UserRole.PROJECT_MANAGER,
+    UserRole.DEVELOPER,
+    UserRole.DEPARTMENT_DIRECTOR
+  ].includes(user.role as UserRole);
+
+  // Page title based on user role
+  const getPageTitle = () => {
+    if (!user) return t('auditLogs.title', 'Audit Logs');
+    
+    switch (user.role) {
+      case UserRole.PROJECT_MANAGER:
+        return t('auditLogs.projectManagerTitle', 'My Projects Audit Logs');
+      case UserRole.SUB_PMO:
+      case UserRole.MAIN_PMO:
+        return t('auditLogs.pmoTitle', 'Department Audit Logs');
+      default:
+        return t('auditLogs.title', 'Audit Logs');
+    }
+  };
 
   useEffect(() => {
     if (hasPermission && token) {
@@ -89,31 +117,88 @@ const AuditLogPage: React.FC = () => {
     setError(null);
 
     try {
-      // Fetch logs with any initial filters
-      const filters = {
-        startDate: startDate || undefined,
-        endDate: endDate || undefined
-      };
+      // First, fetch all logs 
+      const response = await api.auditLogs.getAuditLogs(token || '');
+      
+      if (!response.success || !response.data) {
+        throw new Error('Failed to fetch audit logs');
+      }
+      
+      let fetchedLogs = response.data;
+      
+      // Filter logs based on user role
+      if (user) {
+        if (user.role === UserRole.PROJECT_MANAGER) {
+          // Project managers can only see logs related to their projects
+          const userProjects = await api.projects.getProjectsByManagerId(user.id, token || '');
+          
+          if (userProjects.success && userProjects.data) {
+            const projectIds = userProjects.data.map((project: any) => project.id);
+            fetchedLogs = fetchedLogs.filter((log: any) => 
+              projectIds.includes(log.projectId) || // Project is managed by the user
+              (log.userId === user.id) // User created the log
+            );
+          } else {
+            // If couldn't get projects, at least show logs created by the user
+            fetchedLogs = fetchedLogs.filter((log: any) => log.userId === user.id);
+          }
+        } else if (user.role === UserRole.SUB_PMO || user.role === UserRole.MAIN_PMO) {
+          // PMO roles can see logs for their department
+          if (user.department) {
+            const departmentProjects = await api.projects.getProjectsByDepartment(
+              user.department.toString(), // Convert department to string
+              token || ''
+            );
+            
+            if (departmentProjects.success && departmentProjects.data) {
+              const projectIds = departmentProjects.data.map((project: any) => project.id);
+              fetchedLogs = fetchedLogs.filter((log: any) => 
+                projectIds.includes(log.projectId) || // Project is in user's department
+                (log.department && log.department === user.department) || // Log is for user's department
+                (log.userId === user.id) // User created the log
+              );
+            }
+          }
+        }
+        // ADMIN, EXECUTIVE, and others see all logs (no additional filtering)
+      }
 
-      const fetchedLogs = await fetchAuditLogsWithFilters(token || '', filters);
       setLogs(fetchedLogs);
       setFilteredLogs(fetchedLogs);
 
       // Extract unique users, entity types, and action types for filters
-      const uniqueUsers = Array.from(new Set(fetchedLogs.map(log => log.userId)));
-      const uniqueEntityTypes = Array.from(new Set(fetchedLogs.map(log => log.entityType)));
-      const uniqueActionTypes = Array.from(new Set(fetchedLogs.map(log => log.action)));
+      const uniqueUsers = Array.from(new Set(fetchedLogs.map((log: any) => log.userId || (log.user && log.user.id))));
+      const uniqueEntityTypes = Array.from(new Set(fetchedLogs.map((log: any) => log.entityType)));
+      const uniqueActionTypes = Array.from(new Set(fetchedLogs.map((log: any) => log.action)));
 
-      setUsers(uniqueUsers.map(userId => {
-        const log = fetchedLogs.find(l => l.userId === userId);
+      setUsers(uniqueUsers.map((userId: string) => {
+        const log = fetchedLogs.find((l: any) => (l.userId || (l.user && l.user.id)) === userId);
+        let name = userId;
+        
+        if (log) {
+          if (log.username) {
+            name = log.username;
+          } else if (log.user) {
+            name = `${log.user.firstName || ''} ${log.user.lastName || ''}`.trim() || userId;
+          }
+        }
+        
         return {
           id: userId,
-          name: log ? log.username : userId
+          name: name
         };
       }));
       
-      setEntityTypes(uniqueEntityTypes);
-      setActionTypes(uniqueActionTypes as string[]);
+      // Use type assertions to handle the unknown type
+      const safeEntityTypes = uniqueEntityTypes.filter(
+        (item): item is string => typeof item === 'string'
+      );
+      setEntityTypes(safeEntityTypes);
+      
+      const safeActionTypes = uniqueActionTypes.filter(
+        (item): item is string => typeof item === 'string'
+      );
+      setActionTypes(safeActionTypes);
 
       // Calculate statistics
       const stats = {
@@ -123,7 +208,7 @@ const AuditLogPage: React.FC = () => {
         byUser: {} as Record<string, number>
       };
 
-      fetchedLogs.forEach(log => {
+      fetchedLogs.forEach((log: any) => {
         // Count by action
         if (stats.byAction[log.action]) {
           stats.byAction[log.action]++;
@@ -139,10 +224,11 @@ const AuditLogPage: React.FC = () => {
         }
 
         // Count by user
-        if (stats.byUser[log.userId]) {
-          stats.byUser[log.userId]++;
+        const userId = log.userId || (log.user && log.user.id) || 'unknown';
+        if (stats.byUser[userId]) {
+          stats.byUser[userId]++;
         } else {
-          stats.byUser[log.userId] = 1;
+          stats.byUser[userId] = 1;
         }
       });
 
@@ -278,328 +364,332 @@ const AuditLogPage: React.FC = () => {
 
   if (!hasPermission) {
     return (
-      <Box sx={{ p: 3 }}>
-        <Alert severity="error">
-          You do not have permission to access this page.
-        </Alert>
-      </Box>
+      <Container maxWidth="xl">
+        <Box sx={{ mt: 4, textAlign: 'center' }}>
+          <Typography variant="h4">{t('common.accessDenied')}</Typography>
+          <Typography>{t('common.noPermission')}</Typography>
+        </Box>
+      </Container>
     );
   }
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <VerifiedUserIcon fontSize="large" color="primary" sx={{ mr: 2 }} />
-          <Typography variant="h4" component="h1" fontWeight="bold">
-            {t('auditLogs.title', 'System Audit Logs')}
-          </Typography>
-        </Box>
-        <Box>
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={exportToCSV}
-            disabled={loading || filteredLogs.length === 0}
-            sx={{ mr: 1 }}
-          >
-            {t('common.export', 'Export')}
-          </Button>
-          <Button
-            variant="outlined"
-            startIcon={<ResetIcon />}
-            onClick={resetFilters}
-            disabled={loading}
-          >
-            {t('common.resetFilters', 'Reset Filters')}
-          </Button>
-        </Box>
-      </Box>
-
-      {/* Stats Cards */}
-      <GridContainer spacing={2} sx={{ mb: 3 }}>
-        <GridItem xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="primary">
-                {t('auditLogs.totalEvents', 'Total Events')}
-              </Typography>
-              <Typography variant="h4">{statsData.total}</Typography>
-            </CardContent>
-          </Card>
-        </GridItem>
-        <GridItem xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="primary">
-                {t('auditLogs.mostFrequentAction', 'Most Frequent Action')}
-              </Typography>
-              {Object.keys(statsData.byAction).length > 0 ? (
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Chip 
-                    label={getAuditActionDescription(
-                      Object.entries(statsData.byAction)
-                        .sort((a, b) => b[1] - a[1])[0][0] as AuditAction
-                    )} 
-                    color={getActionChipColor(
-                      Object.entries(statsData.byAction)
-                        .sort((a, b) => b[1] - a[1])[0][0]
-                    ) as any}
-                    size="small"
-                    sx={{ mr: 1 }}
-                  />
-                  <Typography>
-                    {Object.entries(statsData.byAction)
-                      .sort((a, b) => b[1] - a[1])[0][1]}
-                  </Typography>
-                </Box>
-              ) : (
-                <Typography variant="body2">No data</Typography>
-              )}
-            </CardContent>
-          </Card>
-        </GridItem>
-        <GridItem xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="primary">
-                {t('auditLogs.mostActiveEntity', 'Most Active Entity')}
-              </Typography>
-              {Object.keys(statsData.byEntity).length > 0 ? (
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography>
-                    {getEntityTypeName(
-                      Object.entries(statsData.byEntity)
-                        .sort((a, b) => b[1] - a[1])[0][0]
-                    )}:
-                  </Typography>
-                  <Typography sx={{ ml: 1 }}>
-                    {Object.entries(statsData.byEntity)
-                      .sort((a, b) => b[1] - a[1])[0][1]}
-                  </Typography>
-                </Box>
-              ) : (
-                <Typography variant="body2">No data</Typography>
-              )}
-            </CardContent>
-          </Card>
-        </GridItem>
-        <GridItem xs={12} md={3}>
-          <Card>
-            <CardContent>
-              <Typography variant="h6" color="primary">
-                {t('auditLogs.mostActiveUser', 'Most Active User')}
-              </Typography>
-              {Object.keys(statsData.byUser).length > 0 ? (
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography>
-                    {users.find(
-                      u => u.id === Object.entries(statsData.byUser)
-                        .sort((a, b) => b[1] - a[1])[0][0]
-                    )?.name || 'Unknown'}:
-                  </Typography>
-                  <Typography sx={{ ml: 1 }}>
-                    {Object.entries(statsData.byUser)
-                      .sort((a, b) => b[1] - a[1])[0][1]}
-                  </Typography>
-                </Box>
-              ) : (
-                <Typography variant="body2">No data</Typography>
-              )}
-            </CardContent>
-          </Card>
-        </GridItem>
-      </GridContainer>
-
-      {/* Filters */}
-      <Paper sx={{ p: 2, mb: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          {t('common.filters', 'Filters')}
-        </Typography>
-        <GridContainer spacing={2}>
-          <GridItem xs={12} sm={6} md={3}>
-            <TextField
-              label={t('common.search', 'Search')}
-              fullWidth
+    <Container maxWidth="xl">
+      <PageHeader title={getPageTitle()} />
+      <Box sx={{ p: 3 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <VerifiedUserIcon fontSize="large" color="primary" sx={{ mr: 2 }} />
+            <Typography variant="h4" component="h1" fontWeight="bold">
+              {t('auditLogs.title', 'System Audit Logs')}
+            </Typography>
+          </Box>
+          <Box>
+            <Button
               variant="outlined"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="start">
-                    <SearchIcon />
-                  </InputAdornment>
-                ),
-              }}
-            />
+              startIcon={<DownloadIcon />}
+              onClick={exportToCSV}
+              disabled={loading || filteredLogs.length === 0}
+              sx={{ mr: 1 }}
+            >
+              {t('common.export', 'Export')}
+            </Button>
+            <Button
+              variant="outlined"
+              startIcon={<ResetIcon />}
+              onClick={resetFilters}
+              disabled={loading}
+            >
+              {t('common.resetFilters', 'Reset Filters')}
+            </Button>
+          </Box>
+        </Box>
+
+        {/* Stats Cards */}
+        <GridContainer spacing={2} sx={{ mb: 3 }}>
+          <GridItem xs={12} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" color="primary">
+                  {t('auditLogs.totalEvents', 'Total Events')}
+                </Typography>
+                <Typography variant="h4">{statsData.total}</Typography>
+              </CardContent>
+            </Card>
           </GridItem>
-          <GridItem xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>{t('auditLogs.action', 'Action')}</InputLabel>
-              <Select
-                value={actionFilter}
-                label={t('auditLogs.action', 'Action')}
-                onChange={handleActionFilterChange}
-              >
-                <MenuItem value="all">{t('common.all', 'All')}</MenuItem>
-                {actionTypes.map((action) => (
-                  <MenuItem key={action} value={action}>
-                    {getAuditActionDescription(action as AuditAction)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <GridItem xs={12} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" color="primary">
+                  {t('auditLogs.mostFrequentAction', 'Most Frequent Action')}
+                </Typography>
+                {Object.keys(statsData.byAction).length > 0 ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Chip 
+                      label={getAuditActionDescription(
+                        Object.entries(statsData.byAction)
+                          .sort((a, b) => b[1] - a[1])[0][0] as AuditAction
+                      )} 
+                      color={getActionChipColor(
+                        Object.entries(statsData.byAction)
+                          .sort((a, b) => b[1] - a[1])[0][0]
+                      ) as any}
+                      size="small"
+                      sx={{ mr: 1 }}
+                    />
+                    <Typography>
+                      {Object.entries(statsData.byAction)
+                        .sort((a, b) => b[1] - a[1])[0][1]}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="body2">No data</Typography>
+                )}
+              </CardContent>
+            </Card>
           </GridItem>
-          <GridItem xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>{t('auditLogs.entityType', 'Entity Type')}</InputLabel>
-              <Select
-                value={entityTypeFilter}
-                label={t('auditLogs.entityType', 'Entity Type')}
-                onChange={handleEntityTypeFilterChange}
-              >
-                <MenuItem value="all">{t('common.all', 'All')}</MenuItem>
-                {entityTypes.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {getEntityTypeName(type)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          <GridItem xs={12} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" color="primary">
+                  {t('auditLogs.mostActiveEntity', 'Most Active Entity')}
+                </Typography>
+                {Object.keys(statsData.byEntity).length > 0 ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography>
+                      {getEntityTypeName(
+                        Object.entries(statsData.byEntity)
+                          .sort((a, b) => b[1] - a[1])[0][0]
+                      )}:
+                    </Typography>
+                    <Typography sx={{ ml: 1 }}>
+                      {Object.entries(statsData.byEntity)
+                        .sort((a, b) => b[1] - a[1])[0][1]}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="body2">No data</Typography>
+                )}
+              </CardContent>
+            </Card>
           </GridItem>
-          <GridItem xs={12} sm={6} md={3}>
-            <FormControl fullWidth>
-              <InputLabel>{t('auditLogs.user', 'User')}</InputLabel>
-              <Select
-                value={userFilter}
-                label={t('auditLogs.user', 'User')}
-                onChange={handleUserFilterChange}
-              >
-                <MenuItem value="all">{t('common.all', 'All')}</MenuItem>
-                {users.map((user) => (
-                  <MenuItem key={user.id} value={user.id}>
-                    {user.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </GridItem>
-          <GridItem xs={12} sm={6}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label={t('auditLogs.startDate', 'Start Date')}
-                value={startDate}
-                onChange={(date) => setStartDate(date)}
-                slotProps={{ textField: { fullWidth: true } }}
-              />
-            </LocalizationProvider>
-          </GridItem>
-          <GridItem xs={12} sm={6}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DatePicker
-                label={t('auditLogs.endDate', 'End Date')}
-                value={endDate}
-                onChange={(date) => setEndDate(date)}
-                slotProps={{ textField: { fullWidth: true } }}
-              />
-            </LocalizationProvider>
+          <GridItem xs={12} md={3}>
+            <Card>
+              <CardContent>
+                <Typography variant="h6" color="primary">
+                  {t('auditLogs.mostActiveUser', 'Most Active User')}
+                </Typography>
+                {Object.keys(statsData.byUser).length > 0 ? (
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography>
+                      {users.find(
+                        u => u.id === Object.entries(statsData.byUser)
+                          .sort((a, b) => b[1] - a[1])[0][0]
+                      )?.name || 'Unknown'}:
+                    </Typography>
+                    <Typography sx={{ ml: 1 }}>
+                      {Object.entries(statsData.byUser)
+                        .sort((a, b) => b[1] - a[1])[0][1]}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Typography variant="body2">No data</Typography>
+                )}
+              </CardContent>
+            </Card>
           </GridItem>
         </GridContainer>
-      </Paper>
 
-      {/* Logs Table */}
-      <Paper>
-        {loading ? (
-          <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
-            <CircularProgress />
-          </Box>
-        ) : error ? (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            {error}
-          </Alert>
-        ) : (
-          <>
-            <Box sx={{ p: 2 }}>
-              <Typography variant="subtitle1">
-                {t('auditLogs.showing', 'Showing')}{' '}
-                <strong>{filteredLogs.length}</strong>{' '}
-                {t('auditLogs.outOf', 'out of')}{' '}
-                <strong>{logs.length}</strong>{' '}
-                {t('auditLogs.events', 'events')}
-              </Typography>
+        {/* Filters */}
+        <Paper sx={{ p: 2, mb: 2 }}>
+          <Typography variant="h6" sx={{ mb: 2 }}>
+            {t('common.filters', 'Filters')}
+          </Typography>
+          <GridContainer spacing={2}>
+            <GridItem xs={12} sm={6} md={3}>
+              <TextField
+                label={t('common.search', 'Search')}
+                fullWidth
+                variant="outlined"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                InputProps={{
+                  startAdornment: (
+                    <InputAdornment position="start">
+                      <SearchIcon />
+                    </InputAdornment>
+                  ),
+                }}
+              />
+            </GridItem>
+            <GridItem xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>{t('auditLogs.action', 'Action')}</InputLabel>
+                <Select
+                  value={actionFilter}
+                  label={t('auditLogs.action', 'Action')}
+                  onChange={handleActionFilterChange}
+                >
+                  <MenuItem value="all">{t('common.all', 'All')}</MenuItem>
+                  {actionTypes.map((action) => (
+                    <MenuItem key={action} value={action}>
+                      {getAuditActionDescription(action as AuditAction)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </GridItem>
+            <GridItem xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>{t('auditLogs.entityType', 'Entity Type')}</InputLabel>
+                <Select
+                  value={entityTypeFilter}
+                  label={t('auditLogs.entityType', 'Entity Type')}
+                  onChange={handleEntityTypeFilterChange}
+                >
+                  <MenuItem value="all">{t('common.all', 'All')}</MenuItem>
+                  {entityTypes.map((type) => (
+                    <MenuItem key={type} value={type}>
+                      {getEntityTypeName(type)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </GridItem>
+            <GridItem xs={12} sm={6} md={3}>
+              <FormControl fullWidth>
+                <InputLabel>{t('auditLogs.user', 'User')}</InputLabel>
+                <Select
+                  value={userFilter}
+                  label={t('auditLogs.user', 'User')}
+                  onChange={handleUserFilterChange}
+                >
+                  <MenuItem value="all">{t('common.all', 'All')}</MenuItem>
+                  {users.map((user) => (
+                    <MenuItem key={user.id} value={user.id}>
+                      {user.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </GridItem>
+            <GridItem xs={12} sm={6}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label={t('auditLogs.startDate', 'Start Date')}
+                  value={startDate}
+                  onChange={(date) => setStartDate(date)}
+                  slotProps={{ textField: { fullWidth: true } }}
+                />
+              </LocalizationProvider>
+            </GridItem>
+            <GridItem xs={12} sm={6}>
+              <LocalizationProvider dateAdapter={AdapterDateFns}>
+                <DatePicker
+                  label={t('auditLogs.endDate', 'End Date')}
+                  value={endDate}
+                  onChange={(date) => setEndDate(date)}
+                  slotProps={{ textField: { fullWidth: true } }}
+                />
+              </LocalizationProvider>
+            </GridItem>
+          </GridContainer>
+        </Paper>
+
+        {/* Logs Table */}
+        <Paper>
+          {loading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
             </Box>
-            <Divider />
-            <TableContainer>
-              <Table sx={{ minWidth: 650 }} aria-label="audit logs table">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>{t('auditLogs.timestamp', 'Timestamp')}</TableCell>
-                    <TableCell>{t('auditLogs.user', 'User')}</TableCell>
-                    <TableCell>{t('auditLogs.action', 'Action')}</TableCell>
-                    <TableCell>{t('auditLogs.entityType', 'Entity Type')}</TableCell>
-                    <TableCell>{t('auditLogs.entityId', 'Entity ID')}</TableCell>
-                    <TableCell>{t('auditLogs.details', 'Details')}</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {filteredLogs.length > 0 ? (
-                    filteredLogs
-                      .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                      .map((log) => (
-                        <TableRow key={log.id} hover>
-                          <TableCell>
-                            {new Date(log.timestamp).toLocaleString()}
-                          </TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Avatar sx={{ width: 24, height: 24, mr: 1 }}>
-                                {log.username.charAt(0)}
-                              </Avatar>
-                              {log.username}
-                            </Box>
-                          </TableCell>
-                          <TableCell>
-                            <Chip
-                              label={getAuditActionDescription(log.action as AuditAction)}
-                              size="small"
-                              color={getActionChipColor(log.action) as any}
-                            />
-                          </TableCell>
-                          <TableCell>{getEntityTypeName(log.entityType)}</TableCell>
-                          <TableCell>{log.entityId}</TableCell>
-                          <TableCell>{log.details}</TableCell>
-                        </TableRow>
-                      ))
-                  ) : (
+          ) : error ? (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          ) : (
+            <>
+              <Box sx={{ p: 2 }}>
+                <Typography variant="subtitle1">
+                  {t('auditLogs.showing', 'Showing')}{' '}
+                  <strong>{filteredLogs.length}</strong>{' '}
+                  {t('auditLogs.outOf', 'out of')}{' '}
+                  <strong>{logs.length}</strong>{' '}
+                  {t('auditLogs.events', 'events')}
+                </Typography>
+              </Box>
+              <Divider />
+              <TableContainer>
+                <Table sx={{ minWidth: 650 }} aria-label="audit logs table">
+                  <TableHead>
                     <TableRow>
-                      <TableCell colSpan={6} align="center">
-                        <Box sx={{ py: 3 }}>
-                          <Typography variant="body1" gutterBottom>
-                            {t('auditLogs.noLogsFound', 'No logs found')}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            {t('auditLogs.tryChangingFilters', 'Try changing your filters to see more results')}
-                          </Typography>
-                        </Box>
-                      </TableCell>
+                      <TableCell>{t('auditLogs.timestamp', 'Timestamp')}</TableCell>
+                      <TableCell>{t('auditLogs.user', 'User')}</TableCell>
+                      <TableCell>{t('auditLogs.action', 'Action')}</TableCell>
+                      <TableCell>{t('auditLogs.entityType', 'Entity Type')}</TableCell>
+                      <TableCell>{t('auditLogs.entityId', 'Entity ID')}</TableCell>
+                      <TableCell>{t('auditLogs.details', 'Details')}</TableCell>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </TableContainer>
-            <TablePagination
-              rowsPerPageOptions={[5, 10, 25, 50]}
-              component="div"
-              count={filteredLogs.length}
-              rowsPerPage={rowsPerPage}
-              page={page}
-              onPageChange={handleChangePage}
-              onRowsPerPageChange={handleChangeRowsPerPage}
-            />
-          </>
-        )}
-      </Paper>
-    </Box>
+                  </TableHead>
+                  <TableBody>
+                    {filteredLogs.length > 0 ? (
+                      filteredLogs
+                        .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                        .map((log) => (
+                          <TableRow key={log.id} hover>
+                            <TableCell>
+                              {new Date(log.timestamp).toLocaleString()}
+                            </TableCell>
+                            <TableCell>
+                              <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <Avatar sx={{ width: 24, height: 24, mr: 1 }}>
+                                  {log.username.charAt(0)}
+                                </Avatar>
+                                {log.username}
+                              </Box>
+                            </TableCell>
+                            <TableCell>
+                              <Chip
+                                label={getAuditActionDescription(log.action as AuditAction)}
+                                size="small"
+                                color={getActionChipColor(log.action) as any}
+                              />
+                            </TableCell>
+                            <TableCell>{getEntityTypeName(log.entityType)}</TableCell>
+                            <TableCell>{log.entityId}</TableCell>
+                            <TableCell>{log.details}</TableCell>
+                          </TableRow>
+                        ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">
+                          <Box sx={{ py: 3 }}>
+                            <Typography variant="body1" gutterBottom>
+                              {t('auditLogs.noLogsFound', 'No logs found')}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {t('auditLogs.tryChangingFilters', 'Try changing your filters to see more results')}
+                            </Typography>
+                          </Box>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <TablePagination
+                rowsPerPageOptions={[5, 10, 25, 50]}
+                component="div"
+                count={filteredLogs.length}
+                rowsPerPage={rowsPerPage}
+                page={page}
+                onPageChange={handleChangePage}
+                onRowsPerPageChange={handleChangeRowsPerPage}
+              />
+            </>
+          )}
+        </Paper>
+      </Box>
+    </Container>
   );
 };
 

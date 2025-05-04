@@ -100,9 +100,18 @@
     "unassigned": "Unassigned",
     "createNewToStart": "Create a new project to get started",
     "dependsOn": "Projects This Project Depends On",
-    "dependedBy": "Projects That Depend On This Project",
+    "dependingOnThis": "Projects That Depend On This Project",
     "dependencies": "Project Dependencies",
-    "goalsLink": "Link to Project Goals"
+    "dependsOnHelper": "Select projects that this project depends on to start or complete",
+    "dependingOnThisHelper": "Select projects that depend on this project to start or complete",
+    "goalsLink": "Link to Project Goals",
+    "attachments": "Attachments",
+    "supportedTypes": "Supported file types: PDF, DOC, DOCX, XLS, XLSX, JPG, PNG, GIF, TXT",
+    "clickToSelect": "Click or drag files to upload",
+    "errorUploading": "Error uploading files",
+    "addNew": "Add New Project",
+    "fillDetails": "Fill in the project details to create a new project",
+    "budget": "Budget"
   },
   "task": {
     "title": "Task Title",
@@ -164,6 +173,7 @@
     "delete": "Delete",
     "edit": "Edit",
     "create": "Create",
+    "creating": "Creating...",
     "update": "Update",
     "view": "View",
     "search": "Search",

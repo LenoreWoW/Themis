@@ -13,6 +13,11 @@ import {
   createDefaultTasks
 } from './mockData';
 import AuthService from './AuthService';
+import projects from './projects';
+import tasks from './tasks';
+import users from './users';
+import auth from './auth';
+import changeRequests from './changeRequests';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -151,50 +156,19 @@ function getMockData(endpoint: string, config?: AxiosRequestConfig): Promise<any
         if (endpoint.includes('/tasks')) {
           // Handle tasks for a specific project
           if (projectId) {
-            const project = mockProjects.find(p => p.id === projectId);
-            if (project) {
-              const tasks = createDefaultTasks(project.id);
-              return resolve(tasks);
-            }
+            const tasks = createDefaultTasks(projectId);
+            return resolve(tasks);
           }
           return resolve([]);
         }
         
         if (projectId) {
           // Return a specific project
-          const project = mockProjects.find(p => p.id === projectId);
-          return resolve(project || null);
+          return resolve(null);
         }
         
-        // Return all projects, possibly filtered
-        let filteredProjects = [...mockProjects];
-        
-        // Handle query parameters for filtering
-        if (config?.params) {
-          const { departmentId, status, priority, search } = config.params;
-          
-          if (departmentId) {
-            filteredProjects = filteredProjects.filter(p => p.departmentId === departmentId);
-          }
-          
-          if (status) {
-            filteredProjects = filteredProjects.filter(p => p.status === status);
-          }
-          
-          if (priority) {
-            filteredProjects = filteredProjects.filter(p => p.priority === priority);
-          }
-          
-          if (search) {
-            const searchLower = search.toLowerCase();
-            filteredProjects = filteredProjects.filter(p => 
-              p.name.toLowerCase().includes(searchLower) || 
-              p.description.toLowerCase().includes(searchLower)
-            );
-          }
-        }
-        
-        return resolve(filteredProjects);
+        // Return empty projects array
+        return resolve([]);
       }
       
       // If no handler for this endpoint
@@ -215,7 +189,7 @@ function postMockData(endpoint: string, data: any): Promise<any> {
       if (endpoint === '/projects') {
         const newProject = {
           ...data,
-          id: `p${mockProjects.length + 1}`,
+          id: `p${Date.now()}`,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
           progress: 0,
@@ -244,7 +218,7 @@ function postMockData(endpoint: string, data: any): Promise<any> {
             .filter(Boolean);
         }
         
-        mockProjects.push(newProject);
+        // Return the new project without adding it to mockProjects
         return resolve(newProject);
       }
       
@@ -509,25 +483,66 @@ const defaultUsers: User[] = [
 const assignments = {
   getAllAssignments: async (token: string) => {
     await delay();
+    
+    // Get assignments from localStorage
+    const storedAssignments = localStorage.getItem('themis_assignments');
+    const assignments = storedAssignments ? JSON.parse(storedAssignments) : [];
+    
     return {
-      data: [],
+      data: assignments,
       success: true
     };
   },
   
   getAssignmentById: async (id: string, token: string): Promise<Assignment | null> => {
     await delay();
+    
+    // Get assignments from localStorage
+    const storedAssignments = localStorage.getItem('themis_assignments');
+    const assignments = storedAssignments ? JSON.parse(storedAssignments) : [];
+    
+    // Find the assignment by ID
+    const assignment = assignments.find((a: Assignment) => a.id === id);
+    
+    if (assignment) {
+      return assignment;
+    }
+    
     return null;
   },
 
   createAssignment: async (data: Partial<Assignment>, token: string) => {
     await delay();
+    const assignmentId = uuidv4();
     const newAssignment: Assignment = {
-      id: '',
-      ...data,
+      id: assignmentId,
+      title: data.title || '',
+      description: data.description || '',
+      status: AssignmentStatus.IN_PROGRESS,
+      priority: data.priority || TaskPriority.MEDIUM,
+      dueDate: data.dueDate || new Date().toISOString(),
+      assignedBy: data.assignedBy || {} as User,
+      assignedTo: data.assignedTo || {} as User,
+      progress: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     } as Assignment;
+    
+    // Store in localStorage
+    try {
+      // Get existing assignments
+      const storedAssignments = localStorage.getItem('themis_assignments');
+      const assignments = storedAssignments ? JSON.parse(storedAssignments) : [];
+      
+      // Add the new assignment
+      assignments.push(newAssignment);
+      
+      // Save back to localStorage
+      localStorage.setItem('themis_assignments', JSON.stringify(assignments));
+    } catch (error) {
+      console.error('Error storing assignment:', error);
+    }
+    
     return {
       success: true,
       data: newAssignment,
@@ -536,17 +551,72 @@ const assignments = {
 
   updateAssignment: async (id: string, data: Partial<Assignment>, token: string) => {
     await delay();
-    return {
-      success: false,
-      error: 'Assignment not found',
-    };
+    
+    try {
+      // Get assignments from localStorage
+      const storedAssignments = localStorage.getItem('themis_assignments');
+      const assignments = storedAssignments ? JSON.parse(storedAssignments) : [];
+      
+      // Find the assignment by ID
+      const index = assignments.findIndex((a: Assignment) => a.id === id);
+      
+      if (index === -1) {
+        return {
+          success: false,
+          error: 'Assignment not found',
+        };
+      }
+      
+      // Update the assignment
+      const updatedAssignment = {
+        ...assignments[index],
+        ...data,
+        updatedAt: new Date().toISOString(),
+      };
+      
+      // Replace the assignment in the array
+      assignments[index] = updatedAssignment;
+      
+      // Save back to localStorage
+      localStorage.setItem('themis_assignments', JSON.stringify(assignments));
+      
+      return {
+        success: true,
+        data: updatedAssignment,
+      };
+    } catch (error) {
+      console.error('Error updating assignment:', error);
+      return {
+        success: false,
+        error: 'Error updating assignment',
+      };
+    }
   },
 
   deleteAssignment: async (id: string, token: string) => {
     await delay();
-    return {
-      success: true,
-    };
+    
+    try {
+      // Get assignments from localStorage
+      const storedAssignments = localStorage.getItem('themis_assignments');
+      const assignments = storedAssignments ? JSON.parse(storedAssignments) : [];
+      
+      // Filter out the assignment to delete
+      const updatedAssignments = assignments.filter((a: Assignment) => a.id !== id);
+      
+      // Save back to localStorage
+      localStorage.setItem('themis_assignments', JSON.stringify(updatedAssignments));
+      
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error('Error deleting assignment:', error);
+      return {
+        success: false,
+        error: 'Error deleting assignment',
+      };
+    }
   },
 };
 
@@ -654,14 +724,34 @@ const apiRoutes = {
   projects: {
     getAllProjects: async (token: string) => {
       await simulateDelay();
+      
+      // Get projects from localStorage
+      const storedProjects = localStorage.getItem('themis_projects');
+      const projects = storedProjects ? JSON.parse(storedProjects) : [];
+      
       return {
-        data: [],
+        data: projects,
         success: true
       };
     },
     
     getProjectById: async (id: string, token: string) => {
       await simulateDelay();
+      
+      // Get projects from localStorage
+      const storedProjects = localStorage.getItem('themis_projects');
+      const projects = storedProjects ? JSON.parse(storedProjects) : [];
+      
+      // Find the project by ID
+      const project = projects.find((p: Project) => p.id === id);
+      
+      if (project) {
+        return {
+          data: project,
+          success: true
+        };
+      }
+      
       return {
         data: null,
         success: false,
@@ -678,6 +768,16 @@ const apiRoutes = {
         updatedAt: new Date().toISOString()
       };
       
+      // Get existing projects from localStorage
+      const storedProjects = localStorage.getItem('themis_projects');
+      const projects = storedProjects ? JSON.parse(storedProjects) : [];
+      
+      // Add the new project
+      projects.push(newProject);
+      
+      // Save back to localStorage
+      localStorage.setItem('themis_projects', JSON.stringify(projects));
+      
       return {
         data: newProject,
         success: true
@@ -687,6 +787,31 @@ const apiRoutes = {
     updateProject: async (projectId: string, updatedData: Partial<Project>, token: string) => {
       try {
         await simulateDelay();
+        
+        // Get projects from localStorage
+        const storedProjects = localStorage.getItem('themis_projects');
+        const projects = storedProjects ? JSON.parse(storedProjects) : [];
+        
+        // Find the project index
+        const projectIndex = projects.findIndex((p: Project) => p.id === projectId);
+        
+        if (projectIndex !== -1) {
+          // Update the project
+          projects[projectIndex] = {
+            ...projects[projectIndex],
+            ...updatedData,
+            updatedAt: new Date().toISOString()
+          };
+          
+          // Save back to localStorage
+          localStorage.setItem('themis_projects', JSON.stringify(projects));
+          
+          return {
+            data: projects[projectIndex],
+            success: true
+          };
+        }
+        
         return {
           data: null,
           success: false,
@@ -700,6 +825,17 @@ const apiRoutes = {
     
     deleteProject: async (projectId: string, token: string) => {
       await simulateDelay();
+      
+      // Get projects from localStorage
+      const storedProjects = localStorage.getItem('themis_projects');
+      const projects = storedProjects ? JSON.parse(storedProjects) : [];
+      
+      // Filter out the deleted project
+      const updatedProjects = projects.filter((p: Project) => p.id !== projectId);
+      
+      // Save back to localStorage
+      localStorage.setItem('themis_projects', JSON.stringify(updatedProjects));
+      
       return {
         data: { message: 'Project deleted successfully' },
         success: true
@@ -756,49 +892,502 @@ const apiRoutes = {
         throw error;
       }
     },
+
+    getProjectsByManagerId: async (managerId: string, token: string) => {
+      await delay();
+      
+      try {
+        // Get projects from localStorage
+        const projectsJson = localStorage.getItem('projects') || '[]';
+        let projects = [];
+        
+        try {
+          projects = JSON.parse(projectsJson);
+          if (!Array.isArray(projects)) {
+            console.warn('API: projects was not an array, resetting to empty array');
+            projects = [];
+          }
+          
+          // Filter projects by manager ID
+          projects = projects.filter(project => {
+            // Check if the project has a projectManager object
+            if (project.projectManager && project.projectManager.id === managerId) {
+              return true;
+            }
+            
+            // Also check if the project has a managerId field
+            if (project.managerId === managerId) {
+              return true;
+            }
+            
+            // Also check if the project has a projectManagerId field
+            if (project.projectManagerId === managerId) {
+              return true;
+            }
+            
+            return false;
+          });
+        } catch (parseError) {
+          console.error('API: Error parsing projects from localStorage:', parseError);
+          projects = [];
+        }
+        
+        return {
+          data: projects,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error retrieving projects by manager ID:', err);
+        return {
+          data: [],
+          success: false,
+          error: 'Failed to retrieve projects by manager ID'
+        };
+      }
+    },
+    
+    getProjectsByDepartment: async (departmentId: string, token: string) => {
+      await delay();
+      
+      try {
+        // Get projects from localStorage
+        const projectsJson = localStorage.getItem('projects') || '[]';
+        let projects = [];
+        
+        try {
+          projects = JSON.parse(projectsJson);
+          if (!Array.isArray(projects)) {
+            console.warn('API: projects was not an array, resetting to empty array');
+            projects = [];
+          }
+          
+          // Filter projects by department ID
+          projects = projects.filter(project => {
+            // Check if the project has a department field
+            if (project.department === departmentId) {
+              return true;
+            }
+            
+            // Also check if the project has a departmentId field
+            if (project.departmentId === departmentId) {
+              return true;
+            }
+            
+            return false;
+          });
+        } catch (parseError) {
+          console.error('API: Error parsing projects from localStorage:', parseError);
+          projects = [];
+        }
+        
+        return {
+          data: projects,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error retrieving projects by department:', err);
+        return {
+          data: [],
+          success: false,
+          error: 'Failed to retrieve projects by department'
+        };
+      }
+    },
   },
 
   // Task endpoints
   tasks: {
     getAllTasks: async (projectId: string, token: string) => {
       await delay();
-      return {
-        data: [],
-        success: true
-      };
+      console.log('API: Getting all tasks for project:', projectId);
+      
+      try {
+        // Get tasks from sessionStorage and localStorage for persistence
+        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
+        let allTasks = [];
+        
+        try {
+          allTasks = JSON.parse(tasksJson);
+          // Ensure tasks is an array
+          if (!Array.isArray(allTasks)) {
+            console.warn('API: mockTasks was not an array, resetting to empty array');
+            allTasks = [];
+          }
+        } catch (parseError) {
+          console.error('API: Error parsing mockTasks from storage:', parseError);
+          allTasks = [];
+        }
+
+        // Ensure all tasks have string projectId for consistent comparison
+        allTasks = allTasks.map((task: any) => ({
+          ...task,
+          projectId: String(task.projectId || '')
+        }));
+        
+        // Filter tasks for this project - if projectId is truthy
+        let projectTasks = allTasks;
+        if (projectId && projectId !== 'default') {
+          projectTasks = allTasks.filter((task: any) => String(task.projectId) === String(projectId));
+          console.log(`API: Filtered tasks for project ${projectId}: found ${projectTasks.length} tasks out of ${allTasks.length} total`);
+        }
+        
+        console.log('API: Retrieved tasks from storage:', projectTasks.length, 'tasks for project:', projectId);
+        
+        return {
+          data: projectTasks,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error retrieving tasks:', err);
+        return {
+          data: [],
+          success: true
+        };
+      }
     },
     
     getTaskById: async (projectId: string, taskId: string, token: string) => {
       await delay();
-      return {
-        data: null,
-        success: false,
-        error: 'Task not found'
-      };
+      try {
+        // Get tasks from sessionStorage
+        const tasksJson = sessionStorage.getItem('mockTasks') || '[]';
+        let allTasks = [];
+        
+        try {
+          allTasks = JSON.parse(tasksJson);
+        } catch (parseError) {
+          console.error('API: Error parsing mockTasks from sessionStorage:', parseError);
+          return {
+            data: null,
+            success: false,
+            error: 'Task not found'
+          };
+        }
+        
+        // Find the specific task
+        const task = allTasks.find((t: any) => t.id === taskId);
+        
+        if (task) {
+          return {
+            data: task,
+            success: true
+          };
+        }
+        
+        return {
+          data: null,
+          success: false,
+          error: 'Task not found'
+        };
+      } catch (err) {
+        console.error('API: Error retrieving task:', err);
+        return {
+          data: null,
+          success: false,
+          error: 'Task not found'
+        };
+      }
     },
     
     createTask: async (projectId: string, taskData: any, token: string) => {
       await delay();
-      return {
-        data: { ...taskData, id: '' },
-        success: true
-      };
+      console.log('API: Creating task for project:', projectId, taskData);
+      
+      // Create a unique ID for the task if not provided
+      const taskId = taskData.id || `task-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      
+      // Store the task in sessionStorage AND localStorage to persist it during the session and between sessions
+      try {
+        // Get existing tasks or initialize empty array
+        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
+        let tasks = [];
+        try {
+          tasks = JSON.parse(tasksJson);
+          // Ensure tasks is an array
+          if (!Array.isArray(tasks)) {
+            console.warn('API: mockTasks was not an array, resetting to empty array');
+            tasks = [];
+          }
+        } catch (parseError) {
+          console.error('API: Error parsing mockTasks from storage, resetting to empty array:', parseError);
+          tasks = [];
+        }
+        
+        // Check if task already exists (by ID)
+        const existingTaskIndex = tasks.findIndex((t: any) => t.id === taskId);
+        
+        // Ensure projectId is stored as a string for consistent comparison
+        const stringProjectId = String(projectId || 'default');
+        
+        // Prepare the complete task object with all required fields
+        const newTask = {
+          ...taskData,
+          id: taskId,
+          title: taskData.title || 'Untitled Task',
+          description: taskData.description || '',
+          status: taskData.status || 'TODO',
+          priority: taskData.priority || 'MEDIUM',
+          startDate: taskData.startDate || new Date().toISOString(),
+          dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          projectId: stringProjectId,
+          assignee: taskData.assignee || null,
+          createdAt: taskData.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isMilestone: !!taskData.isMilestone
+        };
+        
+        // Add or update the task
+        if (existingTaskIndex >= 0) {
+          console.log('API: Updating existing task:', taskId);
+          tasks[existingTaskIndex] = newTask;
+        } else {
+          console.log('API: Adding new task:', taskId);
+          tasks.push(newTask);
+        }
+        
+        // Save back to both sessionStorage and localStorage for persistence
+        const tasksString = JSON.stringify(tasks);
+        sessionStorage.setItem('mockTasks', tasksString);
+        localStorage.setItem('mockTasks', tasksString);
+        
+        console.log('API: Task created/updated successfully and saved to storage:', newTask);
+        
+        return {
+          data: newTask,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error storing task:', err);
+        // Even if there's an error storing in storage, return a success
+        // so the UI can still show the task (but it won't persist on page refresh)
+        const newTask = {
+          ...taskData, 
+          id: taskId, 
+          title: taskData.title || 'Untitled Task',
+          description: taskData.description || '',
+          status: taskData.status || 'TODO',
+          priority: taskData.priority || 'MEDIUM',
+          startDate: taskData.startDate || new Date().toISOString(),
+          dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          projectId: String(projectId || 'default'),
+          assignee: taskData.assignee || null,
+          createdAt: taskData.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isMilestone: !!taskData.isMilestone
+        };
+        return {
+          data: newTask,
+          success: true
+        };
+      }
+    },
+    
+    createIndependentTask: async (taskData: any, token: string) => {
+      await delay();
+      console.log('API: Creating independent task:', taskData);
+      
+      // Create a unique ID for the task if not provided
+      const taskId = taskData.id || `task-${Date.now()}`;
+      
+      // Store the task in sessionStorage AND localStorage to persist it during the session and between sessions
+      try {
+        // Get existing tasks or initialize empty array
+        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
+        let tasks = [];
+        try {
+          tasks = JSON.parse(tasksJson);
+          // Ensure tasks is an array
+          if (!Array.isArray(tasks)) {
+            console.warn('API: mockTasks was not an array, resetting to empty array');
+            tasks = [];
+          }
+        } catch (parseError) {
+          console.error('API: Error parsing mockTasks from storage, resetting to empty array:', parseError);
+          tasks = [];
+        }
+        
+        // Check if task already exists (by ID)
+        const existingTaskIndex = tasks.findIndex((t: any) => t.id === taskId);
+        
+        // Prepare the complete task object with all required fields
+        const newTask = {
+          ...taskData,
+          id: taskId,
+          title: taskData.title || 'Untitled Task',
+          description: taskData.description || '',
+          status: taskData.status || 'TODO',
+          priority: taskData.priority || 'MEDIUM',
+          startDate: taskData.startDate || new Date().toISOString(),
+          dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          projectId: taskData.projectId || 'independent',
+          assignee: taskData.assignee || null,
+          createdAt: taskData.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isMilestone: !!taskData.isMilestone
+        };
+        
+        // Add or update the task
+        if (existingTaskIndex >= 0) {
+          console.log('API: Updating existing independent task:', taskId);
+          tasks[existingTaskIndex] = newTask;
+        } else {
+          console.log('API: Adding new independent task:', taskId);
+          tasks.push(newTask);
+        }
+        
+        // Save back to both sessionStorage and localStorage for persistence
+        const tasksString = JSON.stringify(tasks);
+        sessionStorage.setItem('mockTasks', tasksString);
+        localStorage.setItem('mockTasks', tasksString);
+        
+        console.log('API: Independent task created/updated successfully and saved to storage:', newTask);
+        
+        return {
+          data: newTask,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error storing independent task:', err);
+        // Even if there's an error storing in storage, return a success
+        // so the UI can still show the task (but it won't persist on page refresh)
+        const newTask = {
+          ...taskData, 
+          id: taskId, 
+          title: taskData.title || 'Untitled Task',
+          description: taskData.description || '',
+          status: taskData.status || 'TODO',
+          priority: taskData.priority || 'MEDIUM',
+          startDate: taskData.startDate || new Date().toISOString(),
+          dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+          projectId: taskData.projectId || 'independent',
+          assignee: taskData.assignee || null,
+          createdAt: taskData.createdAt || new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          isMilestone: !!taskData.isMilestone
+        };
+        return {
+          data: newTask,
+          success: true
+        };
+      }
     },
     
     updateTask: async (projectId: string, taskId: string, taskData: any, token: string) => {
       await delay();
-      return {
-        data: null,
-        success: false,
-        error: 'Task not found'
-      };
+      try {
+        // Get existing tasks
+        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
+        let tasks = [];
+        
+        try {
+          tasks = JSON.parse(tasksJson);
+          // Ensure tasks is an array
+          if (!Array.isArray(tasks)) {
+            console.warn('API: mockTasks was not an array, resetting to empty array');
+            tasks = [];
+          }
+        } catch (parseError) {
+          console.error('API: Error parsing mockTasks from storage:', parseError);
+          return {
+            data: null,
+            success: false,
+            error: 'Error parsing tasks data'
+          };
+        }
+        
+        // Find the task
+        const taskIndex = tasks.findIndex((t: any) => t.id === taskId);
+        
+        if (taskIndex === -1) {
+          return {
+            data: null,
+            success: false,
+            error: 'Task not found'
+          };
+        }
+        
+        // Update the task
+        const updatedTask = {
+          ...tasks[taskIndex],
+          ...taskData,
+          updatedAt: new Date().toISOString()
+        };
+        
+        tasks[taskIndex] = updatedTask;
+        
+        // Save back to storage
+        const tasksString = JSON.stringify(tasks);
+        sessionStorage.setItem('mockTasks', tasksString);
+        localStorage.setItem('mockTasks', tasksString);
+        
+        console.log('API: Task updated successfully:', updatedTask);
+        
+        return {
+          data: updatedTask,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error updating task:', err);
+        return {
+          data: null,
+          success: false,
+          error: 'Error updating task'
+        };
+      }
     },
     
     deleteTask: async (projectId: string, taskId: string, token: string) => {
       await delay();
-      return {
-        success: true
-      };
+      try {
+        // Get existing tasks
+        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
+        let tasks = [];
+        
+        try {
+          tasks = JSON.parse(tasksJson);
+          // Ensure tasks is an array
+          if (!Array.isArray(tasks)) {
+            console.warn('API: mockTasks was not an array, resetting to empty array');
+            tasks = [];
+          }
+        } catch (parseError) {
+          console.error('API: Error parsing mockTasks from storage:', parseError);
+          return {
+            success: false,
+            error: 'Error parsing tasks data'
+          };
+        }
+        
+        // Find the task
+        const taskIndex = tasks.findIndex((t: any) => t.id === taskId);
+        
+        if (taskIndex === -1) {
+          return {
+            success: false,
+            error: 'Task not found'
+          };
+        }
+        
+        // Remove the task
+        tasks.splice(taskIndex, 1);
+        
+        // Save back to storage
+        const tasksString = JSON.stringify(tasks);
+        sessionStorage.setItem('mockTasks', tasksString);
+        localStorage.setItem('mockTasks', tasksString);
+        
+        console.log('API: Task deleted successfully:', taskId);
+        
+        return {
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error deleting task:', err);
+        return {
+          success: false,
+          error: 'Error deleting task'
+        };
+      }
     },
 
     // Add task comment
@@ -1025,22 +1614,198 @@ const apiRoutes = {
   // Assignment endpoints
   assignments,
 
+  // Audit Logs endpoints
   auditLogs: {
     getAuditLogs: async (token: string) => {
       await delay();
-      return {
-        data: [],
-        success: true
-      };
+      
+      try {
+        // Get audit logs from localStorage
+        const logsJson = localStorage.getItem('auditLogs') || '[]';
+        let logs = [];
+        
+        try {
+          logs = JSON.parse(logsJson);
+          if (!Array.isArray(logs)) {
+            console.warn('API: auditLogs was not an array, resetting to empty array');
+            logs = [];
+          }
+          
+          // Ensure all logs have the necessary fields for filtering
+          logs = logs.map(log => ({
+            id: log.id || `log-${Date.now()}`,
+            action: log.action,
+            details: log.details || log.description || '',
+            entityType: log.entityType || '',
+            entityId: log.entityId || '',
+            projectId: log.projectId || '',
+            department: log.department || '',
+            timestamp: log.timestamp || new Date().toISOString(),
+            userId: log.userId || (log.user && log.user.id) || '',
+            username: log.username || (log.user && `${log.user.firstName} ${log.user.lastName}`.trim()) || '',
+            metadata: log.metadata || {}
+          }));
+        } catch (parseError) {
+          console.error('API: Error parsing auditLogs from localStorage:', parseError);
+          logs = [];
+        }
+        
+        return {
+          data: logs,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error retrieving audit logs:', err);
+        return {
+          data: [],
+          success: false,
+          error: 'Failed to retrieve audit logs'
+        };
+      }
+    },
+    
+    getAuditLogsByProject: async (projectId: string, token: string) => {
+      await delay();
+      
+      try {
+        // Get audit logs from localStorage
+        const logsJson = localStorage.getItem('auditLogs') || '[]';
+        let logs = [];
+        
+        try {
+          logs = JSON.parse(logsJson);
+          if (!Array.isArray(logs)) {
+            console.warn('API: auditLogs was not an array, resetting to empty array');
+            logs = [];
+          }
+        } catch (parseError) {
+          console.error('API: Error parsing auditLogs from localStorage:', parseError);
+          logs = [];
+        }
+        
+        // Filter logs for this project
+        const projectLogs = logs.filter(log => log.projectId === projectId);
+        
+        return {
+          data: projectLogs,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error retrieving project audit logs:', err);
+        return {
+          data: [],
+          success: false,
+          error: 'Failed to retrieve project audit logs'
+        };
+      }
     },
     
     getAuditLogById: async (logId: string, token: string) => {
       await delay();
-      return {
-        data: null,
-        success: false,
-        error: 'Audit log not found'
-      };
+      
+      try {
+        // Get audit logs from localStorage
+        const logsJson = localStorage.getItem('auditLogs') || '[]';
+        let logs = [];
+        
+        try {
+          logs = JSON.parse(logsJson);
+        } catch (parseError) {
+          console.error('API: Error parsing auditLogs from localStorage:', parseError);
+          return {
+            data: null,
+            success: false,
+            error: 'Audit log not found'
+          };
+        }
+        
+        // Find the specific log
+        const log = logs.find(l => l.id === logId);
+        
+        if (log) {
+          return {
+            data: log,
+            success: true
+          };
+        }
+        
+        return {
+          data: null,
+          success: false,
+          error: 'Audit log not found'
+        };
+      } catch (err) {
+        console.error('API: Error retrieving audit log:', err);
+        return {
+          data: null,
+          success: false,
+          error: 'Audit log not found'
+        };
+      }
+    },
+    
+    createAuditLog: async (logData: any, token: string) => {
+      await delay();
+      
+      if (!logData.action) {
+        return {
+          data: null,
+          success: false,
+          error: 'Audit log action is required'
+        };
+      }
+      
+      try {
+        // Create a new log entry
+        const newLog = {
+          id: logData.id || `log-${Date.now()}`,
+          action: logData.action,
+          details: logData.details || '',
+          entityType: logData.entityType || 'GENERAL',
+          entityId: logData.entityId || null,
+          projectId: logData.projectId || null,
+          department: logData.department || null,
+          user: logData.user || {
+            id: 'system',
+            firstName: 'System',
+            lastName: 'User'
+          },
+          timestamp: logData.timestamp || new Date().toISOString(),
+          // Store additional metadata for filtering
+          metadata: logData.metadata || {}
+        };
+        
+        // Get existing logs or initialize empty array
+        const logsJson = localStorage.getItem('auditLogs') || '[]';
+        let logs = [];
+        
+        try {
+          logs = JSON.parse(logsJson);
+          if (!Array.isArray(logs)) {
+            logs = [];
+          }
+        } catch (parseError) {
+          logs = [];
+        }
+        
+        // Add the new log
+        logs.push(newLog);
+        
+        // Save back to localStorage
+        localStorage.setItem('auditLogs', JSON.stringify(logs));
+        
+        return {
+          data: newLog,
+          success: true
+        };
+      } catch (err) {
+        console.error('API: Error creating audit log:', err);
+        return {
+          data: null,
+          success: false,
+          error: 'Failed to create audit log'
+        };
+      }
     }
   },
 
@@ -1116,8 +1881,214 @@ const apiRoutes = {
       
     createChangeRequest: async (requestData: any, token: string) => {
       await delay();
+      
+      // Log the received data for debugging
+      console.log('Creating change request with data:', requestData);
+      
+      // Ensure dates are properly formatted
+      let formattedRequestData = { ...requestData };
+      
+      // Handle schedule change request date format
+      if (requestData.type === 'SCHEDULE') {
+        // Extract newEndDate from various possible sources
+        let newEndDate = null;
+        
+        if (requestData.newEndDate) {
+          // Direct field
+          newEndDate = requestData.newEndDate;
+        } else if (requestData.details?.newEndDate) {
+          // In details object
+          newEndDate = requestData.details.newEndDate;
+        }
+        
+        // Ensure it's a valid date string
+        if (newEndDate) {
+          // Convert to ISO string if it's a Date object
+          if (newEndDate instanceof Date) {
+            newEndDate = newEndDate.toISOString();
+          } else if (typeof newEndDate === 'string') {
+            // Try to format if it's already a string but not ISO
+            try {
+              const dateObj = new Date(newEndDate);
+              if (!isNaN(dateObj.getTime())) {
+                newEndDate = dateObj.toISOString();
+              }
+            } catch (e) {
+              console.error('Failed to parse date string:', newEndDate);
+            }
+          }
+          
+          // Apply formatted date to both locations
+          formattedRequestData.newEndDate = newEndDate;
+          formattedRequestData.details = {
+            ...formattedRequestData.details,
+            newEndDate
+          };
+        }
+      }
+      
+      // Validate the request data based on type
+      let error = null;
+      
+      // Always require these common fields
+      if (!requestData.title) {
+        error = 'Change request is missing a title';
+      } else if (!requestData.description) {
+        error = 'Change request is missing a description';
+      } else if (!requestData.projectId) {
+        error = 'Change request is missing a project ID';
+      } else {
+        // Validate type-specific fields
+        switch(requestData.type) {
+          case 'SCHEDULE':
+            // Check both top-level newEndDate and details.newEndDate
+            const hasEndDate = 
+              (requestData.newEndDate !== undefined && requestData.newEndDate !== null) || 
+              (requestData.details?.newEndDate !== undefined && requestData.details?.newEndDate !== null);
+            
+            if (!hasEndDate) {
+              error = 'Schedule change request is missing a new end date';
+              console.log('Missing newEndDate field:', requestData);
+            }
+            break;
+          case 'BUDGET':
+            // Check for newCost, newBudget, and their details equivalents
+            const hasBudget = 
+              (requestData.newCost !== undefined && requestData.newCost !== null) || 
+              (requestData.newBudget !== undefined && requestData.newBudget !== null) ||
+              (requestData.details?.newCost !== undefined && requestData.details?.newCost !== null) || 
+              (requestData.details?.newBudget !== undefined && requestData.details?.newBudget !== null);
+            
+            if (!hasBudget) {
+              error = 'Budget change request is missing a new cost value';
+              console.log('Missing budget field:', requestData);
+            }
+            break;
+          case 'SCOPE':
+            // Check for newScopeDescription and details.newScopeDescription
+            const hasScope = 
+              requestData.newScopeDescription || 
+              requestData.details?.newScopeDescription;
+            
+            if (!hasScope) {
+              error = 'Scope change request is missing scope description';
+              console.log('Missing newScopeDescription field:', requestData);
+            }
+            break;
+          case 'RESOURCE':
+            // Check for newProjectManagerId, newManager and their details equivalents
+            const hasManager = 
+              requestData.newProjectManagerId || 
+              requestData.newManager || 
+              requestData.details?.newProjectManagerId || 
+              requestData.details?.newManager;
+            
+            if (!hasManager) {
+              error = 'Resource change request is missing required resources';
+              console.log('Missing manager field:', requestData);
+            }
+            break;
+          case 'CLOSURE':
+            // Check for closureReason and details.closureReason
+            const hasReason = 
+              requestData.closureReason || 
+              requestData.details?.closureReason;
+            
+            if (!hasReason) {
+              error = 'Closure request is missing sufficient closure reason';
+              console.log('Missing closureReason field:', requestData);
+            }
+            break;
+        }
+      }
+      
+      if (error) {
+        console.error('Change request validation failed:', error);
+        return {
+          data: null,
+          success: false,
+          error: error
+        };
+      }
+      
+      // Create a complete change request with guaranteed fields
+      const changeRequestId = formattedRequestData.id || `cr-${Date.now()}`;
+      const newChangeRequest = {
+        id: changeRequestId,
+        projectId: formattedRequestData.projectId,
+        title: formattedRequestData.title,
+        description: formattedRequestData.description,
+        type: formattedRequestData.type,
+        status: 'PENDING',
+        requestedById: formattedRequestData.requestedById || 'unknown',
+        requestedByName: formattedRequestData.requestedByName || 'Unknown User',
+        requestedDate: formattedRequestData.requestedDate || new Date().toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        // Add specific fields based on type - ensure proper data types
+        details: formattedRequestData.details || {},
+        // Include the type-specific fields at the top level too for backward compatibility
+        // with properly handled types
+        ...(formattedRequestData.type === 'SCHEDULE' && { 
+          newEndDate: formattedRequestData.newEndDate 
+        }),
+        ...(formattedRequestData.type === 'BUDGET' && { 
+          newCost: typeof formattedRequestData.newCost === 'number' ? formattedRequestData.newCost : 
+                 (typeof formattedRequestData.newCost === 'string' ? Number(formattedRequestData.newCost) : undefined),
+          newBudget: typeof formattedRequestData.newBudget === 'number' ? formattedRequestData.newBudget : 
+                   (typeof formattedRequestData.newBudget === 'string' ? Number(formattedRequestData.newBudget) : undefined)
+        }),
+        ...(formattedRequestData.type === 'SCOPE' && { 
+          newScopeDescription: formattedRequestData.newScopeDescription || formattedRequestData.details?.newScopeDescription || '' 
+        }),
+        ...(formattedRequestData.type === 'RESOURCE' && { 
+          newProjectManagerId: formattedRequestData.newProjectManagerId || formattedRequestData.details?.newProjectManagerId || '',
+          newManager: formattedRequestData.newManager || formattedRequestData.details?.newManager || formattedRequestData.newProjectManagerId || ''
+        }),
+        ...(formattedRequestData.type === 'CLOSURE' && { 
+          closureReason: formattedRequestData.closureReason || formattedRequestData.details?.closureReason || ''
+        }),
+        attachments: formattedRequestData.attachments || []
+      };
+      
+      // Store in localStorage for persistence
+      try {
+        // Get existing change requests or initialize empty array
+        const requestsJson = localStorage.getItem('changeRequests') || '[]';
+        let requests = [];
+        try {
+          requests = JSON.parse(requestsJson);
+          if (!Array.isArray(requests)) {
+            console.warn('API: changeRequests was not an array, resetting to empty array');
+            requests = [];
+          }
+        } catch (parseError) {
+          console.error('API: Error parsing changeRequests from localStorage, resetting to empty array:', parseError);
+          requests = [];
+        }
+        
+        // Check if change request already exists (by ID)
+        const existingIndex = requests.findIndex((r: any) => r.id === changeRequestId);
+        
+        // Add or update the change request
+        if (existingIndex >= 0) {
+          console.log('API: Updating existing change request:', changeRequestId);
+          requests[existingIndex] = newChangeRequest;
+        } else {
+          console.log('API: Adding new change request:', changeRequestId);
+          requests.push(newChangeRequest);
+        }
+        
+        // Save back to localStorage
+        localStorage.setItem('changeRequests', JSON.stringify(requests));
+        
+        console.log('Change request created successfully:', newChangeRequest);
+      } catch (err) {
+        console.error('Error storing change request in localStorage:', err);
+      }
+      
       return {
-        data: { id: '', ...requestData },
+        data: newChangeRequest,
         success: true
       };
     },
