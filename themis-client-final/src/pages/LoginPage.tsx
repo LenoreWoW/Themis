@@ -82,6 +82,8 @@ const LoginPage: React.FC = () => {
     { role: 'Project Manager', email: 'sarah.johnson@acme.com' },
     { role: 'Department Director', email: 'emma.garcia@acme.com' },
     { role: 'Executive', email: 'robert.taylor@acme.com' },
+    { role: 'Main PMO', email: 'david.wilson@acme.com' },
+    { role: 'Sub PMO', email: 'jessica.brown@acme.com' },
     { role: 'Developer', email: 'michael.chen@acme.com' }
   ];
   

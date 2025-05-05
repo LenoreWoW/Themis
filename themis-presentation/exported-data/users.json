@@ -1,0 +1,19 @@
+[
+  {
+    "id": "00000000-0000-0000-0000-000000000001",
+    "email": "admin@example.com",
+    "full_name": "Admin User",
+    "role": "ADMIN",
+    "created_at": "2025-05-03T19:35:13Z",
+    "updated_at": "2025-05-03T19:35:13Z"
+  },
+  {
+    "id": "00000000-0000-0000-0000-000000000002",
+    "email": "manager@example.com",
+    "full_name": "Project Manager",
+    "role": "PROJECT_MANAGER",
+    "department": "IT",
+    "created_at": "2025-05-03T19:35:13Z",
+    "updated_at": "2025-05-03T19:35:13Z"
+  }
+]

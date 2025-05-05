@@ -137,11 +137,30 @@ export function AuthProvider({ children }: AuthProviderProps) {
     console.log('Login attempt with username:', adIdentifier);
     
     try {
+      // Map the email address to the appropriate role
+      let userRole = UserRole.ADMIN; // Default
+      
+      // Map test accounts to their respective roles
+      if (adIdentifier === 'sarah.johnson@acme.com') {
+        userRole = UserRole.PROJECT_MANAGER;
+      } else if (adIdentifier === 'emma.garcia@acme.com') {
+        userRole = UserRole.DEPARTMENT_DIRECTOR;
+      } else if (adIdentifier === 'robert.taylor@acme.com') {
+        userRole = UserRole.EXECUTIVE;
+      } else if (adIdentifier === 'david.wilson@acme.com') {
+        userRole = UserRole.MAIN_PMO;
+      } else if (adIdentifier === 'jessica.brown@acme.com') {
+        userRole = UserRole.SUB_PMO;
+      } else if (adIdentifier === 'michael.chen@acme.com') {
+        userRole = UserRole.DEVELOPER;
+      }
+      // john.smith@acme.com will remain as ADMIN (default)
+      
       // For pre-AD integration: create a mock successful login response
       const mockResponse: AuthResponse = {
         userId: '1',
         username: adIdentifier,
-        role: UserRole.ADMIN, // Default to admin for testing
+        role: userRole,
         token: 'mock-jwt-token-' + Date.now(), // Add timestamp to make it unique
         success: true,
         message: 'Login successful',
@@ -149,10 +168,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         user: {
           id: '1',
           username: adIdentifier,
-          firstName: adIdentifier,
+          firstName: adIdentifier.split('@')[0],
           lastName: 'User',
-          email: `${adIdentifier}@example.com`,
-          role: UserRole.ADMIN,
+          email: adIdentifier,
+          role: userRole,
           department: {
             id: '',
             name: 'Default Department',

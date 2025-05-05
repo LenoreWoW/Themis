@@ -1,0 +1,116 @@
+:root {
+  --mind-map-font-primary: 'Segoe UI', 'Roboto', 'Helvetica Neue', 'Arial', sans-serif;
+  --mind-map-font-size-large: 1.1em;
+  --mind-map-font-size-medium: 0.9em;
+  --mind-map-font-size-small: 0.85em;
+  --mind-map-node-project-color: #3f51b5;
+  --mind-map-node-category-color: #7986cb;
+  --mind-map-node-milestone-color: #e91e63;
+  --mind-map-node-task-color: #90caf9;
+}
+
+.mind-map-container {
+  background-color: #f8f9fa;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+.mind-map-node {
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.mind-map-node:hover circle {
+  filter: brightness(1.2);
+  stroke-width: 2px;
+}
+
+.node-label {
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--mind-map-font-primary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.node-attributes {
+  pointer-events: none;
+  user-select: none;
+  font-family: var(--mind-map-font-primary);
+  letter-spacing: 0.01em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.mind-map-link {
+  fill: none;
+  stroke-width: 1.5px;
+  stroke: #aaa;
+  stroke-opacity: 0.5;
+  transition: stroke-width 0.3s ease, stroke-opacity 0.3s ease;
+}
+
+.mind-map-link:hover {
+  stroke-width: 2px;
+  stroke-opacity: 0.8;
+}
+
+.mind-map-link-milestone {
+  stroke: var(--mind-map-node-milestone-color);
+  stroke-dasharray: 5;
+}
+
+.mind-map-link-project {
+  stroke-width: 2px;
+  stroke: var(--mind-map-node-project-color);
+}
+
+/* Node types */
+.project circle {
+  stroke: #303f9f;
+  stroke-width: 2px;
+  filter: drop-shadow(0px 2px 3px rgba(0, 0, 0, 0.2));
+}
+
+.category circle {
+  stroke: #5c6bc0;
+  stroke-width: 1.5px;
+  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.milestone circle {
+  stroke: #c2185b;
+  stroke-width: 1.5px;
+  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+.info circle,
+.task circle {
+  stroke: #64b5f6;
+  stroke-width: 1px;
+  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1));
+}
+
+/* Animation for node transitions */
+.rd3t-node {
+  transition: transform 0.3s ease-out;
+}
+
+/* Make the links smooth */
+.rd3t-link {
+  transition: stroke-dashoffset 0.3s ease-out;
+}
+
+/* Action button styling */
+.action-button-group circle {
+  filter: drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.1));
+  transition: all 0.2s ease;
+}
+
+.action-button-group:hover circle {
+  transform: scale(1.1);
+  fill: #f0f0f0;
+} 
