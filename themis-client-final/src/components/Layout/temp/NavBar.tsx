@@ -70,7 +70,7 @@ const NavBar: React.FC<NavBarProps> = () => {
         
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
           <Link to="/" style={{ color: 'inherit', textDecoration: 'none' }}>
-            {t('app.title', 'Themis Project Management')}
+            {t('app.title', 'Project Management System')}
           </Link>
         </Typography>
         

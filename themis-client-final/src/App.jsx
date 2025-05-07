@@ -24,7 +24,7 @@ function App() {
         <div className="App">
           {isAuthenticated && (
             <header className="App-header">
-              <h1>Themis Project Management System</h1>
+              <h1>Project Management System</h1>
               <nav className="App-nav">
                 <Link to="/dashboard" className="nav-link">Dashboard</Link>
                 <Link to="/projects" className="nav-link">Projects</Link>

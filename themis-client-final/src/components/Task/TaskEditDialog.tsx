@@ -1,36 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
-  Typography,
-  Box,
-  TextField,
   Button,
-  IconButton,
-  MenuItem,
+  TextField,
   FormControl,
-  FormControlLabel,
   InputLabel,
   Select,
-  SelectChangeEvent,
-  Slider,
-  Chip
+  MenuItem,
+  Grid,
+  FormHelperText,
+  Box,
+  SelectChangeEvent
 } from '@mui/material';
-import {
-  Close as CloseIcon,
-  Save as SaveIcon
-} from '@mui/icons-material';
+import { DatePicker } from '@mui/x-date-pickers/DatePicker';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { Task, TaskStatus, TaskPriority, User } from '../../types';
-import { format } from 'date-fns';
+import { useTranslation } from 'react-i18next';
 
 interface TaskEditDialogProps {
   open: boolean;
   task: Task | null;
   onClose: () => void;
-  onSave: (editedTask: Task) => void;
-  users?: User[];
+  onSave: (task: Task) => void;
+  users: User[];
 }
 
 const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
@@ -38,228 +34,241 @@ const TaskEditDialog: React.FC<TaskEditDialogProps> = ({
   task,
   onClose,
   onSave,
-  users = []
+  users
 }) => {
+  const { t } = useTranslation();
   const [editedTask, setEditedTask] = useState<Task | null>(null);
-  const [progress, setProgress] = useState<number>(0);
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     if (task) {
       setEditedTask({ ...task });
-      // Calculate progress based on task status
-      let taskProgress = 0;
-      switch (task.status) {
-        case TaskStatus.TODO:
-          taskProgress = 0;
-          break;
-        case TaskStatus.IN_PROGRESS:
-          taskProgress = 50;
-          break;
-        case TaskStatus.REVIEW:
-          taskProgress = 80;
-          break;
-        case TaskStatus.DONE:
-          taskProgress = 100;
-          break;
-      }
-      setProgress(taskProgress);
+    } else {
+      setEditedTask(null);
     }
-  }, [task]);
-
-  if (!editedTask) {
-    return null;
-  }
+    setErrors({});
+  }, [task, open]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setEditedTask(prev => prev ? { ...prev, [name]: value } : null);
-  };
-
-  const handleSelectChange = (e: SelectChangeEvent<any>) => {
-    const { name, value } = e.target;
-    setEditedTask(prev => prev ? { ...prev, [name]: value } : null);
-  };
-
-  const handleProgressChange = (event: Event, newValue: number | number[]) => {
-    const value = Array.isArray(newValue) ? newValue[0] : newValue;
-    setProgress(value);
+    if (!editedTask) return;
     
-    // Update task status based on the progress
-    let newStatus = editedTask.status;
-    if (value === 0) {
-      newStatus = TaskStatus.TODO;
-    } else if (value > 0 && value < 50) {
-      newStatus = TaskStatus.IN_PROGRESS;
-    } else if (value >= 50 && value < 100) {
-      newStatus = TaskStatus.REVIEW;
-    } else if (value === 100) {
-      newStatus = TaskStatus.DONE;
-    }
+    const { name, value } = e.target;
+    setEditedTask({
+      ...editedTask,
+      [name]: value
+    });
     
-    setEditedTask(prev => prev ? { ...prev, status: newStatus } : null);
-  };
-
-  const handleSave = () => {
-    if (editedTask) {
-      onSave(editedTask);
+    // Clear error when field is modified
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ''
+      });
     }
   };
 
-  const getProgressColor = (value: number) => {
-    if (value === 0) return 'default';
-    if (value > 0 && value < 50) return 'primary';
-    if (value >= 50 && value < 100) return 'warning';
-    return 'success';
+  const handleSelectChange = (e: SelectChangeEvent<unknown>, child: ReactNode) => {
+    if (!editedTask) return;
+    
+    const { name, value } = e.target;
+    if (name) {
+      setEditedTask({
+        ...editedTask,
+        [name]: value
+      });
+      
+      // Clear error when field is modified
+      if (errors[name]) {
+        setErrors({
+          ...errors,
+          [name]: ''
+        });
+      }
+    }
   };
 
-  const formatDate = (dateString: string) => {
-    return format(new Date(dateString), 'yyyy-MM-dd');
+  const handleDateChange = (name: string, date: Date | null) => {
+    if (!editedTask || !date) return;
+    
+    setEditedTask({
+      ...editedTask,
+      [name]: date.toISOString().split('T')[0]
+    });
+    
+    // Clear error when field is modified
+    if (errors[name]) {
+      setErrors({
+        ...errors,
+        [name]: ''
+      });
+    }
   };
+
+  const handleSubmit = () => {
+    if (!editedTask) return;
+    
+    // Validate form
+    const newErrors: { [key: string]: string } = {};
+    
+    if (!editedTask.title.trim()) {
+      newErrors.title = t('validation.required');
+    }
+    
+    if (!editedTask.dueDate) {
+      newErrors.dueDate = t('validation.required');
+    }
+    
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    
+    onSave(editedTask);
+  };
+
+  if (!editedTask) return null;
 
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        Edit Task
-        <IconButton
-          aria-label="close"
-          onClick={onClose}
-          sx={{ position: 'absolute', right: 8, top: 8 }}
-        >
-          <CloseIcon />
-        </IconButton>
-      </DialogTitle>
+      <DialogTitle>{t('task.edit')}</DialogTitle>
       <DialogContent>
-        <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <TextField
-            fullWidth
-            label="Title"
-            name="title"
-            value={editedTask.title}
-            onChange={handleInputChange}
-            margin="normal"
-          />
+        <Grid container spacing={2} sx={{ mt: 1 }}>
+          <Grid item xs={12}>
+            <TextField
+              label={t('task.title')}
+              name="title"
+              value={editedTask.title}
+              onChange={handleInputChange}
+              fullWidth
+              required
+              error={!!errors.title}
+              helperText={errors.title}
+            />
+          </Grid>
           
-          <TextField
-            fullWidth
-            label="Description"
-            name="description"
-            value={editedTask.description}
-            onChange={handleInputChange}
-            multiline
-            rows={4}
-            margin="normal"
-          />
+          <Grid item xs={12}>
+            <TextField
+              label={t('task.description')}
+              name="description"
+              value={editedTask.description}
+              onChange={handleInputChange}
+              fullWidth
+              multiline
+              rows={3}
+            />
+          </Grid>
           
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Status</InputLabel>
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel id="status-label">{t('status.status')}</InputLabel>
               <Select
+                labelId="status-label"
                 name="status"
                 value={editedTask.status}
                 onChange={handleSelectChange}
-                label="Status"
+                label={t('status.status')}
               >
-                <MenuItem value={TaskStatus.TODO}>To Do</MenuItem>
-                <MenuItem value={TaskStatus.IN_PROGRESS}>In Progress</MenuItem>
-                <MenuItem value={TaskStatus.REVIEW}>In Review</MenuItem>
-                <MenuItem value={TaskStatus.DONE}>Done</MenuItem>
-              </Select>
-            </FormControl>
-            
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Priority</InputLabel>
-              <Select
-                name="priority"
-                value={editedTask.priority}
-                onChange={handleSelectChange}
-                label="Priority"
-              >
-                <MenuItem value={TaskPriority.LOW}>Low</MenuItem>
-                <MenuItem value={TaskPriority.MEDIUM}>Medium</MenuItem>
-                <MenuItem value={TaskPriority.HIGH}>High</MenuItem>
-              </Select>
-            </FormControl>
-          </Box>
-          
-          <Box sx={{ display: 'flex', gap: 2 }}>
-            <TextField
-              fullWidth
-              label="Start Date"
-              name="startDate"
-              type="date"
-              value={editedTask.startDate.split('T')[0]}
-              onChange={handleInputChange}
-              margin="normal"
-              InputLabelProps={{ shrink: true }}
-            />
-            
-            <TextField
-              fullWidth
-              label="Due Date"
-              name="dueDate"
-              type="date"
-              value={editedTask.dueDate.split('T')[0]}
-              onChange={handleInputChange}
-              margin="normal"
-              InputLabelProps={{ shrink: true }}
-            />
-          </Box>
-          
-          {users.length > 0 && (
-            <FormControl fullWidth margin="normal">
-              <InputLabel>Assignee</InputLabel>
-              <Select
-                name="assigneeId"
-                value={editedTask.assignee?.id || ''}
-                onChange={handleSelectChange}
-                label="Assignee"
-              >
-                <MenuItem value="">Unassigned</MenuItem>
-                {users.map(user => (
-                  <MenuItem key={user.id} value={user.id}>
-                    {user.firstName} {user.lastName}
+                {Object.values(TaskStatus).map((status) => (
+                  <MenuItem key={status} value={status}>
+                    {t(`status.${status.toLowerCase()}`)}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
-          )}
+          </Grid>
           
-          <Box sx={{ mt: 2 }}>
-            <Typography variant="subtitle1" gutterBottom>
-              Progress: {progress}%
-              <Chip 
-                sx={{ ml: 1 }}
-                size="small"
-                label={editedTask.status}
-                color={getProgressColor(progress) as any}
+          <Grid item xs={12} sm={6}>
+            <FormControl fullWidth>
+              <InputLabel id="priority-label">{t('priority.priority')}</InputLabel>
+              <Select
+                labelId="priority-label"
+                name="priority"
+                value={editedTask.priority}
+                onChange={handleSelectChange}
+                label={t('priority.priority')}
+              >
+                {Object.values(TaskPriority).map((priority) => (
+                  <MenuItem key={priority} value={priority}>
+                    {t(`priority.${priority.toLowerCase()}`)}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <DatePicker
+                label={t('task.startDate')}
+                value={editedTask.startDate ? new Date(editedTask.startDate) : null}
+                onChange={(date) => handleDateChange('startDate', date)}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    name: 'startDate'
+                  }
+                }}
               />
-            </Typography>
-            <Slider
-              value={progress}
-              onChange={handleProgressChange}
-              aria-labelledby="task-progress-slider"
-              valueLabelDisplay="auto"
-              step={10}
-              marks
-              min={0}
-              max={100}
-              color={getProgressColor(progress) as any}
-            />
-            <Typography variant="caption" color="text.secondary">
-              Drag to update progress: 0% (To Do) → 50% (In Progress) → 80% (Review) → 100% (Done)
-            </Typography>
-          </Box>
-        </Box>
+            </LocalizationProvider>
+          </Grid>
+          
+          <Grid item xs={12} sm={6}>
+            <LocalizationProvider dateAdapter={AdapterDateFns}>
+              <Box>
+                <DatePicker
+                  label={t('task.dueDate')}
+                  value={editedTask.dueDate ? new Date(editedTask.dueDate) : null}
+                  onChange={(date) => handleDateChange('dueDate', date)}
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      name: 'dueDate',
+                      error: !!errors.dueDate
+                    }
+                  }}
+                />
+                {errors.dueDate && (
+                  <FormHelperText error>{errors.dueDate}</FormHelperText>
+                )}
+              </Box>
+            </LocalizationProvider>
+          </Grid>
+          
+          <Grid item xs={12}>
+            <FormControl fullWidth>
+              <InputLabel id="assignee-label">{t('task.assignee')}</InputLabel>
+              <Select
+                labelId="assignee-label"
+                name="assignee"
+                value={editedTask.assignee?.id || ''}
+                onChange={(e) => {
+                  const selectedUserId = e.target.value as string;
+                  const selectedUser = users.find(user => user.id === selectedUserId);
+                  
+                  setEditedTask({
+                    ...editedTask,
+                    assignee: selectedUser || undefined
+                  });
+                }}
+                label={t('task.assignee')}
+              >
+                <MenuItem value="">
+                  <em>{t('common.none')}</em>
+                </MenuItem>
+                {users.map((user) => (
+                  <MenuItem key={user.id} value={user.id}>
+                    {`${user.firstName} ${user.lastName}`}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose}>Cancel</Button>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<SaveIcon />} 
-          onClick={handleSave}
-        >
-          Save Changes
+        <Button onClick={onClose}>{t('common.cancel')}</Button>
+        <Button onClick={handleSubmit} variant="contained" color="primary">
+          {t('common.save')}
         </Button>
       </DialogActions>
     </Dialog>

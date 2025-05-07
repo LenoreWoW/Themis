@@ -30,6 +30,9 @@ namespace Themis.Infrastructure.Data
         public DbSet<ProjectClosureSignOff> ProjectClosureSignOffs { get; set; }
         public DbSet<ProjectClosureAttachment> ProjectClosureAttachments { get; set; }
         public DbSet<Notification> Notifications { get; set; }
+        public DbSet<ChatChannel> ChatChannels { get; set; }
+        public DbSet<ChatMessage> ChatMessages { get; set; }
+        public DbSet<ChatChannelMember> ChatChannelMembers { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -184,6 +187,45 @@ namespace Themis.Infrastructure.Data
                 .HasOne(n => n.User)
                 .WithMany()
                 .HasForeignKey(n => n.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            // Chat Channel
+            modelBuilder.Entity<ChatChannel>()
+                .HasOne(c => c.Department)
+                .WithMany()
+                .HasForeignKey(c => c.DepartmentId)
+                .OnDelete(DeleteBehavior.SetNull);
+                
+            modelBuilder.Entity<ChatChannel>()
+                .HasOne(c => c.Project)
+                .WithMany()
+                .HasForeignKey(c => c.ProjectId)
+                .OnDelete(DeleteBehavior.SetNull);
+                
+            // Chat Message
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Channel)
+                .WithMany(c => c.Messages)
+                .HasForeignKey(m => m.ChannelId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            modelBuilder.Entity<ChatMessage>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+                
+            // Chat Channel Member
+            modelBuilder.Entity<ChatChannelMember>()
+                .HasOne(m => m.Channel)
+                .WithMany(c => c.Members)
+                .HasForeignKey(m => m.ChannelId)
+                .OnDelete(DeleteBehavior.Cascade);
+                
+            modelBuilder.Entity<ChatChannelMember>()
+                .HasOne(m => m.User)
+                .WithMany()
+                .HasForeignKey(m => m.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
         }
 

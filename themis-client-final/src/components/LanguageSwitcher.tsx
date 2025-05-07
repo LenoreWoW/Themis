@@ -1,138 +1,108 @@
-import React, { useState, useEffect } from 'react';
-import { 
-  MenuItem, 
-  ListItemText,
-  IconButton,
-  Menu,
-} from '@mui/material';
-import { 
-  Language as LanguageIcon,
-} from '@mui/icons-material';
+import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Direction } from '@mui/material/styles';
-import { useAuth } from '../context/AuthContext';
+import { IconButton, Tooltip, Menu, MenuItem, Box } from '@mui/material';
+import LanguageIcon from '@mui/icons-material/Language';
 
-interface LanguageSwitcherProps {
-  onDirectionChange: (direction: Direction) => void;
-}
-
-const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ onDirectionChange }) => {
+/**
+ * A reusable language switcher component that can be placed anywhere in the application
+ * Handles switching between Arabic and English with optimized performance
+ */
+const LanguageSwitcher: React.FC = () => {
   const { i18n, t } = useTranslation();
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-  const auth = useAuth();
-  
-  const currentLanguage = i18n.language;
-  
-  const languages = [
-    { code: 'en', name: t('language.english', 'English'), dir: 'ltr' },
-    { code: 'ar', name: t('language.arabic', 'العربية'), dir: 'rtl' }
-  ];
+  const open = Boolean(anchorEl);
+  const [currentLang, setCurrentLang] = useState(i18n.language || 'en');
 
-  // Initialize language from localStorage on component mount
+  // Track current language and update state when it changes
   useEffect(() => {
-    const savedLanguage = localStorage.getItem('themisLanguage');
-    if (savedLanguage && savedLanguage !== i18n.language) {
-      const langDirection = savedLanguage === 'ar' ? 'rtl' : 'ltr';
-      i18n.changeLanguage(savedLanguage);
-      onDirectionChange(langDirection as Direction);
-      console.log('Initialized language from localStorage:', savedLanguage, langDirection);
-    }
-  }, [i18n, onDirectionChange]);
+    setCurrentLang(i18n.language);
+  }, [i18n.language]);
 
   const handleClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
-  
+
   const handleClose = () => {
     setAnchorEl(null);
   };
-  
-  const handleLanguageChange = (langCode: string, direction: Direction) => {
-    console.log(`Changing language to ${langCode} (${direction})`);
-    
-    try {
-      // Clear i18next cache first to ensure new translations are loaded
-      localStorage.removeItem('i18nextLng');
+
+  const handleLanguageChange = (language: string) => {
+    // Only change if actually different
+    if (language !== currentLang) {
+      i18n.changeLanguage(language);
       
-      // Change language
-      i18n.changeLanguage(langCode);
+      // Set document direction at the page level
+      document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
       
-      // Save to localStorage
-      localStorage.setItem('themisLanguage', langCode);
-      localStorage.setItem('i18nextLng', langCode);
-      
-      // Change direction
-      onDirectionChange(direction);
-      
-      // Update document direction
-      document.documentElement.dir = direction;
-      document.documentElement.lang = langCode;
-      
-      // Apply RTL/LTR class to body
-      const body = document.body;
-      if (direction === 'rtl') {
-        body.classList.add('rtl');
-        body.classList.remove('ltr');
-      } else {
-        body.classList.add('ltr');
-        body.classList.remove('rtl');
-      }
-      
-      // Close menu
-      handleClose();
-      
-      // Preserve auth state when changing language
-      if (auth.isAuthenticated && auth.user) {
-        // Save auth data to sessionStorage
-        const authState = {
-          isPreserved: true,
-          userId: auth.user.id,
-          username: auth.user.username,
-          token: auth.token,
-          user: auth.user
-        };
-        sessionStorage.setItem('themis_preserve_auth', JSON.stringify(authState));
-      }
-      
-      // Refresh the page to ensure all translations are applied
-      window.location.reload();
-      
-    } catch (error) {
-      console.error('Error changing language:', error);
+      // Store preference
+      localStorage.setItem('pmsLanguage', language);
     }
+    handleClose();
   };
 
+  // Determine which language to show in the menu
+  const getOppositeLanguage = () => {
+    return currentLang === 'ar' ? 'en' : 'ar';
+  };
+
+  const oppositeLanguage = getOppositeLanguage();
+  const oppositeLanguageName = oppositeLanguage === 'ar' ? 'العربية' : 'English';
+  const currentLanguageName = currentLang === 'ar' ? 'العربية' : 'English';
+
   return (
-    <>
-      <IconButton
-        color="inherit"
-        aria-label="change language"
-        aria-controls="language-menu"
-        aria-haspopup="true"
-        onClick={handleClick}
-        size="small"
-        sx={{ ml: 1 }}
-      >
-        <LanguageIcon />
-      </IconButton>
+    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+      <Tooltip title={t('common.switchLanguage')} arrow>
+        <IconButton
+          onClick={handleClick}
+          color="inherit"
+          aria-controls={open ? 'language-menu' : undefined}
+          aria-haspopup="true"
+          aria-expanded={open ? 'true' : undefined}
+          sx={{
+            transition: 'all 0.2s ease-in-out',
+            '&:hover': {
+              transform: 'scale(1.1)',
+            },
+          }}
+        >
+          <LanguageIcon />
+        </IconButton>
+      </Tooltip>
       <Menu
         id="language-menu"
         anchorEl={anchorEl}
-        keepMounted
-        open={Boolean(anchorEl)}
+        open={open}
         onClose={handleClose}
+        MenuListProps={{
+          'aria-labelledby': 'language-button',
+        }}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
       >
-        {languages.map((lang) => (
-          <MenuItem 
-            key={lang.code} 
-            onClick={() => handleLanguageChange(lang.code, lang.dir as Direction)}
-            selected={currentLanguage === lang.code}
-          >
-            <ListItemText>{lang.name}</ListItemText>
-          </MenuItem>
-        ))}
+        <MenuItem 
+          selected={currentLang === 'en'} 
+          onClick={() => handleLanguageChange('en')}
+        >
+          English
+        </MenuItem>
+        <MenuItem 
+          selected={currentLang === 'ar'} 
+          onClick={() => handleLanguageChange('ar')}
+          sx={{ 
+            fontFamily: 'Cairo, sans-serif',
+            fontWeight: currentLang === 'ar' ? 700 : 400
+          }}
+        >
+          العربية
+        </MenuItem>
       </Menu>
-    </>
+    </Box>
   );
 };
 

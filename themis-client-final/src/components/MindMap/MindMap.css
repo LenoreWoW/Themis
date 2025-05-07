@@ -4,9 +4,11 @@
   --mind-map-font-size-medium: 0.9em;
   --mind-map-font-size-small: 0.85em;
   --mind-map-node-project-color: #3f51b5;
-  --mind-map-node-category-color: #7986cb;
-  --mind-map-node-milestone-color: #e91e63;
-  --mind-map-node-task-color: #90caf9;
+  --mind-map-node-goal-color: #e91e63;
+  --mind-map-node-strategic-goal-color: #4caf50;
+  --mind-map-node-annual-goal-color: #ff9800;
+  --mind-map-node-depends-on-color: #ff5722;
+  --mind-map-node-dependent-color: #2196f3;
 }
 
 .mind-map-container {
@@ -14,6 +16,7 @@
   height: 100%;
   width: 100%;
   overflow: hidden;
+  user-select: none;
 }
 
 .mind-map-node {
@@ -58,59 +61,96 @@
   stroke-opacity: 0.8;
 }
 
-.mind-map-link-milestone {
-  stroke: var(--mind-map-node-milestone-color);
-  stroke-dasharray: 5;
-}
-
-.mind-map-link-project {
-  stroke-width: 2px;
-  stroke: var(--mind-map-node-project-color);
-}
-
-/* Node types */
+/* Node types specific styling */
 .project circle {
-  stroke: #303f9f;
+  stroke: var(--mind-map-node-project-color);
   stroke-width: 2px;
   filter: drop-shadow(0px 2px 3px rgba(0, 0, 0, 0.2));
 }
 
-.category circle {
-  stroke: #5c6bc0;
+.strategic-goal circle {
+  stroke: var(--mind-map-node-strategic-goal-color);
   stroke-width: 1.5px;
   filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1));
 }
 
-.milestone circle {
-  stroke: #c2185b;
+.annual-goal circle {
+  stroke: var(--mind-map-node-annual-goal-color);
   stroke-width: 1.5px;
   filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1));
 }
 
-.info circle,
-.task circle {
-  stroke: #64b5f6;
-  stroke-width: 1px;
+.depends-on circle {
+  stroke: var(--mind-map-node-depends-on-color);
+  stroke-width: 1.5px;
   filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1));
 }
 
-/* Animation for node transitions */
-.rd3t-node {
-  transition: transform 0.3s ease-out;
+.dependent circle {
+  stroke: var(--mind-map-node-dependent-color);
+  stroke-width: 1.5px;
+  filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.1));
 }
 
-/* Make the links smooth */
-.rd3t-link {
-  transition: stroke-dashoffset 0.3s ease-out;
+/* Link styling based on relationship type */
+.mind-map-container .rd3t-link.project-to-project {
+  stroke: var(--mind-map-node-project-color);
+  stroke-width: 1.75px;
 }
 
-/* Action button styling */
-.action-button-group circle {
-  filter: drop-shadow(0px 1px 1px rgba(0, 0, 0, 0.1));
-  transition: all 0.2s ease;
+.mind-map-container .rd3t-link.project-to-goal {
+  stroke: var(--mind-map-node-goal-color);
+  stroke-width: 1.75px;
+  stroke-dasharray: 5;
 }
 
-.action-button-group:hover circle {
-  transform: scale(1.1);
-  fill: #f0f0f0;
+.mind-map-container .rd3t-link.goal-to-project {
+  stroke: var(--mind-map-node-strategic-goal-color);
+  stroke-width: 1.75px;
+  stroke-dasharray: 3;
+}
+
+.mind-map-container .rd3t-link.depends-on {
+  stroke: var(--mind-map-node-depends-on-color);
+  stroke-width: 1.75px;
+  stroke-dasharray: 2;
+}
+
+.mind-map-container .rd3t-link.dependent {
+  stroke: var(--mind-map-node-dependent-color);
+  stroke-width: 1.75px;
+}
+
+/* Toggle button styling */
+.toggle-button {
+  cursor: pointer;
+  opacity: 0.8;
+}
+
+.toggle-button:hover {
+  opacity: 1;
+  stroke-width: 2px;
+}
+
+.toggle-icon text {
+  font-weight: bold;
+}
+
+/* Dark mode adjustments */
+@media (prefers-color-scheme: dark) {
+  .mind-map-container {
+    background-color: #1e1e1e;
+  }
+  
+  .mind-map-link {
+    stroke: #666;
+  }
+  
+  .node-label {
+    fill: #f0f0f0;
+  }
+  
+  .node-attributes {
+    fill: #aaa;
+  }
 } 

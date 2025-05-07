@@ -13,9 +13,14 @@ export enum UserRole {
 
 // Add approval status enum
 export enum ApprovalStatus {
-  PENDING = 'PENDING',
+  DRAFT = 'DRAFT',
+  PENDING_SUB_PMO = 'PENDING_SUB_PMO',
+  APPROVED_BY_SUB_PMO = 'APPROVED_BY_SUB_PMO',
+  REJECTED_BY_SUB_PMO = 'REJECTED_BY_SUB_PMO',
+  PENDING_MAIN_PMO = 'PENDING_MAIN_PMO',
   APPROVED = 'APPROVED',
-  REJECTED = 'REJECTED'
+  REJECTED = 'REJECTED',
+  CHANGES_REQUESTED = 'CHANGES_REQUESTED'
 }
 
 // Helper functions for role-based permissions
@@ -199,6 +204,7 @@ export interface Task {
   dueDate: string;
   projectId: string;
   assignee?: User;
+  assignedBy?: User;
   createdAt: string;
   updatedAt: string;
   comments?: TaskComment[];
@@ -287,6 +293,8 @@ export interface WeeklyUpdate {
   weekNumber: number;
   weekYear: number;
   attachments: Attachment[];
+  submittedBy: User;
+  submittedAt: string;
   author: {
     id: string;
     firstName: string;
@@ -351,31 +359,6 @@ export interface FinancialEntry {
   createdBy: User;
   createdAt: string;
   updatedAt: string;
-}
-
-// Notification types
-export enum NotificationType {
-  TASK_ASSIGNED = 'TASK_ASSIGNED',
-  TASK_DUE_SOON = 'TASK_DUE_SOON',
-  TASK_OVERDUE = 'TASK_OVERDUE',
-  UPDATE_DUE = 'UPDATE_DUE',
-  UPDATE_APPROVED = 'UPDATE_APPROVED',
-  UPDATE_REJECTED = 'UPDATE_REJECTED',
-  CHANGE_REQUEST_APPROVED = 'CHANGE_REQUEST_APPROVED',
-  CHANGE_REQUEST_REJECTED = 'CHANGE_REQUEST_REJECTED',
-  APPROVAL_NEEDED = 'APPROVAL_NEEDED'
-}
-
-export interface Notification {
-  id: string;
-  userId: string;
-  type: NotificationType;
-  title: string;
-  message: string;
-  relatedItemId?: string;
-  relatedItemType?: string;
-  isRead: boolean;
-  createdAt: string;
 }
 
 // Audit log types
@@ -475,7 +458,7 @@ export interface Assignment {
   status: AssignmentStatus;
   priority: TaskPriority;
   assignedBy: User;
-  assignedTo: User;
+  assignee: User;
   dueDate: string;
   createdAt: string;
   updatedAt: string;
@@ -546,9 +529,15 @@ export interface Goal {
   endDate: string;
   assignedTo: string;
   linkedProjects: ProjectWeight[];
+  linkedGoals?: GoalWeight[];
   isProgressAutoCalculated: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface GoalWeight {
+  goalId: string;
+  weight: number; // Weight as a percentage (0-100)
 }
 
 // Define an interface for weighted project links

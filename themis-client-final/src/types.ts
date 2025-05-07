@@ -33,6 +33,17 @@ export enum UserRole {
   PENDING = 'PENDING'
 }
 
+export enum UserRequestStatus {
+  DRAFT = 'DRAFT',
+  SUBMITTED = 'SUBMITTED',
+  DEPARTMENT_APPROVED = 'DEPARTMENT_APPROVED',
+  SUB_PMO_APPROVED = 'SUB_PMO_APPROVED',
+  MAIN_PMO_APPROVED = 'MAIN_PMO_APPROVED',
+  REJECTED = 'REJECTED',
+  APPROVED = 'APPROVED',
+  CANCELED = 'CANCELED'
+}
+
 export enum RiskStatus {
   IDENTIFIED = 'IDENTIFIED',
   ANALYZING = 'ANALYZING',
@@ -160,6 +171,7 @@ export interface Task {
   dueDate: string;
   projectId: string;
   assignee?: User;
+  assignedBy?: User;
   project: Project;
   isMilestone?: boolean;
   createdBy?: User;
@@ -287,6 +299,7 @@ export interface Assignment {
   description: string;
   status: AssignmentStatus;
   priority: TaskPriority;
+  startDate: string;
   dueDate: string;
   assignedTo: User;
   assignedBy: User;
@@ -335,6 +348,36 @@ export interface AuthResponse {
   departmentId?: string;
   success?: boolean;
   message?: string;
+}
+
+export interface UserRequest {
+  id: string;
+  fullName: string;
+  employeeId: string;
+  departmentId: string;
+  departmentName: string;
+  role: UserRole;
+  username: string;
+  tempPassword?: string;
+  profilePhotoUrl?: string;
+  notes?: string;
+  status: UserRequestStatus;
+  createdBy: string;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  approvalHistory: UserRequestApproval[];
+}
+
+export interface UserRequestApproval {
+  id: string;
+  userRequestId: string;
+  approverUserId: string;
+  approverName: string;
+  approverRole: UserRole;
+  status: 'APPROVED' | 'REJECTED';
+  comments?: string;
+  createdAt: string;
 }
 
 // Helper functions for role-based permissions

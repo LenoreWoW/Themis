@@ -14,7 +14,7 @@
     console.log(`Found ${allKeys.length} total items in localStorage`);
     
     // 2. Keep track of what will be preserved (language settings, etc.)
-    const preserveKeys = ['themisLanguage'];
+    const preserveKeys = ['pmsLanguage'];
     const preservedData = {};
     
     // 3. Save any data we want to preserve

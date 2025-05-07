@@ -1,5 +1,7 @@
 import LocalStorageService from '../services/LocalStorageService';
 import { ChangeRequestType } from '../types/change-request';
+import { mockDepartments, mockUsers } from '../services/mockData';
+import { resetProjectsData } from './resetProjectsData';
 
 /**
  * Clears all test data from localStorage
@@ -51,52 +53,49 @@ export const isAppClean = (): boolean => {
 
 /**
  * Clean up localStorage items to remove mock data
+ * We now only keep users and departments as mock data
  */
 export const cleanupMockData = () => {
+  console.log('Cleaning up mock data...');
   try {
-    // APPROACH CHANGED: Instead of filtering, completely reset the changeRequests data
-    console.log('Completely resetting change requests data...');
+    // Reset localStorage data
     localStorage.removeItem('changeRequests');
     localStorage.setItem('changeRequests', JSON.stringify([]));
-    console.log('Change requests data has been reset to empty array');
     
-    // Also clean up potential mock audit logs
-    const auditLogsData = localStorage.getItem('auditLogs') || '[]';
-    let auditLogs = [];
+    // Reset projects to empty array (no mock projects)
+    resetProjectsData();
     
-    try {
-      auditLogs = JSON.parse(auditLogsData);
-      
-      // Filter out mock audit logs
-      const filteredLogs = auditLogs.filter((log: any) => {
-        return (
-          log && 
-          typeof log === 'object' && 
-          log.projectId && 
-          log.action &&
-          log.entityType
-        );
-      });
-      
-      // Save filtered logs back to localStorage
-      localStorage.setItem('auditLogs', JSON.stringify(filteredLogs));
-      console.log(`Removed ${auditLogs.length - filteredLogs.length} invalid audit logs`);
-    } catch (e) {
-      console.error('Error parsing audit logs:', e);
-      // Reset audit logs as well
-      localStorage.setItem('auditLogs', JSON.stringify([]));
-    }
+    // Also clear the 'projects' key which is separate from 'themis_projects'
+    localStorage.removeItem('projects');
+    localStorage.setItem('projects', JSON.stringify([]));
     
-    return {
-      success: true,
-      message: 'Mock data has been cleaned up'
-    };
+    // Clean up other mock data types
+    localStorage.removeItem('themis_tasks');
+    localStorage.removeItem('themis_meetings');
+    localStorage.removeItem('themis_risks');
+    localStorage.removeItem('themis_issues');
+    
+    console.log('All mock data except users and departments has been removed');
   } catch (error) {
-    console.error('Error cleaning up mock data:', error);
-    return {
-      success: false,
-      message: 'Failed to clean up mock data'
-    };
+    console.error('Error during cleanup:', error);
+  }
+};
+
+/**
+ * This function used to fix project manager assignments,
+ * but now we don't have mock projects at all
+ */
+export const cleanupProjects = () => {
+  try {
+    // Get projects from localStorage
+    const storedProjects = localStorage.getItem('themis_projects');
+    if (!storedProjects) return;
+    
+    // Just reset to empty array since we don't want mock projects
+    localStorage.setItem('themis_projects', JSON.stringify([]));
+    console.log('Removed all mock projects from localStorage');
+  } catch (error) {
+    console.error('Error cleaning up projects:', error);
   }
 };
 

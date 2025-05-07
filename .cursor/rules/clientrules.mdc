@@ -1,0 +1,39 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+never add mock data to themis-final-client 
+The only mock data that should be there is users and departments for testing purposes
+
+ 4. Key Stakeholders
+Project Managers (PMs): Front-line project owners who manage projects, updates, and scope changes.
+Sub PMOs: Department or division PMOs responsible for reviewing and approving project submissions.
+Main PMO: Enterprise-level PMO responsible for final project approvals and overall PMO governance.
+Department Directors: Executive viewers with read-only access to their department’s project portfolio.
+Higher Management (Executives): Top management requiring full visibility into all projects for strategic oversight.
+5. User Roles and Responsibilities
+Project Managers (PMs):
+Responsible for registering and managing project details.
+Submit weekly updates and request project changes.
+Limited edit rights for their own projects.
+Sub PMOs:
+Review and approve new project proposals and weekly status updates.
+Ensure compliance with project management standards.
+Approve or reject changes submitted by PMs under their domain.
+Main PMO:
+Review project data from Sub PMOs for alignment with corporate strategy.
+Final approval for new projects and changes.
+Full control over system configuration and project settings.
+Department Directors:
+View-only access to projects within their department’s portfolio.
+Access to status reports and key performance indicators (KPIs).
+Higher Management (Executives):
+Full visibility of all projects across the organization.
+Access dashboards and reports for high-level insights and decision-making support.
+6. Access Control and Permissions
+The system will enforce role-based permissions to ensure that each user can only perform actions appropriate to their role:
+Project Managers can create and edit their projects, create requests but cannot approve their own submissions.
+Sub PMOs can approve or reject project proposals and updates within their department.
+Main PMO has final authority to approve or reject projects and changes across the organization.
+Department Directors and Executives will have read-only access to view projects and reports but cannot make edits or approvals.

@@ -1,4 +1,4 @@
-import i18n from '../i18n'; // Import i18n directly instead of using useTranslation hook
+import i18n from '../i18n/index'; // Import i18n directly instead of using useTranslation hook
 
 export enum AuditAction {
   CREATE = 'CREATE',

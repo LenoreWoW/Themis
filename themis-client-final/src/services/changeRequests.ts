@@ -1,5 +1,6 @@
 import { ApiResponse } from '../types';
-import { ChangeRequest, ChangeRequestType, ChangeRequestSubmitData } from '../types/change-request';
+import { ChangeRequest, ChangeRequestType, ChangeRequestStatus, ChangeRequestSubmitData } from '../types/change-request';
+import { v4 as uuidv4 } from 'uuid';
 
 // Immediate self-executing function to clean up localStorage on application load
 (function cleanupChangeRequests() {
@@ -21,7 +22,7 @@ const submitChangeRequest = async (data: ChangeRequestSubmitData, token: string)
   return new Promise((resolve) => {
     setTimeout(() => {
       const mockResponse: ChangeRequest = {
-        id: Math.random().toString(36).substring(2, 15),
+        id: uuidv4(),
         projectId: data.projectId,
         type: data.type,
         description: data.description,
@@ -32,14 +33,17 @@ const submitChangeRequest = async (data: ChangeRequestSubmitData, token: string)
         newManager: data.newManager,
         documentsAffected: data.documentsAffected,
         requestedBy: {
-          id: '1',
-          firstName: 'John',
-          lastName: 'Doe'
+          id: "user123",
+          firstName: "John",
+          lastName: "Doe"
         },
         requestedAt: new Date().toISOString(),
-        status: 'PENDING',
-        approvalLevel: data.approvalLevel || 'SUB_PMO',
-        finalApproval: false
+        status: ChangeRequestStatus.PENDING_SUB_PMO,
+        department: {
+          id: "dept123",
+          name: "IT Department"
+        },
+        implemented: false
       };
       
       // Store the new change request in localStorage

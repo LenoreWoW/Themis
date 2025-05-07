@@ -1,6 +1,6 @@
 export const enTranslations = {
   app: {
-    title: "Themis Project Management System",
+    title: "Project Management System",
     description: "A comprehensive project management solution"
   },
   common: {
@@ -81,11 +81,11 @@ export const enTranslations = {
     noAccount: "Don't have an account?",
     signup: "Sign up",
     enterActiveDirectoryId: "Please enter your Active Directory ID",
-    authFailed: "Authentication failed. Please try again.",
-    welcomeToThemis: "Welcome to Themis",
-    centralizedWorkspace: "Your centralized workspace for project management and team collaboration",
+    authFailed: "Authentication failed. Please check your Active Directory ID or contact your administrator.",
+    welcome: "Welcome to Project Management System",
+    centralizedWorkspace: "The centralized workspace for all your project management needs",
     projectManagement: "Project Management",
-    loginToThemis: "Sign In",
+    loginTitle: "Log in to Project Management System",
     signInWithAD: "Use your Active Directory ID to access your account",
     testCredentials: "Test Credentials",
     useTheseAccounts: "Use any of these accounts to test different role workflows:",

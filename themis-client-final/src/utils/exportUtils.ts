@@ -42,7 +42,7 @@ const addCompanyHeader = (doc: ExtendedJsPDF, title: string): void => {
   // Add company info
   doc.setFontSize(10);
   doc.setTextColor(100, 100, 100);
-  doc.text('THEMIS Project Management System', 14, 20);
+  doc.text('Project Management System', 14, 20);
   
   // Add title
   doc.setFontSize(16);

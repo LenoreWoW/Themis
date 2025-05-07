@@ -117,7 +117,7 @@ function Login({ onLoginSuccess }) {
         >
           <Box sx={{ mb: 3, textAlign: 'center' }}>
             <Typography variant="h4" component="h1" gutterBottom>
-              {t('auth.loginToThemis')}
+              {t('auth.loginTitle')}
             </Typography>
             <Typography variant="body2" color="text.secondary">
               {t('auth.centralizedWorkspace')}

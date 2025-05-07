@@ -1,89 +1,187 @@
 import { AuthResponse, ApiResponse, User } from '../types';
 import axios from 'axios';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, AUTH0_CONFIG } from '../config';
+import auth0 from 'auth0-js';
 
-// Helper function to make api requests without importing from api.ts
-const makeRequest = async <T>(endpoint: string, method = 'GET', data?: any, token?: string): Promise<ApiResponse<T>> => {
+// Helper function to make API requests
+const makeRequest = async <T>(
+  endpoint: string,
+  method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET',
+  data?: any,
+  token?: string
+): Promise<T> => {
+  const url = `${API_BASE_URL}${endpoint}`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
   try {
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json'
-    };
-    
-    if (token) {
-      headers['Authorization'] = `Bearer ${token}`;
-    }
-    
-    const config = {
+    const response = await axios({
       method,
-      url: `${API_BASE_URL}${endpoint}`,
+      url,
+      data,
       headers,
-      data: method !== 'GET' ? data : undefined,
-      params: method === 'GET' && data ? data : undefined
-    };
-    
-    const response = await axios(config);
-    
-    return {
-      success: true,
-      data: response.data
-    };
+    });
+
+    return response.data as T;
   } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
+    if (axios.isAxiosError(error) && error.response) {
+      throw new Error(error.response.data.message || 'An error occurred');
+    }
+    throw error;
   }
 };
 
-/**
- * Log in a user
- * @param email - User email
- * @param password - User password
- * @returns Promise<ApiResponse<AuthResponse>>
- */
-const login = async (email: string, password: string): Promise<ApiResponse<AuthResponse>> => {
-  return makeRequest<AuthResponse>('/auth/login', 'POST', { email, password });
+// Initialize Auth0 WebAuth client
+const auth0Client = new auth0.WebAuth({
+  domain: AUTH0_CONFIG.DOMAIN,
+  clientID: AUTH0_CONFIG.CLIENT_ID,
+  redirectUri: AUTH0_CONFIG.REDIRECT_URI,
+  audience: AUTH0_CONFIG.AUDIENCE,
+  responseType: 'token id_token',
+  scope: AUTH0_CONFIG.SCOPE
+});
+
+// Login function using Auth0
+export const loginWithAuth0 = (): void => {
+  auth0Client.authorize();
 };
 
-/**
- * Register a new user
- * @param userData - User registration data
- * @returns Promise<ApiResponse<User>>
- */
-const register = async (userData: Partial<User>): Promise<ApiResponse<User>> => {
+// Process authentication result from Auth0 redirect
+export const handleAuth0Authentication = (): Promise<AuthResponse> => {
+  return new Promise((resolve, reject) => {
+    auth0Client.parseHash((err, authResult) => {
+      if (err) {
+        reject(new Error(err.error_description || 'Authentication failed'));
+        return;
+      }
+      
+      if (!authResult || !authResult.accessToken || !authResult.idToken) {
+        reject(new Error('Authentication failed'));
+        return;
+      }
+      
+      // Get user info
+      auth0Client.client.userInfo(authResult.accessToken, async (err, user) => {
+        if (err) {
+          reject(new Error('Failed to get user information'));
+          return;
+        }
+        
+        try {
+          // Send auth0 token to backend to create/login user
+          const response = await makeRequest<AuthResponse>(
+            '/auth/auth0',
+            'POST',
+            {
+              auth0Id: user.sub,
+              email: user.email,
+              name: user.name,
+              picture: user.picture
+            }
+          );
+          
+          // Store tokens
+          localStorage.setItem('access_token', authResult.accessToken);
+          localStorage.setItem('id_token', authResult.idToken);
+          localStorage.setItem('expires_at', String(authResult.expiresIn * 1000 + new Date().getTime()));
+          
+          resolve(response);
+        } catch (error) {
+          reject(error);
+        }
+      });
+    });
+  });
+};
+
+// Check if user is authenticated with Auth0
+export const isAuthenticated = (): boolean => {
+  const expiresAt = JSON.parse(localStorage.getItem('expires_at') || '0');
+  return new Date().getTime() < expiresAt;
+};
+
+// Logout from Auth0
+export const logoutAuth0 = (): void => {
+  // Clear local storage
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('id_token');
+  localStorage.removeItem('expires_at');
+  
+  // Redirect to Auth0 logout page
+  auth0Client.logout({
+    returnTo: window.location.origin
+  });
+};
+
+// Legacy login function (will be deprecated once Auth0 is fully integrated)
+export const login = async (username: string, password: string): Promise<AuthResponse> => {
+  try {
+    // Try LDAP authentication first
+    console.log('Attempting LDAP authentication for:', username);
+    return await makeRequest<AuthResponse>('/auth/ldap/login', 'POST', { username, password });
+  } catch (error) {
+    console.log('LDAP authentication failed, falling back to regular auth');
+    
+    // If LDAP authentication fails, try regular authentication
+    try {
+      return await makeRequest<AuthResponse>('/auth/login', 'POST', { email: username, password });
+    } catch (secondError) {
+      console.error('Both LDAP and regular authentication failed');
+      throw new Error('Authentication failed. Please check your credentials and try again.');
+    }
+  }
+};
+
+// Legacy registration function (will be deprecated once Auth0 is fully integrated)
+export const register = async (userData: Partial<User>): Promise<User> => {
   return makeRequest<User>('/auth/register', 'POST', userData);
 };
 
-/**
- * Log out the current user
- * @returns Promise<ApiResponse<void>>
- */
-const logout = async (token?: string): Promise<ApiResponse<void>> => {
-  return makeRequest<void>('/auth/logout', 'POST', null, token);
+// Logout (legacy, will be deprecated)
+export const logout = async (token?: string): Promise<void> => {
+  if (token) {
+    await makeRequest<void>('/auth/logout', 'POST', {}, token);
+  }
 };
 
-/**
- * Refresh the authentication token
- * @param refreshToken - The refresh token
- * @returns Promise<ApiResponse<{ token: string }>>
- */
-const refreshToken = async (refreshToken: string): Promise<ApiResponse<{ token: string }>> => {
-  return makeRequest<{ token: string }>('/auth/refresh', 'POST', { refreshToken });
+// Function to refresh token
+export const refreshToken = async (refreshToken: string): Promise<AuthResponse> => {
+  return makeRequest<AuthResponse>('/auth/refresh-token', 'POST', { refreshToken });
 };
 
-/**
- * Reset a user's password
- * @param email - User email
- * @returns Promise<ApiResponse<{ message: string }>>
- */
-const resetPassword = async (email: string): Promise<ApiResponse<{ message: string }>> => {
-  return makeRequest<{ message: string }>('/auth/reset-password', 'POST', { email });
+// Function to send password reset email
+export const resetPassword = async (email: string): Promise<void> => {
+  return makeRequest<void>('/auth/reset-password', 'POST', { email });
 };
 
-export default {
-  login,
-  register,
-  logout,
-  refreshToken,
-  resetPassword
-}; 
+// User request management functions
+export const createUserRequest = async (userRequest: any, token: string): Promise<any> => {
+  return makeRequest<any>('/auth/user-requests', 'POST', userRequest, token);
+};
+
+export const getUserRequests = async (token: string): Promise<any[]> => {
+  return makeRequest<any[]>('/auth/user-requests', 'GET', undefined, token);
+};
+
+export const getUserRequestById = async (id: string, token: string): Promise<any> => {
+  return makeRequest<any>(`/auth/user-requests/${id}`, 'GET', undefined, token);
+};
+
+export const updateUserRequest = async (id: string, userRequest: any, token: string): Promise<any> => {
+  return makeRequest<any>(`/auth/user-requests/${id}`, 'PUT', userRequest, token);
+};
+
+export const approveUserRequest = async (id: string, comments: string, token: string): Promise<any> => {
+  return makeRequest<any>(`/auth/user-requests/${id}/approve`, 'POST', { comments }, token);
+};
+
+export const rejectUserRequest = async (id: string, comments: string, token: string): Promise<any> => {
+  return makeRequest<any>(`/auth/user-requests/${id}/reject`, 'POST', { comments }, token);
+};
+
+export { makeRequest }; 

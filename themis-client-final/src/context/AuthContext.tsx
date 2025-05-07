@@ -4,6 +4,7 @@ import axios from 'axios';
 import { API_BASE_URL, AUTH_CONFIG } from '../config';
 import { User, UserRole, AuthResponse } from '../types';
 import { jwtDecode } from 'jwt-decode';
+import { login as loginService } from '../services/auth';
 
 // Use the token storage key from config
 const TOKEN_STORAGE_KEY = AUTH_CONFIG.TOKEN_STORAGE_KEY;
@@ -30,7 +31,7 @@ interface AuthContextType {
   isMainPMO: boolean;
   isSubPMO: boolean;
   hasAccess: (roles: UserRole[]) => boolean;
-  login: (adIdentifier: string, password?: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
   logout: () => void;
 }
 
@@ -110,7 +111,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
           if (preservedAuth && preservedAuth.isPreserved) {
             console.log('Found preserved auth state, restoring login...');
             // Restore the user's login
-            login(preservedAuth.username);
+            login(preservedAuth.username, '');
             // Remove the preserved state to prevent reuse
             sessionStorage.removeItem(AUTH_PRESERVE_KEY);
             return;
@@ -132,74 +133,175 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkTokenAndSetUser();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const login = async (adIdentifier: string, password: string = '') => {
+  const login = async (username: string, password: string = '') => {
     setIsLoading(true);
-    console.log('Login attempt with username:', adIdentifier);
+    console.log('Login attempt with username:', username);
     
     try {
-      // Map the email address to the appropriate role
-      let userRole = UserRole.ADMIN; // Default
-      
-      // Map test accounts to their respective roles
-      if (adIdentifier === 'sarah.johnson@acme.com') {
-        userRole = UserRole.PROJECT_MANAGER;
-      } else if (adIdentifier === 'emma.garcia@acme.com') {
-        userRole = UserRole.DEPARTMENT_DIRECTOR;
-      } else if (adIdentifier === 'robert.taylor@acme.com') {
-        userRole = UserRole.EXECUTIVE;
-      } else if (adIdentifier === 'david.wilson@acme.com') {
-        userRole = UserRole.MAIN_PMO;
-      } else if (adIdentifier === 'jessica.brown@acme.com') {
-        userRole = UserRole.SUB_PMO;
-      } else if (adIdentifier === 'michael.chen@acme.com') {
-        userRole = UserRole.DEVELOPER;
-      }
-      // john.smith@acme.com will remain as ADMIN (default)
-      
-      // For pre-AD integration: create a mock successful login response
-      const mockResponse: AuthResponse = {
-        userId: '1',
-        username: adIdentifier,
-        role: userRole,
-        token: 'mock-jwt-token-' + Date.now(), // Add timestamp to make it unique
-        success: true,
-        message: 'Login successful',
-        // Create a minimal user object to satisfy the interface requirement
-        user: {
-          id: '1',
-          username: adIdentifier,
-          firstName: adIdentifier.split('@')[0],
-          lastName: 'User',
-          email: adIdentifier,
-          role: userRole,
-          department: {
-            id: '',
-            name: 'Default Department',
-            description: 'Default Department Description',
+      // Special case for "admin" user - no password required
+      if (username.toLowerCase() === 'admin') {
+        // Admin user bypasses password validation
+        console.log('Admin login - bypassing password validation');
+        // Create admin mock response
+        const mockResponse: AuthResponse = {
+          userId: 'admin-1',
+          username: 'admin',
+          role: UserRole.ADMIN,
+          token: 'mock-jwt-token-admin-' + Date.now(),
+          success: true,
+          message: 'Login successful',
+          user: {
+            id: 'admin-1',
+            username: 'admin',
+            firstName: 'Admin',
+            lastName: 'User',
+            email: 'admin@acme.com',
+            role: UserRole.ADMIN,
+            department: {
+              id: 'dept-1',
+              name: 'IT Department',
+              description: 'Information Technology Department',
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
+            isActive: true,
             createdAt: new Date().toISOString(),
             updatedAt: new Date().toISOString()
-          },
-          isActive: true,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          }
+        };
+        
+        console.log('Setting admin user');
+        setUser(mockResponse.user);
+        setToken(mockResponse.token);
+        localStorage.setItem(TOKEN_STORAGE_KEY, mockResponse.token);
+        setIsLoading(false);
+        return;
+      }
+      
+      // Check for test users - no need for API calls
+      const isTestUser = username === 'john.smith@acme.com' ||
+                        username === 'sarah.johnson@acme.com' ||
+                        username === 'emma.garcia@acme.com' ||
+                        username === 'robert.taylor@acme.com' ||
+                        username === 'david.wilson@acme.com' ||
+                        username === 'jessica.brown@acme.com' ||
+                        username === 'michael.chen@acme.com';
+                        
+      if (isTestUser) {
+        console.log('Using test user authentication for:', username);
+        // For development mode or test accounts
+        // Map the email address to the appropriate role
+        let userRole = UserRole.ADMIN; // Default
+        
+        // Map test accounts to their respective roles
+        if (username === 'sarah.johnson@acme.com') {
+          userRole = UserRole.PROJECT_MANAGER;
+        } else if (username === 'emma.garcia@acme.com') {
+          userRole = UserRole.DEPARTMENT_DIRECTOR;
+        } else if (username === 'robert.taylor@acme.com') {
+          userRole = UserRole.EXECUTIVE;
+        } else if (username === 'david.wilson@acme.com') {
+          userRole = UserRole.MAIN_PMO;
+        } else if (username === 'jessica.brown@acme.com') {
+          userRole = UserRole.SUB_PMO;
+        } else if (username === 'michael.chen@acme.com') {
+          userRole = UserRole.DEVELOPER;
         }
-      };
+        // john.smith@acme.com will remain as ADMIN (default)
+        
+        // Set department details based on user
+        let departmentId = 'dept-1';
+        let departmentName = 'IT Department';
+        let departmentDescription = 'Information Technology Department';
+        
+        // Assign departments to users
+        if (username === 'sarah.johnson@acme.com' || username === 'jessica.brown@acme.com') {
+          // Project Manager and Sub PMO belong to the same department
+          departmentId = 'dept-2';
+          departmentName = 'Digital Transformation';
+          departmentDescription = 'Digital Transformation and Innovation Department';
+        } else if (username === 'emma.garcia@acme.com') {
+          departmentId = 'dept-3';
+          departmentName = 'Finance Department';
+          departmentDescription = 'Finance and Accounting Department';
+        } else if (username === 'michael.chen@acme.com') {
+          departmentId = 'dept-4';
+          departmentName = 'Development Department';
+          departmentDescription = 'Software Development Department';
+        }
+        
+        // For pre-AD integration: create a mock successful login response
+        const mockResponse: AuthResponse = {
+          userId: '1',
+          username: username,
+          role: userRole,
+          token: 'mock-jwt-token-' + Date.now(), // Add timestamp to make it unique
+          success: true,
+          message: 'Login successful',
+          // Create a minimal user object to satisfy the interface requirement
+          user: {
+            id: '1',
+            username: username,
+            firstName: username.split('@')[0].split('.').join(' '),
+            lastName: '',
+            email: username,
+            role: userRole,
+            department: {
+              id: departmentId,
+              name: departmentName,
+              description: departmentDescription,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString()
+            },
+            isActive: true,
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        };
+        
+        console.log('Setting test user:', mockResponse.user);
+        setUser(mockResponse.user);
+        console.log('Setting token:', mockResponse.token);
+        setToken(mockResponse.token);
+        
+        // Store token in localStorage
+        localStorage.setItem(TOKEN_STORAGE_KEY, mockResponse.token);
+        setIsLoading(false);
+        return;
+      }
       
-      console.log('Setting user:', mockResponse.user);
-      setUser(mockResponse.user);
-      console.log('Setting token:', mockResponse.token);
-      setToken(mockResponse.token);
-      
-      // Store token in localStorage
-      localStorage.setItem(TOKEN_STORAGE_KEY, mockResponse.token);
-      
-      // Navigate to dashboard
-      navigate('/');
+      // For regular production authentication with non-empty password
+      if (password) {
+        // Production environment: Use the login service to authenticate
+        try {
+          console.log('Attempting production login with service');
+          const response = await loginService(username, password);
+          
+          console.log('Setting user:', response.user);
+          setUser(response.user);
+          console.log('Setting token:', response.token);
+          setToken(response.token);
+          
+          // Store token in localStorage
+          localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
+          
+          setIsLoading(false);
+          return;
+        } catch (error) {
+          console.error('Authentication error:', error);
+          setIsLoading(false);
+          throw error;
+        }
+      } else {
+        // If we got here, it means we have a non-test user with no password
+        console.error('Non-test user without password');
+        setIsLoading(false);
+        throw new Error('Password is required');
+      }
     } catch (error) {
       console.error('Login error details:', error);
-      throw error;
-    } finally {
       setIsLoading(false);
+      throw error;
     }
   };
 
@@ -292,8 +394,13 @@ export enum ApprovalStatus {
   MAIN_PMO_REVIEW = 'MAIN_PMO_REVIEW',
   MAIN_PMO_APPROVED = 'MAIN_PMO_APPROVED',
   APPROVED = 'APPROVED',
+  PLANNING = 'PLANNING',
   REJECTED = 'REJECTED',
-  CHANGES_REQUESTED = 'CHANGES_REQUESTED'
+  CHANGES_REQUESTED = 'CHANGES_REQUESTED',
+  PENDING_SUB_PMO = 'PENDING_SUB_PMO',
+  APPROVED_BY_SUB_PMO = 'APPROVED_BY_SUB_PMO',
+  REJECTED_BY_SUB_PMO = 'REJECTED_BY_SUB_PMO',
+  PENDING_MAIN_PMO = 'PENDING_MAIN_PMO'
 }
 
 // Define permission functions
@@ -326,7 +433,7 @@ export const canEditProjects = (userRole: UserRole | string | undefined, isOwnPr
   return false;
 };
 
-export const canApproveProjects = (userRole: UserRole | string | undefined, isOwnProject: boolean): boolean => {
+export const canApproveProjects = (userRole: UserRole | string | undefined, isOwnProject: boolean = false): boolean => {
   if (!userRole) return false;
   
   if (userRole === UserRole.ADMIN || userRole === UserRole.MAIN_PMO) {
@@ -335,6 +442,11 @@ export const canApproveProjects = (userRole: UserRole | string | undefined, isOw
   
   if (userRole === UserRole.SUB_PMO && !isOwnProject) {
     return true; // Sub PMOs can approve projects they don't own
+  }
+  
+  // Executives can view but not approve
+  if (userRole === UserRole.EXECUTIVE) {
+    return false;
   }
   
   return false;
@@ -378,27 +490,49 @@ export const canViewDepartmentProjects = (userRole: UserRole | string | undefine
 export const getNextApprovalStatus = (
   currentStatus: ApprovalStatus, 
   userRole: UserRole | string | undefined, 
-  action: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES'
+  action: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES' | 'SUBMIT',
+  isSameDepartment: boolean = false,
+  entityType: 'PROJECT' | 'CHANGE_REQUEST' = 'PROJECT'
 ): ApprovalStatus | null => {
   if (!userRole) return null;
   
+  // Executives can only view, not take actions
+  if (userRole === UserRole.EXECUTIVE) {
+    return null;
+  }
+  
   switch (currentStatus) {
     case ApprovalStatus.DRAFT:
-      return ApprovalStatus.SUBMITTED;
+      // When a PM submits a draft project or change request
+      return ApprovalStatus.PENDING_SUB_PMO;
       
-    case ApprovalStatus.SUBMITTED:
-      if (userRole === UserRole.SUB_PMO || userRole === UserRole.MAIN_PMO || userRole === UserRole.ADMIN) {
+    case ApprovalStatus.PENDING_SUB_PMO:
+      // Only Sub PMO, Main PMO, or Admin can take action on PENDING_SUB_PMO
+      if (userRole === UserRole.SUB_PMO && isSameDepartment) {
         if (action === 'APPROVE') {
-          return ApprovalStatus.SUB_PMO_APPROVED;
+          return ApprovalStatus.APPROVED_BY_SUB_PMO;
         } else if (action === 'REJECT') {
-          return ApprovalStatus.REJECTED;
+          return ApprovalStatus.REJECTED_BY_SUB_PMO;
+        } else if (action === 'REQUEST_CHANGES') {
+          return ApprovalStatus.CHANGES_REQUESTED;
+        }
+      } else if (userRole === UserRole.MAIN_PMO || userRole === UserRole.ADMIN) {
+        if (action === 'APPROVE') {
+          return ApprovalStatus.APPROVED_BY_SUB_PMO;
+        } else if (action === 'REJECT') {
+          return ApprovalStatus.REJECTED_BY_SUB_PMO;
         } else if (action === 'REQUEST_CHANGES') {
           return ApprovalStatus.CHANGES_REQUESTED;
         }
       }
       return null;
       
-    case ApprovalStatus.SUB_PMO_APPROVED:
+    case ApprovalStatus.APPROVED_BY_SUB_PMO:
+      // Once approved by Sub PMO, it goes to Main PMO
+      return ApprovalStatus.PENDING_MAIN_PMO;
+      
+    case ApprovalStatus.PENDING_MAIN_PMO:
+      // Only Main PMO or Admin can take action on PENDING_MAIN_PMO (removed Executive)
       if (userRole === UserRole.MAIN_PMO || userRole === UserRole.ADMIN) {
         if (action === 'APPROVE') {
           return ApprovalStatus.APPROVED;
@@ -411,9 +545,26 @@ export const getNextApprovalStatus = (
       return null;
       
     case ApprovalStatus.CHANGES_REQUESTED:
-      return ApprovalStatus.SUBMITTED;
+      // When a PM resubmits after changes were requested
+      if (action === 'SUBMIT') {
+        return ApprovalStatus.PENDING_SUB_PMO;
+      }
+      return null;
       
     default:
       return null;
   }
-}; 
+};
+
+// Check if a user is from the same department as a project or another user
+export const isFromSameDepartment = (user: User | null, departmentId: string | undefined): boolean => {
+  if (!user || !departmentId) return false;
+  return user.department.id === departmentId;
+};
+
+export enum ApprovalAction {
+  SUBMIT = 'SUBMIT',
+  APPROVE = 'APPROVE',
+  REJECT = 'REJECT',
+  REQUEST_CHANGES = 'REQUEST_CHANGES'
+} 

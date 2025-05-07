@@ -72,11 +72,17 @@ const ChangeRequestsPage: React.FC = () => {
     if (tabValue === 0) {
       // All requests
     } else if (tabValue === 1) {
-      result = result.filter(cr => cr.status === ChangeRequestStatus.PENDING);
+      result = result.filter(cr => 
+        cr.status === ChangeRequestStatus.PENDING_SUB_PMO || 
+        cr.status === ChangeRequestStatus.PENDING_MAIN_PMO
+      );
     } else if (tabValue === 2) {
       result = result.filter(cr => cr.status === ChangeRequestStatus.APPROVED);
     } else if (tabValue === 3) {
-      result = result.filter(cr => cr.status === ChangeRequestStatus.REJECTED);
+      result = result.filter(cr => 
+        cr.status === ChangeRequestStatus.REJECTED || 
+        cr.status === ChangeRequestStatus.REJECTED_BY_SUB_PMO
+      );
     }
     
     // Apply project filter

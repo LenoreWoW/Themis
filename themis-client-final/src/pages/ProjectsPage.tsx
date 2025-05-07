@@ -31,17 +31,22 @@ import {
   Accordion,
   AccordionSummary,
   AccordionDetails,
-  Link
+  Link,
+  Card,
+  CardHeader,
+  CardContent,
+  Avatar,
+  LinearProgress
 } from '@mui/material';
 import {
-  Add as AddIcon,
   FilterList as FilterIcon,
   Search as SearchIcon,
-  MoreVert as MoreIcon,
-  ViewList as ViewListIcon,
+  Add as AddIcon,
   ViewModule as ViewModuleIcon,
+  ViewList as ListViewIcon,
   History as HistoryIcon,
-  ExpandMore as ExpandMoreIcon
+  ExpandMore as ExpandMoreIcon,
+  AccountTree as RelationshipMapIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -57,6 +62,7 @@ import { GridItem, GridContainer } from '../components/common/MuiGridWrapper';
 import { mockUsers, mockDepartments } from '../services/mockData';
 import { canManageProjects } from '../utils/permissions';
 import { alpha } from '@mui/material/styles';
+import { getDeadlineColor } from '../utils/helpers';
 
 // Define Department type for the dialog
 interface Department {
@@ -120,6 +126,22 @@ const getStatusLabel = (status: string) => {
     case 'CANCELLED': return 'Cancelled';
     default: return status;
   }
+};
+
+// Use deadline progress to determine status background color
+const getStatusWithDeadlineColor = (project: Project) => {
+  const status = typeof project.status === 'string' ? project.status as ProjectStatus : project.status;
+  
+  // For completed projects, check if it was completed on time
+  let completedOnTime = true;
+  if (status === ProjectStatus.COMPLETED && project.endDate) {
+    // Check if project was completed before the deadline
+    // Since we don't have the actual completion date, we'll use updatedAt as an approximation
+    completedOnTime = new Date(project.updatedAt) <= new Date(project.endDate);
+  }
+  
+  // Get the deadline-based color
+  return getDeadlineColor(status, project.startDate, project.endDate, completedOnTime);
 };
 
 // Map API status to component status type
@@ -309,104 +331,82 @@ const ProjectsPage: React.FC = () => {
         
         return (
           <GridItem xs={12} sm={6} md={4} key={project.id}>
-            <EnhancedCard
-              title={project.name}
-              subtitle={project.department.name}
-              onClick={() => handleProjectClick(project.id)}
+            <Card 
               sx={{ 
                 height: '100%',
+                display: 'flex', 
+                flexDirection: 'column',
+                cursor: 'pointer',
                 transition: 'all 0.3s ease',
                 '&:hover': {
-                  transform: 'translateY(-5px)',
-                  boxShadow: '0 10px 20px rgba(0,0,0,0.1)'
-                },
-                borderRadius: 2,
-                overflow: 'hidden',
-                position: 'relative'
-              }}
-              headerProps={{
-                sx: {
-                  pb: 1,
-                  borderBottom: '1px solid',
-                  borderColor: 'divider'
+                  transform: 'translateY(-4px)',
+                  boxShadow: 3
                 }
               }}
-              footer={
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', pt: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Box
+              onClick={() => handleProjectClick(project.id)}
+            >
+              <CardHeader
+                avatar={
+                  <Avatar sx={{ bgcolor: theme.palette.primary.main }}>
+                    {project.name.charAt(0)}
+                  </Avatar>
+                }
+                action={
+                  <Chip 
+                    label={getStatusLabel(
+                      typeof project.status === 'string' ? project.status : ProjectStatus[project.status]
+                    )} 
+                    size="small"
+                    sx={{
+                      bgcolor: getStatusWithDeadlineColor(project),
+                      color: '#ffffff',
+                      fontWeight: 'medium'
+                    }}
+                  />
+                }
+                title={project.name}
+                subheader={`${project.department?.name || t('common.noDepartment')}`}
+              />
+              <CardContent sx={{ flexGrow: 1 }}>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  {project.description?.length > 120 
+                    ? `${project.description.substring(0, 120)}...` 
+                    : project.description}
+                </Typography>
+                
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  {t('project.progress')}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                  <Box sx={{ width: '100%', mr: 1 }}>
+                    <LinearProgress 
+                      variant="determinate" 
+                      value={project.progress || 0} 
                       sx={{
-                        width: 8,
                         height: 8,
-                        borderRadius: '50%',
-                        bgcolor: theme.palette.primary.main,
-                        mr: 1,
+                        borderRadius: 5
                       }}
                     />
-                    <Typography variant="caption" color="text.secondary">
-                      {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                  </Box>
+                  <Box sx={{ minWidth: 35 }}>
+                    <Typography variant="body2" color="text.secondary">
+                      {`${Math.round(project.progress || 0)}%`}
                     </Typography>
                   </Box>
-                  <Typography variant="caption" fontWeight="medium">
-                    {project.projectManager
-                      ? `${project.projectManager.firstName || ''} ${project.projectManager.lastName || ''}`.trim()
-                      : t('project.unassigned')}
-                  </Typography>
-                </Box>
-              }
-            >
-              <Box 
-                sx={{ 
-                  position: 'absolute',
-                  top: 10,
-                  right: 10,
-                  zIndex: 2
-                }}
-              >
-                <StatusBadge 
-                  status={statusType}
-                  label={getTranslatedStatusLabel(typeof project.status === 'string' ? project.status : ProjectStatus[project.status])}
-                  size="small"
-                />
               </Box>
             
-              <Box sx={{ mb: 2, mt: 1 }}>
-                <Typography variant="body2" color="text.secondary" sx={{ 
-                  height: 40, 
-                  overflow: 'hidden', 
-                  textOverflow: 'ellipsis',
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                }}>
-                  {project.description}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 'auto' }}>
+                  <Typography variant="body2" color="text.secondary">
+                    {t('project.deadline')}: {new Date(project.endDate).toLocaleDateString()}
+                  </Typography>
+                  {project.projectManager && (
+                    <Typography variant="body2" color="text.secondary">
+                      {`${project.projectManager.firstName} ${project.projectManager.lastName}`}
                 </Typography>
-              </Box>
-              
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 2 }}>
-                <Box>
-                  {findProjectGoals(project.id).length > 0 && (
-                    <Tooltip title={t('goals.linkedGoals', 'Linked Goals')}>
-                      <Chip
-                        size="small"
-                        label={`${findProjectGoals(project.id).length} ${t('goals.linked', 'Goals')}`}
-                        sx={{ mr: 1, fontSize: '0.7rem' }}
-                      />
-                    </Tooltip>
                   )}
                 </Box>
-                <CircularProgressWithLabel 
-                  value={project.progress} 
-                  size={40} 
-                  thickness={4}
-                  sx={{
-                    color: project.progress < 30 ? theme.palette.error.main :
-                           project.progress < 70 ? theme.palette.warning.main :
-                           theme.palette.success.main
-                  }}
-                />
-              </Box>
-            </EnhancedCard>
+              </CardContent>
+            </Card>
           </GridItem>
         );
       })}
@@ -435,38 +435,52 @@ const ProjectsPage: React.FC = () => {
             
             return (
               <TableRow
-                hover
                 key={project.id}
+                hover
                 onClick={() => handleProjectClick(project.id)}
                 sx={{ cursor: 'pointer' }}
               >
-                <TableCell component="th" scope="row">
-                  <Typography variant="body1" fontWeight="medium">
-                    {project.name}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary" noWrap sx={{ maxWidth: 300 }}>
-                    {project.description}
-                  </Typography>
-                </TableCell>
-                <TableCell>{project.department.name}</TableCell>
+                <TableCell>{project.name}</TableCell>
+                <TableCell>{project.department?.name || t('common.noDepartment')}</TableCell>
                 <TableCell>
-                  <StatusBadge 
-                    status={statusType}
-                    label={getTranslatedStatusLabel(typeof project.status === 'string' ? project.status : ProjectStatus[project.status])}
+                  <Chip 
+                    label={getStatusLabel(
+                      typeof project.status === 'string' ? project.status : ProjectStatus[project.status]
+                    )} 
+                    size="small"
+                    sx={{
+                      bgcolor: getStatusWithDeadlineColor(project),
+                      color: '#ffffff',
+                      fontWeight: 'medium'
+                    }}
                   />
                 </TableCell>
                 <TableCell>
                   {project.projectManager
-                    ? `${project.projectManager.firstName || ''} ${project.projectManager.lastName || ''}`.trim()
-                    : t('project.unassigned')}
+                    ? `${project.projectManager.firstName} ${project.projectManager.lastName}`
+                    : t('common.unassigned')}
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">
-                    {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
-                  </Typography>
+                  {`${new Date(project.startDate).toLocaleDateString()} - ${new Date(project.endDate).toLocaleDateString()}`}
                 </TableCell>
                 <TableCell>
-                  <CircularProgressWithLabel value={project.progress} size={46} thickness={4} />
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Box sx={{ width: '100%', mr: 1 }}>
+                      <LinearProgress 
+                        variant="determinate" 
+                        value={project.progress || 0} 
+                        sx={{
+                          height: 8,
+                          borderRadius: 5
+                        }}
+                      />
+                    </Box>
+                    <Box sx={{ minWidth: 35 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        {`${Math.round(project.progress || 0)}%`}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </TableCell>
               </TableRow>
             );
@@ -609,6 +623,19 @@ const ProjectsPage: React.FC = () => {
           </Box>
           
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Button
+              variant="outlined"
+              startIcon={<RelationshipMapIcon />}
+              onClick={() => navigate('/project-relationships')}
+              size="small"
+              sx={{ 
+                borderRadius: 8, 
+                mr: 1,
+                display: { xs: 'none', sm: 'flex' }
+              }}
+            >
+              {t('project.viewRelationships')}
+            </Button>
             <Tooltip title={viewMode === 'grid' ? t('common.listView') : t('common.gridView')}>
               <IconButton 
                 onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
@@ -620,7 +647,7 @@ const ProjectsPage: React.FC = () => {
                   }
                 }}
               >
-                {viewMode === 'grid' ? <ViewListIcon /> : <ViewModuleIcon />}
+                {viewMode === 'grid' ? <ListViewIcon /> : <ViewModuleIcon />}
               </IconButton>
             </Tooltip>
           </Box>

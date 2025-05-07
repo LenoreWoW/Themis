@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { 
   Box, 
@@ -6,7 +6,8 @@ import {
   Toolbar, 
   IconButton, 
   Typography, 
-  Direction
+  Direction,
+  useTheme
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useAuth } from '../context/AuthContext';
@@ -36,8 +37,29 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ direction = 'ltr', onDirectionChange }) => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { user } = useAuth();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { easterEggActive } = useEasterEgg();
+  const theme = useTheme();
+  const isRtl = theme.direction === 'rtl';
+
+  // Handle language changes through the i18n system
+  useEffect(() => {
+    const handleLanguageChange = (lng: string) => {
+      const newDirection = lng === 'ar' ? 'rtl' : 'ltr';
+      onDirectionChange(newDirection as Direction);
+    };
+
+    // Listen for language changes triggered by our LanguageSwitcher
+    document.addEventListener('i18n-updated', () => {
+      handleLanguageChange(i18n.language);
+    });
+
+    return () => {
+      document.removeEventListener('i18n-updated', () => {
+        handleLanguageChange(i18n.language);
+      });
+    };
+  }, [i18n, onDirectionChange]);
 
   const handleDrawerToggle = () => {
     setMobileOpen(!mobileOpen);
@@ -80,12 +102,12 @@ const Layout: React.FC<LayoutProps> = ({ direction = 'ltr', onDirectionChange })
                   letterSpacing: '0.5px'
                 }}
               >
-                {t('app.title', 'Themis Project Management')}
+                {t('app.title')}
               </Typography>
             </Box>
             
             <Box sx={{ display: 'flex', alignItems: 'center', ml: 'auto' }}>
-              <LanguageSwitcher onDirectionChange={onDirectionChange} />
+              <LanguageSwitcher />
               
               <ThemeToggle />
               
@@ -108,11 +130,19 @@ const Layout: React.FC<LayoutProps> = ({ direction = 'ltr', onDirectionChange })
           sx={{
             flexGrow: 1,
             p: 3,
-            width: { sm: `calc(100% - ${DRAWER_WIDTH}px)` },
             mt: 8,
-            transition: (theme) => theme.transitions.create(['margin', 'width'], {
+            transition: (theme) => theme.transitions.create(['margin'], {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.leavingScreen,
+            }),
+            ...(isRtl ? {
+              marginRight: { sm: `${DRAWER_WIDTH}px` },
+              marginLeft: 0,
+              borderLeft: 'none',
+            } : {
+              marginLeft: { sm: `${DRAWER_WIDTH}px` },
+              marginRight: 0,
+              borderRight: 'none',
             }),
           }}
         >

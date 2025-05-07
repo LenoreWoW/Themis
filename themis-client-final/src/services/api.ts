@@ -4,13 +4,8 @@ import LocalStorageService from './LocalStorageService';
 import { v4 as uuidv4 } from 'uuid';
 import { ProjectStatus, TaskStatus, UserRole, TaskPriority, RiskStatus, RiskImpact, IssueStatus, Project, Task, User, Department, Meeting, Risk, Issue, Assignment, AssignmentStatus, ApiResponse, MeetingStatus, ProjectPriority, ProjectTemplateType, TaskRequestStatus } from '../types';
 import { 
-  mockProjects, 
   mockUsers, 
-  mockRisks, 
-  mockMeetings, 
-  mockIssues,
-  mockDepartments as importedMockDepartments,
-  createDefaultTasks
+  mockDepartments as importedMockDepartments
 } from './mockData';
 import AuthService from './AuthService';
 import projects from './projects';
@@ -18,6 +13,7 @@ import tasks from './tasks';
 import users from './users';
 import auth from './auth';
 import changeRequests from './changeRequests';
+import { ChatChannel, ChatMessage, ChatChannelMember, ChannelType, CreateChannelRequest, CreateMessageRequest, UpdateMessageRequest, CreateDMRequest } from '../types/ChatTypes';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -154,16 +150,12 @@ function getMockData(endpoint: string, config?: AxiosRequestConfig): Promise<any
         const projectId = endpoint.match(/\/projects\/([^\/]+)/)?.[1];
         
         if (endpoint.includes('/tasks')) {
-          // Handle tasks for a specific project
-          if (projectId) {
-            const tasks = createDefaultTasks(projectId);
-            return resolve(tasks);
-          }
+          // Return empty tasks array (no mock tasks)
           return resolve([]);
         }
         
         if (projectId) {
-          // Return a specific project
+          // Return a specific project (doesn't exist)
           return resolve(null);
         }
         
@@ -203,29 +195,24 @@ function postMockData(endpoint: string, data: any): Promise<any> {
           }
         }
         
-        // Link project manager
-        if (data.projectManagerId) {
-          const manager = mockUsers.find(u => u.id === data.projectManagerId);
-          if (manager) {
-            newProject.projectManager = manager;
-          }
-        }
+        // Store in localStorage
+        const storedProjects = localStorage.getItem('themis_projects');
+        const projects = storedProjects ? JSON.parse(storedProjects) : [];
+        projects.push(newProject);
+        localStorage.setItem('themis_projects', JSON.stringify(projects));
         
-        // Link team members
-        if (data.teamMemberIds && Array.isArray(data.teamMemberIds)) {
-          newProject.teamMembers = data.teamMemberIds
-            .map(id => mockUsers.find(u => u.id === id))
-            .filter(Boolean);
-        }
-        
-        // Return the new project without adding it to mockProjects
         return resolve(newProject);
       }
       
-      // If no handler for this endpoint
-      console.log(`[MOCK] No POST handler for endpoint: ${endpoint}`);
-      resolve(data);
-    }, 800);
+      // Handle other POST endpoints...
+      
+      resolve({
+        id: uuidv4(),
+        ...data,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      });
+    }, 600);
   });
 }
 
@@ -2183,6 +2170,233 @@ const apiRoutes = {
         success: true
       };
     }
+  },
+
+  // Calendar events
+  calendar: {
+    getEvents: async (token: string) => {
+      await delay();
+      // This endpoint will be replaced by real backend implementation
+      // For now, create mock events based on tasks, meetings, and projects
+      
+      // Get user info for role-based filtering
+      const userInfo = await apiRoutes.auth.getCurrentUser(token);
+      const user = userInfo.data;
+      
+      if (!user) {
+        return {
+          data: [],
+          success: false,
+          error: 'User not authenticated'
+        };
+      }
+      
+      // Get projects based on user role
+      let projects: Project[] = [];
+      if (['ADMIN', 'MAIN_PMO', 'EXECUTIVE'].includes(user.role)) {
+        // Get all projects
+        const projectsResponse = await apiRoutes.projects.getAllProjects(token);
+        projects = projectsResponse.data || [];
+      } else if (['SUB_PMO', 'DEPARTMENT_DIRECTOR'].includes(user.role) && user.department?.id) {
+        // Get department projects
+        const projectsResponse = await apiRoutes.projects.getProjectsByDepartment(user.department.id, token);
+        projects = projectsResponse.data || [];
+      } else if (user.role === 'PROJECT_MANAGER') {
+        // Get projects managed by user
+        const allProjectsResponse = await apiRoutes.projects.getAllProjects(token);
+        const allProjects = allProjectsResponse.data || [];
+        projects = allProjects.filter(project => project.projectManager?.id === user.id);
+      }
+      
+      // Get project IDs user has access to
+      const accessibleProjectIds = projects.map(project => project.id);
+      
+      // Get tasks, meetings, and assignments
+      let tasks: Task[] = [];
+      let meetings: Meeting[] = [];
+      let assignments: Assignment[] = [];
+      
+      // Get tasks for accessible projects
+      const tasksResponse = await apiRoutes.tasks.getAllTasks(null, token);
+      if (tasksResponse.data) {
+        tasks = tasksResponse.data.filter(task => 
+          accessibleProjectIds.includes(task.projectId)
+        );
+      }
+      
+      // Get meetings
+      const meetingsResponse = await apiRoutes.meetings.getAllMeetings(token);
+      if (meetingsResponse.data) {
+        meetings = meetingsResponse.data.filter(meeting => 
+          !meeting.projectId || accessibleProjectIds.includes(meeting.projectId)
+        );
+      }
+      
+      // Get assignments
+      const assignmentsResponse = await apiRoutes.assignments.getAllAssignments(token);
+      if (assignmentsResponse.data) {
+        assignments = assignmentsResponse.data;
+      }
+      
+      // Create calendar events
+      const events = [
+        // Tasks events
+        ...tasks.map(task => ({
+          id: task.id,
+          title: task.title,
+          type: 'task',
+          projectId: task.projectId,
+          start: task.startDate,
+          end: task.dueDate,
+          allDay: false,
+          color: '#3788d8', // Blue
+          editable: true,
+          description: task.description,
+          status: task.status,
+          priority: task.priority,
+          assignee: task.assignee,
+          projectName: task.project?.name
+        })),
+        
+        // Assignment events
+        ...assignments.map(assignment => ({
+          id: assignment.id,
+          title: assignment.title,
+          type: 'assignment',
+          start: assignment.startDate || assignment.createdAt,
+          end: assignment.dueDate,
+          allDay: false,
+          color: '#2e7d32', // Green
+          editable: true,
+          description: assignment.description,
+          status: assignment.status,
+          priority: assignment.priority,
+          assignee: {
+            id: assignment.assignedTo?.id,
+            firstName: assignment.assignedTo?.firstName,
+            lastName: assignment.assignedTo?.lastName
+          }
+        })),
+        
+        // Meeting events
+        ...meetings.map(meeting => ({
+          id: meeting.id,
+          title: meeting.title,
+          type: 'meeting',
+          projectId: meeting.projectId,
+          start: meeting.startTime,
+          end: meeting.endTime,
+          allDay: false,
+          color: '#9c27b0', // Violet
+          editable: true,
+          description: meeting.description,
+          status: meeting.status,
+          projectName: meeting.projectId ? 'Project Meeting' : 'General Meeting'
+        })),
+        
+        // Project deadline events
+        ...projects.map(project => ({
+          id: `deadline-${project.id}`,
+          title: `${project.name} deadline`,
+          type: 'deadline',
+          projectId: project.id,
+          start: project.endDate,
+          end: project.endDate,
+          allDay: true,
+          color: '#f44336', // Red
+          editable: false, // Deadlines are not editable
+          projectName: project.name,
+          status: project.status
+        }))
+      ];
+      
+      return {
+        data: events,
+        success: true
+      };
+    },
+    
+    updateEvent: async (eventId: string, eventType: string, start: string, end: string, token: string) => {
+      await delay();
+      
+      // Don't allow updating deadlines
+      if (eventType === 'deadline') {
+        return {
+          success: false,
+          error: 'Project deadlines cannot be updated directly'
+        };
+      }
+      
+      // In a real implementation, this would call the appropriate service to update the item
+      // Based on the eventType (task/assignment/meeting)
+      return {
+        success: true,
+        data: {
+          id: eventId,
+          type: eventType,
+          start,
+          end
+        }
+      };
+    }
+  },
+
+  // Chat API functions
+  chat: {
+    getChannels: async (token: string): Promise<ApiResponse<ChatChannel[]>> => 
+      get<ChatChannel[]>('/chat/channels', token),
+      
+    getChannel: async (channelId: string, token: string): Promise<ApiResponse<ChatChannel>> => 
+      get<ChatChannel>(`/chat/channels/${channelId}`, token),
+      
+    getMessages: async (channelId: string, limit = 50, offset = 0, token: string): Promise<ApiResponse<ChatMessage[]>> => 
+      get<ChatMessage[]>(`/chat/channels/${channelId}/messages?limit=${limit}&offset=${offset}`, token),
+      
+    getMembers: async (channelId: string, token: string): Promise<ApiResponse<ChatChannelMember[]>> => 
+      get<ChatChannelMember[]>(`/chat/channels/${channelId}/members`, token),
+      
+    createChannel: async (data: { name: string, type: ChannelType, departmentId?: string, projectId?: string }, token: string): Promise<ApiResponse<ChatChannel>> => 
+      post<ChatChannel>('/chat/channels', data, token),
+      
+    archiveChannel: async (channelId: string, token: string): Promise<ApiResponse<void>> => 
+      put<void>(`/chat/channels/${channelId}/archive`, {}, token),
+      
+    createMessage: async (channelId: string, data: { body: string, fileUrl?: string, fileType?: string, fileSize?: number }, token: string): Promise<ApiResponse<ChatMessage>> => 
+      post<ChatMessage>(`/chat/channels/${channelId}/messages`, data, token),
+      
+    updateMessage: async (messageId: string, data: { body: string }, token: string): Promise<ApiResponse<ChatMessage>> => 
+      put<ChatMessage>(`/chat/messages/${messageId}`, data, token),
+      
+    deleteMessage: async (messageId: string, token: string): Promise<ApiResponse<void>> => 
+      del<void>(`/chat/messages/${messageId}`, token),
+      
+    searchMessages: async (query: string, channelId: string | null, token: string): Promise<ApiResponse<ChatMessage[]>> => {
+      const url = channelId 
+        ? `/chat/search?query=${encodeURIComponent(query)}&channelId=${channelId}`
+        : `/chat/search?query=${encodeURIComponent(query)}`;
+      return get<ChatMessage[]>(url, token);
+    },
+      
+    createDM: async (recipientId: string, token: string): Promise<ApiResponse<ChatChannel>> => 
+      post<ChatChannel>('/chat/dm', { recipientId }, token),
+      
+    addMember: async (channelId: string, userId: string, token: string): Promise<ApiResponse<void>> => 
+      post<void>(`/chat/channels/${channelId}/members`, { userId }, token),
+      
+    removeMember: async (channelId: string, userId: string, token: string): Promise<ApiResponse<void>> => 
+      del<void>(`/chat/channels/${channelId}/members/${userId}`, token),
+      
+    getGeneralAnnouncements: async (token: string): Promise<ApiResponse<ChatChannel>> => 
+      get<ChatChannel>('/chat/announcements/general', token),
+      
+    getDepartmentAnnouncements: async (departmentId: string, token: string): Promise<ApiResponse<ChatChannel>> => 
+      get<ChatChannel>(`/chat/announcements/department/${departmentId}`, token),
+      
+    createProjectChannel: async (projectId: string, token: string): Promise<ApiResponse<ChatChannel>> => 
+      post<ChatChannel>(`/chat/projects/${projectId}/channel`, {}, token),
+      
+    handleProjectCompletion: async (projectId: string, token: string): Promise<ApiResponse<void>> => 
+      post<void>(`/chat/projects/${projectId}/completion`, {}, token)
   },
 };
 

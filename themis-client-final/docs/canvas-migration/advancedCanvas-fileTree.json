@@ -1,0 +1,192 @@
+{
+  "files": [
+    "LICENSE",
+    "README.md",
+    "esbuild.config.mjs",
+    "manifest.json",
+    "package-lock.json",
+    "package.json",
+    "tsconfig.json"
+  ],
+  "assets": {
+    "files": [
+      "auto-node-resizing.gif",
+      "border-styles.png",
+      "collapsible-groups.png",
+      "custom-colors.png",
+      "custom-style-attribute-example.png",
+      "diamond-shape.svg",
+      "document-shape.svg",
+      "edge-arrow-styles.png",
+      "edge-metadata-cache.png",
+      "edge-path-styles.png",
+      "edge-pathfinding-methods.png",
+      "example-custom-node-style.css",
+      "flip-edge.gif",
+      "floating-edge-example.png",
+      "focus-mode.png",
+      "image-export-example.svg",
+      "logo-dark.png",
+      "logo-light.png",
+      "logo.svg",
+      "metadata-cache-support.png",
+      "sample-flowchart.png",
+      "sample-portal-usage.png",
+      "sample-presentation-complex.gif",
+      "sample-presentation-complex.png",
+      "sample-presentation-simple.gif",
+      "sample-presentation-simple.png",
+      "stickers.png",
+      "watermark.svg",
+      "z-ordering-control.png"
+    ],
+    "flowchart-nodes": {
+      "files": [
+        "database.png",
+        "decision.png",
+        "document.png",
+        "input-output.png",
+        "predefined-process.png",
+        "process.png",
+        "reference.png",
+        "terminal.png"
+      ]
+    },
+    "formats": {
+      "advanced-json-canvas": {
+        "files": [
+          "README.md"
+        ],
+        "spec": {
+          "files": [
+            "1.0-1.0.d.ts",
+            "1.0-1.0.md"
+          ]
+        }
+      }
+    },
+    "notes": {
+      "files": [
+        "backlinks-analysis.md",
+        "graph-analysis.md",
+        "metadata-cache-analysis.md",
+        "outgoing-links-analysis.md"
+      ]
+    }
+  },
+  "src": {
+    "@types": {
+      "files": [
+        "AdvancedJsonCanvas.d.ts",
+        "BacklinkPlugin.d.ts",
+        "Canvas.d.ts",
+        "CustomWorkspaceEvents.d.ts",
+        "Obsidian.d.ts",
+        "OutgoingLinkPlugin.d.ts",
+        "PropertiesPlugin.d.ts",
+        "SearchPlugin.d.ts",
+        "Settings.d.ts"
+      ]
+    },
+    "canvas-extensions": {
+      "advanced-styles": {
+        "edge-pathfinding-methods": {
+          "files": [
+            "edge-pathfinding-method.ts",
+            "pathfinding-a-star.ts",
+            "pathfinding-direct.ts",
+            "pathfinding-square.ts"
+          ]
+        },
+        "files": [
+          "edge-styles.ts",
+          "node-styles.ts",
+          "style-config.ts"
+        ]
+      },
+      "files": [
+        "auto-resize-node-canvas-extension.ts",
+        "better-default-settings-canvas-extension.ts",
+        "better-readonly-canvas-extension.ts",
+        "canvas-extension.ts",
+        "collapsible-groups-canvas-extension.ts",
+        "color-palette-canvas-extension.ts",
+        "commands-canvas-extension.ts",
+        "encapsulate-canvas-extension.ts",
+        "export-canvas-extension.ts",
+        "flip-edge-canvas-extension.ts",
+        "floating-edge-canvas-extension.ts",
+        "focus-mode-canvas-extension.ts",
+        "frontmatter-modal-canvas-extension.ts",
+        "group-canvas-extension.ts",
+        "metadata-canvas-extension.ts",
+        "node-ratio-canvas-extension.ts",
+        "portals-canvas-extension.ts",
+        "presentation-canvas-extension.ts",
+        "variable-breakpoint-canvas-extension.ts",
+        "z-ordering-canvas-extension.ts"
+      ],
+      "dataset-exposers": {
+        "files": [
+          "canvas-metadata-exposer.ts",
+          "canvas-wrapper-exposer.ts",
+          "edge-exposer.ts",
+          "node-exposer.ts",
+          "node-interaction-exposer.ts"
+        ]
+      }
+    },
+    "files": [
+      "main.ts",
+      "settings.ts",
+      "styles.scss"
+    ],
+    "managers": {
+      "files": [
+        "css-styles-config-manager.ts",
+        "windows-manager.ts"
+      ]
+    },
+    "patchers": {
+      "files": [
+        "backlinks-patcher.ts",
+        "canvas-patcher.ts",
+        "metadata-cache-patcher.ts",
+        "outgoing-links-patcher.ts",
+        "patcher.ts",
+        "properties-patcher.ts",
+        "search-patcher.ts"
+      ]
+    },
+    "styles": {
+      "files": [
+        "better-default-settings.scss",
+        "better-readonly.scss",
+        "collapsible-groups.scss",
+        "edge-styles.scss",
+        "export.scss",
+        "floating-edge.scss",
+        "focus-mode.scss",
+        "menu.scss",
+        "node-styles.scss",
+        "portals.scss",
+        "presentation.scss",
+        "settings.scss"
+      ]
+    },
+    "utils": {
+      "files": [
+        "bbox-helper.ts",
+        "canvas-helper.ts",
+        "debug-helper.ts",
+        "filepath-helper.ts",
+        "hash-helper.ts",
+        "icons-helper.ts",
+        "migration-helper.ts",
+        "modal-helper.ts",
+        "svg-path-helper.ts",
+        "text-helper.ts"
+      ]
+    }
+  }
+}

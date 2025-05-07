@@ -10,6 +10,23 @@ This is the official, security-hardened version of the Themis project management
 - **Proper Module Loading**: Fixed React-Refresh module resolution problems
 - **Identical Functionality**: All original features work the same, just more securely
 
+### Canvas/Ideation Feature
+
+The Ideation Canvas is a powerful visual tool for brainstorming, planning, and organizing ideas. It provides an infinite canvas where users can create cards, connect them with lines, and organize them into groups.
+
+Key features:
+- Create, move, resize, and delete cards
+- Connect cards with lines
+- Group related cards together
+- Pan and zoom navigation
+- Search functionality to find content
+- Minimap for easy navigation
+- Snap to grid for precise positioning
+- Undo/redo functionality
+- Right-click context menu for actions
+
+To access the Canvas feature, navigate to the Ideation section in the sidebar.
+
 ## Getting Started
 
 ```bash
@@ -45,3 +62,24 @@ All future development should be based on this version to ensure security and st
 ## Original Project Credits
 
 This is a secured version of the Themis project management system. 
+
+## Usage
+
+### Ideation Canvas
+
+#### Navigation
+- **Pan**: Hold Space + drag, or use middle mouse button
+- **Zoom**: Ctrl/Cmd + scroll wheel, or use zoom buttons in toolbar
+- **Select**: Click on a card, connection, or group
+- **Multi-select**: Shift + click, or drag a selection box
+
+#### Creating Content
+- **Add Card**: Double-click on empty space, or use context menu
+- **Connect Cards**: Select a card, then use the context menu to create a connection, and click on another card
+- **Group Cards**: Select multiple cards, then use the context menu to create a group
+
+#### Editing Content
+- **Move**: Drag cards or groups
+- **Resize**: Drag the handles on selected cards or groups
+- **Edit Text**: Double-click on card text
+- **Delete**: Select items and press Delete, or use context menu 

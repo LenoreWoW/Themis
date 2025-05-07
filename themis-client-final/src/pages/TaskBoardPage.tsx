@@ -14,6 +14,9 @@ import { useAuth } from '../context/AuthContext';
 import { Task, Project, ProjectStatus, User, UserRole, TaskStatus } from '../types';
 import { TaskService } from '../services/TaskService';
 import { ProjectPriority, ProjectTemplateType } from '../types/index';
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../redux/store';
+import { updateTasks } from '../redux/actions/dragActions';
 
 // Need to define our own interface for KanbanBoard props that includes tasks
 interface CustomKanbanBoardProps {
@@ -27,7 +30,6 @@ const TaskBoardPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<Task[]>([]);
   const [project, setProject] = useState<Project | null>(null);
   const [snackbar, setSnackbar] = useState<{open: boolean; message: string; severity: 'success' | 'error'}>({
     open: false,
@@ -35,6 +37,10 @@ const TaskBoardPage: React.FC = () => {
     severity: 'success'
   });
   const { user, token } = useAuth();
+  
+  // Connect to Redux
+  const dispatch = useDispatch();
+  const tasks = useSelector((state: RootState) => state.drag.tasks);
 
   const showSnackbar = (message: string, severity: 'success' | 'error') => {
     setSnackbar({
@@ -52,7 +58,9 @@ const TaskBoardPage: React.FC = () => {
       setLoading(true);
       try {
         const taskData = await TaskService.getAllTasks(projectId, token);
-        setTasks(taskData);
+        // Update Redux store with tasks
+        dispatch(updateTasks(taskData));
+        
         // For simplicity, we're not fetching the project details here
         // In a real app, you would call a project service to get project details
         const mockUser: User = {
@@ -109,7 +117,7 @@ const TaskBoardPage: React.FC = () => {
     };
 
     fetchTasks();
-  }, [projectId, token, user]);
+  }, [projectId, token, user, dispatch]);
 
   // Handle task update (status change from drag and drop)
   const handleTaskUpdate = async (taskId: string, updatedStatus: TaskStatus) => {
@@ -126,8 +134,9 @@ const TaskBoardPage: React.FC = () => {
         status: updatedStatus
       };
       
-      // Optimistically update the UI
-      setTasks(tasks.map(t => t.id === updatedTask.id ? updatedTask : t));
+      // Optimistically update the UI by updating Redux store
+      const updatedTasks = tasks.map(t => t.id === updatedTask.id ? updatedTask : t);
+      dispatch(updateTasks(updatedTasks));
       
       // Send the update to the server
       await TaskService.updateTask(projectId, updatedTask.id, updatedTask, token);
@@ -138,7 +147,7 @@ const TaskBoardPage: React.FC = () => {
       
       // Refresh tasks to get the correct state
       const taskData = await TaskService.getAllTasks(projectId, token);
-      setTasks(taskData);
+      dispatch(updateTasks(taskData));
     }
   };
 

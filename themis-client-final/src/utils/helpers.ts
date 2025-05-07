@@ -1,4 +1,4 @@
-import { ProjectStatus, UserRole } from '../types';
+import { ProjectStatus, UserRole, Task, TaskStatus } from '../types';
 
 export const formatDate = (dateString: string): string => {
   try {
@@ -47,6 +47,85 @@ export const getStatusColor = (status: ProjectStatus, endDate?: string): string 
     default:
       return '#757575'; // grey
   }
+};
+
+/**
+ * Calculate the progress percentage of a project towards its deadline
+ * @param startDate - Project start date
+ * @param endDate - Project end date
+ * @returns A number between 0-100+ representing percentage of time elapsed
+ */
+export const calculateDeadlineProgress = (startDate: string, endDate: string): number => {
+  const start = new Date(startDate).getTime();
+  const end = new Date(endDate).getTime();
+  const now = Date.now();
+  
+  // If the project hasn't started yet
+  if (now <= start) return 0;
+  
+  // Calculate total duration and elapsed time
+  const totalDuration = end - start;
+  const elapsedTime = now - start;
+  
+  // Calculate percentage (can be over 100% if past deadline)
+  return Math.round((elapsedTime / totalDuration) * 100);
+};
+
+/**
+ * Get background color based on deadline progress
+ * @param status - Project status
+ * @param startDate - Project start date
+ * @param endDate - Project end date
+ * @param completedOnTime - For completed projects: was it completed before deadline
+ * @returns Hex color code for the background
+ */
+export const getDeadlineColor = (
+  status: ProjectStatus, 
+  startDate?: string, 
+  endDate?: string, 
+  completedOnTime?: boolean
+): string => {
+  // Handle completed projects first
+  if (status === ProjectStatus.COMPLETED) {
+    return completedOnTime ? '#2e7d32' : '#000000'; // Green if on time, black if late
+  }
+  
+  // If missing dates, return a default color
+  if (!startDate || !endDate) return '#757575';
+  
+  // Calculate progress percentage
+  const progress = calculateDeadlineProgress(startDate, endDate);
+  
+  // Determine color based on deadline progress
+  if (progress > 100) return '#000000'; // Black for overdue
+  if (progress >= 75) return '#d32f2f'; // Red for 75-100%
+  if (progress >= 50) return '#ed6c02'; // Orange for 50-74%
+  if (progress >= 25) return '#ffc107'; // Yellow for 25-49%
+  return '#2e7d32'; // Green for 0-24%
+};
+
+/**
+ * Calculate project progress based on completed tasks
+ * @param tasks - Array of tasks belonging to the project
+ * @returns A number between 0-100 representing completion percentage
+ */
+export const calculateProjectProgress = (tasks: Task[]): number => {
+  // If there are no tasks, return 0 progress
+  if (!tasks || tasks.length === 0) return 0;
+  
+  // Count completed tasks - handle both enum and string representations
+  const completedTasks = tasks.filter(task => {
+    const status = task.status;
+    // Handle both enum and string values by converting to strings for comparison
+    return String(status) === String(TaskStatus.DONE) || 
+           (typeof status === 'string' && 
+           (String(status) === 'DONE' || String(status) === 'COMPLETED'));
+  });
+  
+  // Calculate percentage
+  const progressPercentage = Math.round((completedTasks.length / tasks.length) * 100);
+  
+  return Math.min(progressPercentage, 100); // Cap at 100%
 };
 
 // Define dashboard access permissions

@@ -1,6 +1,7 @@
 import { User, UserRole } from '../types';
 import { ChangeRequest, ChangeRequestType, ChangeRequestStatus } from '../types/change-request';
-import { canApproveProjects } from '../utils/permissions';
+import { canApproveProjects } from '../context/AuthContext';
+import { cleanupMockData } from './cleanupUtils';
 
 /**
  * Utility to audit the application's compliance with ClientTerms
@@ -22,6 +23,13 @@ export const validateChangeRequestApproval = (
 ): AuditResult => {
   const result: AuditResult = { passed: true, issues: [] };
 
+  // Executives can only view, not approve change requests
+  if (approver.role === UserRole.EXECUTIVE) {
+    result.passed = false;
+    result.issues.push(`User ${approver.firstName} ${approver.lastName} as Executive has view-only access and cannot approve change requests`);
+    return result;
+  }
+
   // Check if approver has permission to approve change requests
   if (!canApproveProjects(approver.role)) {
     result.passed = false;
@@ -38,22 +46,21 @@ export const validateChangeRequestApproval = (
       }
       break;
     case ChangeRequestType.BUDGET:
-      // Budget changes require EXECUTIVE or ADMIN approval
-      if (approver.role !== UserRole.EXECUTIVE && approver.role !== UserRole.ADMIN) {
+      // Budget changes require ADMIN approval (Executives can only view)
+      if (approver.role !== UserRole.ADMIN) {
         result.passed = false;
-        result.issues.push('Budget changes must be approved by an Executive or Admin');
+        result.issues.push('Budget changes must be approved by an Admin');
       }
       break;
     case ChangeRequestType.SCOPE:
-      // Scope changes require PROJECT_MANAGER, MAIN_PMO, EXECUTIVE or ADMIN approval
+      // Scope changes require PROJECT_MANAGER, MAIN_PMO, or ADMIN approval
       if (
         approver.role !== UserRole.PROJECT_MANAGER &&
         approver.role !== UserRole.MAIN_PMO &&
-        approver.role !== UserRole.EXECUTIVE &&
         approver.role !== UserRole.ADMIN
       ) {
         result.passed = false;
-        result.issues.push('Scope changes must be approved by a Project Manager, Main PMO, Executive or Admin');
+        result.issues.push('Scope changes must be approved by a Project Manager, Main PMO, or Admin');
       }
       break;
     case ChangeRequestType.RESOURCE:
@@ -64,10 +71,10 @@ export const validateChangeRequestApproval = (
       }
       break;
     case ChangeRequestType.CLOSURE:
-      // Project closure requires EXECUTIVE or ADMIN approval
-      if (approver.role !== UserRole.EXECUTIVE && approver.role !== UserRole.ADMIN) {
+      // Project closure requires ADMIN approval
+      if (approver.role !== UserRole.ADMIN) {
         result.passed = false;
-        result.issues.push('Project closure must be approved by an Executive or Admin');
+        result.issues.push('Project closure must be approved by an Admin');
       }
       break;
     default:
@@ -86,6 +93,9 @@ export const validateChangeRequestApproval = (
  */
 export const runFullAudit = (): AuditResult => {
   const result: AuditResult = { passed: true, issues: [] };
+
+  // First, ensure there are no legacy mock projects hanging around
+  cleanupMockData();
 
   // The full audit checks:
   // 1. All projects have valid managers with appropriate roles

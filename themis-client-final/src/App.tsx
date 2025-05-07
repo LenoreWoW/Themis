@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction } from '@mui/material';
+import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction, Stack } from '@mui/material';
 import theme, { createAppTheme } from './theme';
 import { AuthProvider } from './context/AuthContext';
 import { ProjectProvider } from './context/ProjectContext';
@@ -8,6 +8,7 @@ import { TaskProvider } from './context/TaskContext';
 import { TaskRequestProvider } from './context/TaskRequestContext';
 import { NotificationProvider } from './context/NotificationContext';
 import { ThemeProvider, useTheme } from './context/ThemeContext';
+import ThemeContext from './context/ThemeContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -27,6 +28,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import RiskIssuesPage from './pages/RiskIssuesPage';
 import MeetingsPage from './pages/MeetingsPage';
 import UserManagementPage from './pages/UserManagementPage';
+import FacultyPage from './pages/FacultyPage';
 import AssignmentsPage from './pages/AssignmentsPage';
 import GoalsPage from './pages/GoalsPage';
 import DepartmentsPage from './pages/DepartmentsPage';
@@ -38,9 +40,22 @@ import AuditLogPage from './pages/AuditLogPage';
 import SupabaseConnectionTest from './components/SupabaseConnectionTest';
 import { useTranslation } from 'react-i18next';
 import { initializeCleanApplication, isAppClean, cleanupMockData } from './utils/cleanupUtils';
+import ChangeRequestApproval from './components/ChangeRequest/ChangeRequestApproval';
+import ChangeRequestsPage from './pages/ChangeRequestsPage';
+import NotificationInitializer from './components/NotificationInitializer';
+import { SnackbarProvider } from 'notistack';
+import { LocalizationProvider } from '@mui/x-date-pickers';
+import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+import ProjectRelationshipMapPage from './pages/ProjectRelationshipMapPage';
+import IdeationPage from './pages/IdeationPage';
+import Auth0CallbackPage from './pages/Auth0CallbackPage';
+import CalendarPage from './pages/CalendarPage';
 
 // Import i18n configuration
-import './i18n';
+import './i18n/index';
+
+// Import global styles
+import './styles/bidi.css';
 
 // RTL support
 import { CacheProvider } from '@emotion/react';
@@ -69,7 +84,7 @@ const AppContent: React.FC = () => {
   const { themeMode: mode } = useTheme();
   
   // Get saved language from localStorage
-  const savedLanguage = localStorage.getItem('themisLanguage') || 'en';
+  const savedLanguage = localStorage.getItem('pmsLanguage') || 'en';
   const initialDirection = savedLanguage === 'ar' ? 'rtl' : 'ltr';
   
   const [direction, setDirection] = useState<Direction>(initialDirection);
@@ -141,11 +156,14 @@ const AppContent: React.FC = () => {
             <ProjectProvider>
               <TaskProvider key="global-task-provider">
                 <TaskRequestProvider>
+                  <NotificationInitializer />
                   <Routes>
                     <Route path="/login" element={<LoginPage />} />
+                    <Route path="/callback" element={<Auth0CallbackPage />} />
                     <Route path="/" element={<PrivateRoute><Layout direction={direction} onDirectionChange={handleDirectionChange} /></PrivateRoute>}>
                       <Route index element={<Navigate to="/dashboard" replace />} />
-                      <Route path="dashboard" element={<PrivateRoute roleRequired={['ADMIN']}><DashboardPage /></PrivateRoute>} />
+                      <Route path="dashboard" element={<PrivateRoute roleRequired={['ADMIN', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']}><DashboardPage /></PrivateRoute>} />
+                      <Route path="calendar" element={<PrivateRoute><CalendarPage /></PrivateRoute>} />
                       <Route path="projects" element={<ProjectsPage />} />
                       <Route path="projects/:id" element={
                         <TaskProvider key="project-task-provider">
@@ -160,12 +178,23 @@ const AppContent: React.FC = () => {
                       <Route path="goals" element={<GoalsPage />} />
                       <Route path="departments" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']}><DepartmentsPage /></PrivateRoute>} />
                       <Route path="users" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE']}><UserManagementPage /></PrivateRoute>} />
+                      <Route path="faculty" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE']}><FacultyPage /></PrivateRoute>} />
                       <Route path="projects/new" element={<PrivateRoute roleRequired={['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO']}><ProjectApprovalPage /></PrivateRoute>} />
-                      <Route path="project-approvals" element={<PrivateRoute roleRequired={['ADMIN', 'SUB_PMO', 'MAIN_PMO']}><ApprovalsPage /></PrivateRoute>} />
+                      <Route path="approvals" element={<PrivateRoute><ApprovalsPage /></PrivateRoute>} />
+                      <Route path="project-approvals" element={<Navigate to="/approvals" replace />} />
+                      <Route path="change-requests" element={<Navigate to="/approvals?tab=2" replace />} />
                       <Route path="legacy-projects" element={<PrivateRoute roleRequired={['ADMIN']}><LegacyProjectPage /></PrivateRoute>} />
                       <Route path="audit" element={<PrivateRoute roleRequired={['ADMIN']}><AuditPage /></PrivateRoute>} />
                       <Route path="audit-logs" element={<PrivateRoute roleRequired={['ADMIN']}><AuditLogPage /></PrivateRoute>} />
                       <Route path="supabase-test" element={<SupabaseConnectionTest />} />
+                      <Route path="change-requests/:id/review" element={
+                        <PrivateRoute>
+                          <ChangeRequestApproval />
+                        </PrivateRoute>
+                      } />
+                      <Route path="project-relationships" element={<ProjectRelationshipMapPage />} />
+                      <Route path="project-relationships/:projectId" element={<ProjectRelationshipMapPage />} />
+                      <Route path="ideation" element={<IdeationPage />} />
                     </Route>
                     <Route path="*" element={<NotFoundPage />} />
                   </Routes>
@@ -182,7 +211,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ThemeProvider>
-      <AppContent />
+      <LocalizationProvider dateAdapter={AdapterDateFns}>
+        <SnackbarProvider>
+          <AppContent />
+        </SnackbarProvider>
+      </LocalizationProvider>
     </ThemeProvider>
   );
 };

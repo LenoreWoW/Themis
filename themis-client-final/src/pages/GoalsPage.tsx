@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import React, { useState, useEffect, ReactNode, ChangeEvent, MouseEvent } from 'react';
 import {
   Typography,
@@ -67,6 +68,7 @@ interface GoalInterface {
   endDate: string;
   assignedTo: string;
   linkedProjects: ProjectWeight[];
+  linkedGoals: GoalWeight[];
   isProgressAutoCalculated: boolean;
   createdAt: string;
   updatedAt: string;
@@ -74,6 +76,11 @@ interface GoalInterface {
 
 interface ProjectWeight {
   projectId: string;
+  weight: number; // Weight as a percentage (0-100)
+}
+
+interface GoalWeight {
+  goalId: string;
   weight: number; // Weight as a percentage (0-100)
 }
 
@@ -123,8 +130,10 @@ const GoalsPage: React.FC = () => {
   const [currentGoal, setCurrentGoal] = useState<GoalInterface | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loading, setLoading] = useState(false);
   const [projectWeights, setProjectWeights] = useState<{ [key: string]: number }>({});
+  const [goalWeights, setGoalWeights] = useState<{ [key: string]: number }>({});
 
   // Fetch projects when component mounts
   useEffect(() => {
@@ -143,7 +152,7 @@ const GoalsPage: React.FC = () => {
     };
 
     fetchProjects();
-  }, []);
+  }, []); // Empty dependency array is fine since this only needs to run once on mount
 
   // Calculate a goal's progress based on the progress of its linked projects
   const calculateGoalProgressFromProjects = (linkedProjectWeights: ProjectWeight[]): number => {
@@ -180,6 +189,13 @@ const GoalsPage: React.FC = () => {
         weights[link.projectId] = link.weight;
       });
       setProjectWeights(weights);
+      
+      // Initialize goal weights from existing linked goals
+      const gWeights: { [key: string]: number } = {};
+      goal.linkedGoals.forEach(link => {
+        gWeights[link.goalId] = link.weight;
+      });
+      setGoalWeights(gWeights);
     } else {
       // Create a new goal with default values
       setCurrentGoal({
@@ -194,11 +210,13 @@ const GoalsPage: React.FC = () => {
         endDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0],
         assignedTo: '',
         linkedProjects: [],
+        linkedGoals: [],
         isProgressAutoCalculated: false,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       });
       setProjectWeights({});
+      setGoalWeights({});
     }
     
     setOpenDialog(true);
@@ -209,6 +227,7 @@ const GoalsPage: React.FC = () => {
     setCurrentGoal(null);
     setIsEditing(false);
     setProjectWeights({});
+    setGoalWeights({});
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -269,6 +288,34 @@ const GoalsPage: React.FC = () => {
     });
   };
 
+  const handleLinkedGoalsChange = (event: SelectChangeEvent<string[]>) => {
+    if (!currentGoal) return;
+    
+    const selectedGoalIds = event.target.value as string[];
+    
+    // Initialize weights for newly selected goals
+    const updatedWeights = { ...goalWeights };
+    
+    selectedGoalIds.forEach(goalId => {
+      // If this is a newly selected goal, initialize its weight to a default value
+      if (!updatedWeights[goalId]) {
+        updatedWeights[goalId] = 100 / selectedGoalIds.length; // Default to equal weights
+      }
+    });
+    
+    // Set weights for selected goals
+    setGoalWeights(updatedWeights);
+    
+    // Update the currentGoal with the new linked goals
+    setCurrentGoal({
+      ...currentGoal,
+      linkedGoals: selectedGoalIds.map(goalId => ({
+        goalId,
+        weight: updatedWeights[goalId] || 0
+      }))
+    });
+  };
+
   const handleAutoCalculateChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const isAutoCalculated = event.target.checked;
     
@@ -309,22 +356,46 @@ const GoalsPage: React.FC = () => {
     });
   };
 
+  const handleGoalWeightChange = (goalId: string, newWeight: number) => {
+    if (!currentGoal) return;
+    
+    // Update the weight for this goal
+    const updatedGoalWeights = { ...goalWeights, [goalId]: newWeight };
+    setGoalWeights(updatedGoalWeights);
+    
+    // Update the current goal with the new weights
+    const updatedLinkedGoals = currentGoal.linkedGoals.map(goal =>
+      goal.goalId === goalId ? { ...goal, weight: newWeight } : goal
+    );
+    
+    setCurrentGoal({
+      ...currentGoal,
+      linkedGoals: updatedLinkedGoals
+    });
+  };
+
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (!currentGoal) return;
-    
-    // Ensure project weights are properly set before saving
+
+    // Normalize the weights for linked projects to ensure they add up to 100%
     const finalLinkedProjects = currentGoal.linkedProjects.map(project => ({
       projectId: project.projectId,
-      weight: projectWeights[project.projectId] || 0
+      weight: project.weight
     }));
-    
+
+    // Normalize the weights for linked goals to ensure they add up to 100%
+    const finalLinkedGoals = currentGoal.linkedGoals.map(goal => ({
+      goalId: goal.goalId,
+      weight: goal.weight
+    }));
+
     const finalGoal = {
       ...currentGoal,
       linkedProjects: finalLinkedProjects,
-      updatedAt: new Date().toISOString()
+      linkedGoals: finalLinkedGoals
     };
-    
+
     // Save the goal
     if (isEditing) {
       // Update existing goal
@@ -338,17 +409,15 @@ const GoalsPage: React.FC = () => {
         );
       }
     } else {
-      // Add new goal
+      // Create new goal
       if (finalGoal.type === GoalType.STRATEGIC) {
         setStrategicGoals(prevGoals => [...prevGoals, finalGoal]);
       } else {
         setAnnualGoals(prevGoals => [...prevGoals, finalGoal]);
       }
     }
-    
-    setOpenDialog(false);
-    setCurrentGoal(null);
-    setProjectWeights({});
+
+    handleCloseDialog();
   };
 
   const handleDeleteGoal = (id: string) => {
@@ -495,33 +564,44 @@ const GoalsPage: React.FC = () => {
               </Typography>
             </Box>
             
+            { /* Project Links */ }
             {goal.linkedProjects.length > 0 && (
               <Box sx={{ mt: 2 }}>
-                <Typography variant="body2" sx={{ fontWeight: 'bold', mb: 1 }}>
-                  {t('goals.linkedProjects')}:
-                </Typography>
-                {goal.linkedProjects.map((projectWeight) => {
-                  const project = projects.find(p => p.id === projectWeight.projectId);
-                  return (
-                    <Box key={projectWeight.projectId} sx={{ 
-                      display: 'flex', 
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      mb: 0.5 
-                    }}>
-                      <Chip
-                        icon={<LinkIcon fontSize="small" />}
-                        label={project ? project.name : projectWeight.projectId}
+                <Typography variant="subtitle2">{t('Linked Projects')}:</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                  {goal.linkedProjects.map(link => {
+                    const project = projects.find(p => p.id === link.projectId);
+                    return (
+                      <Chip 
+                        key={link.projectId}
+                        label={project ? project.name : link.projectId}
                         size="small"
                         variant="outlined"
-                        sx={{ mr: 1 }}
                       />
-                      <Typography variant="caption" sx={{ fontWeight: 'medium' }}>
-                        {projectWeight.weight}%
-                      </Typography>
-                    </Box>
-                  );
-                })}
+                    );
+                  })}
+                </Box>
+              </Box>
+            )}
+            
+            { /* Goal Links */ }
+            {goal.linkedGoals.length > 0 && (
+              <Box sx={{ mt: 2 }}>
+                <Typography variant="subtitle2">{t('Linked Goals')}:</Typography>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                  {goal.linkedGoals.map(link => {
+                    const linkedGoal = [...strategicGoals, ...annualGoals].find(g => g.id === link.goalId);
+                    return (
+                      <Chip 
+                        key={link.goalId}
+                        label={linkedGoal ? linkedGoal.title : link.goalId}
+                        size="small"
+                        variant="outlined"
+                        color="secondary"
+                      />
+                    );
+                  })}
+                </Box>
               </Box>
             )}
           </Paper>
@@ -681,49 +761,115 @@ const GoalsPage: React.FC = () => {
               />
             </GridItem>
             
-            <GridItem xs={12}>
-              <FormControl fullWidth margin="normal">
-                <InputLabel id="linked-projects-label">{t('goals.linkedProjects')}</InputLabel>
-                <Select
-                  labelId="linked-projects-label"
-                  multiple
-                  value={currentGoal?.linkedProjects.map(p => p.projectId) || []}
-                  onChange={handleLinkedProjectsChange}
-                  input={<OutlinedInput label={t('goals.linkedProjects')} />}
-                  renderValue={(selected) => (
-                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                      {selected.map((value) => {
-                        const project = projects.find(p => p.id === value);
-                        return (
-                          <Chip 
-                            key={value} 
-                            label={project ? project.name : value} 
-                            size="small" 
-                          />
-                        );
-                      })}
-                    </Box>
-                  )}
-                  MenuProps={{
-                    PaperProps: {
-                      style: {
-                        maxHeight: 224,
-                        width: 250,
-                      },
-                    },
-                  }}
-                >
-                  {projects.map((project) => (
-                    <MenuItem key={project.id} value={project.id}>
-                      <Checkbox checked={currentGoal?.linkedProjects.some(p => p.projectId === project.id) || false} />
-                      <ListItemText primary={project.name} />
+            { /* Linked Projects Section */ }
+            <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>
+              {t('goals.linkedProjects', 'Linked Projects')}
+            </Typography>
+            <FormControl fullWidth margin="normal">
+              <InputLabel id="linked-projects-label">{t('goals.selectProjects', 'Select Projects')}</InputLabel>
+              <Select
+                labelId="linked-projects-label"
+                multiple
+                value={currentGoal?.linkedProjects.map(p => p.projectId) || []}
+                onChange={handleLinkedProjectsChange}
+                input={<OutlinedInput label={t('goals.selectProjects', 'Select Projects')} />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((projectId) => {
+                      const project = projects.find(p => p.id === projectId);
+                      return (
+                        <Chip 
+                          key={projectId} 
+                          label={project ? project.name : projectId} 
+                          size="small" 
+                        />
+                      );
+                    })}
+                  </Box>
+                )}
+              >
+                {projects.map((project) => (
+                  <MenuItem key={project.id} value={project.id}>
+                    <Checkbox checked={currentGoal?.linkedProjects.some(p => p.projectId === project.id) || false} />
+                    <ListItemText primary={project.name} />
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            { /* Linked Goals Section */ }
+            <Typography variant="subtitle1" sx={{ mt: 3, mb: 1 }}>
+              {t('goals.linkedGoals', 'Linked Goals')}
+            </Typography>
+            <FormControl fullWidth margin="normal">
+              <InputLabel id="linked-goals-label">{t('goals.selectGoals', 'Select Goals')}</InputLabel>
+              <Select
+                labelId="linked-goals-label"
+                multiple
+                value={currentGoal?.linkedGoals.map(g => g.goalId) || []}
+                onChange={handleLinkedGoalsChange}
+                input={<OutlinedInput label={t('goals.selectGoals', 'Select Goals')} />}
+                renderValue={(selected) => (
+                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                    {selected.map((goalId) => {
+                      // Find the goal in either strategic or annual goals
+                      const goal = [...strategicGoals, ...annualGoals].find(g => g.id === goalId);
+                      return (
+                        <Chip 
+                          key={goalId} 
+                          label={goal ? goal.title : goalId} 
+                          size="small" 
+                        />
+                      );
+                    })}
+                  </Box>
+                )}
+              >
+                {/* Filter out the current goal to prevent self-linking */}
+                {[...strategicGoals, ...annualGoals]
+                  .filter(goal => goal.id !== currentGoal?.id)
+                  .map((goal) => (
+                    <MenuItem key={goal.id} value={goal.id}>
+                      <Checkbox checked={currentGoal?.linkedGoals.some(g => g.goalId === goal.id) || false} />
+                      <ListItemText primary={goal.title} />
                     </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </GridItem>
-            
-            <GridItem xs={12}>
+                  ))
+                }
+              </Select>
+            </FormControl>
+
+            {/* Only show goal weights if there are linked goals */}
+            {currentGoal?.linkedGoals.length > 0 && (
+              <Box sx={{ mt: 2, p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                <Typography variant="subtitle2">
+                  {t('goals.adjustGoalWeights', 'Adjust the weight of each goal\'s contribution. Weights will automatically balance to 100%.')}
+                </Typography>
+                {currentGoal.linkedGoals.map(goalLink => {
+                  const goal = [...strategicGoals, ...annualGoals].find(g => g.id === goalLink.goalId);
+                  return (
+                    <Box key={goalLink.goalId} sx={{ mt: 2 }}>
+                      <Typography variant="body2">{goal ? goal.title : goalLink.goalId}</Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Slider
+                          value={goalLink.weight}
+                          onChange={(_, newValue) => handleGoalWeightChange(goalLink.goalId, newValue as number)}
+                          aria-labelledby="goal-weight-slider"
+                          valueLabelDisplay="auto"
+                          step={5}
+                          marks
+                          min={0}
+                          max={100}
+                          sx={{ flexGrow: 1, mr: 2 }}
+                        />
+                        <Typography variant="body2">{goalLink.weight}%</Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
+              </Box>
+            )}
+
+            <GridItem xs={12} sx={{ mt: 3 }}>
               <FormControlLabel
                 control={
                   <Switch
@@ -732,17 +878,17 @@ const GoalsPage: React.FC = () => {
                     name="isProgressAutoCalculated"
                   />
                 }
-                label={t('goals.autoCalculateProgress')}
+                label={t('goals.autoCalculateProgress', 'Auto-calculate progress')}
               />
               <Typography variant="caption" color="text.secondary" display="block">
-                {t('goals.autoCalculateDescription')}
+                {t('goals.autoCalculateDescription', 'If enabled, progress will be calculated automatically based on linked projects.')}
               </Typography>
             </GridItem>
             
             {!currentGoal?.isProgressAutoCalculated && (
               <GridItem xs={12}>
                 <Typography id="progress-slider" gutterBottom>
-                  {t('project.progress')}: {currentGoal?.progress || 0}%
+                  {t('project.progress', 'Progress')}: {currentGoal?.progress || 0}%
                 </Typography>
                 <Slider
                   value={currentGoal?.progress || 0}
@@ -761,10 +907,10 @@ const GoalsPage: React.FC = () => {
             {currentGoal?.linkedProjects && currentGoal.linkedProjects.length > 0 && (
               <Box sx={{ mt: 2 }}>
                 <Typography variant="subtitle2" gutterBottom>
-                  {t('Project Weights')}
+                  {t('Project Weights', 'Project Weights')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" paragraph>
-                  {t('Adjust the weight of each project\'s contribution to this goal. Weights will automatically balance to 100%.')}
+                  {t('goals.adjustProjectWeights', 'Adjust the weight of each project\'s contribution to this goal. Weights will automatically balance to 100%.')}
                 </Typography>
                 
                 {currentGoal?.linkedProjects && currentGoal.linkedProjects.map((projectLink) => {

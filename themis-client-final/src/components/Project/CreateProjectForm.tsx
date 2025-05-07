@@ -7,7 +7,8 @@ import FormWithValidation, {
 } from '../shared/FormWithValidation';
 import { FormControl, InputLabel, Select, MenuItem, ListItemText, Checkbox, OutlinedInput, Box, Chip } from '@mui/material';
 import { GridContainer, GridItem } from '../common/MuiGridWrapper';
-import { Department, Project, ProjectPriority, ProjectStatus, User } from '../../types';
+import { Department, Project, ProjectPriority, ProjectStatus, User, UserRole } from '../../types';
+import { ApprovalStatus } from '../../types/index';
 import { useAuth } from '../../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import api from '../../services/api';
@@ -105,7 +106,7 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
   onProjectAdded,
   onCancel
 }) => {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const { t } = useTranslation();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -176,6 +177,11 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
     setSubmitError(null);
     
     try {
+      // Set initial approval status
+      const approvalStatus = user?.role === UserRole.PROJECT_MANAGER 
+        ? ApprovalStatus.PENDING_SUB_PMO 
+        : ApprovalStatus.DRAFT;
+        
       const projectData = {
         id: uuidv4(),
         name: data.name,
@@ -190,7 +196,9 @@ const CreateProjectForm: React.FC<CreateProjectFormProps> = ({
         teamMembers: data.teamMembers,
         projectManagerId: data.projectManagerId,
         projectDependencies: projectDependencies,
-        dependentProjects: dependentProjects
+        dependentProjects: dependentProjects,
+        approvalStatus: approvalStatus,
+        submissionDate: new Date().toISOString()
       };
       
       const projectResponse = await api.projects.createProject(projectData, token || '');

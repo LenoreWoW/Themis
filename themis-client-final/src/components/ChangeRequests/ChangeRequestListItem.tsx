@@ -33,13 +33,15 @@ interface ChangeRequestListItemProps {
 
 const getStatusColor = (status: ChangeRequestStatus | string) => {
   switch (status) {
-    case ChangeRequestStatus.PENDING:
+    case ChangeRequestStatus.PENDING_SUB_PMO:
+    case ChangeRequestStatus.PENDING_MAIN_PMO:
     case 'PENDING':
       return 'warning';
     case ChangeRequestStatus.APPROVED:
     case 'APPROVED':
       return 'success';
     case ChangeRequestStatus.REJECTED:
+    case ChangeRequestStatus.REJECTED_BY_SUB_PMO:
     case 'REJECTED':
       return 'error';
     default:
@@ -286,7 +288,8 @@ const ChangeRequestListItem: React.FC<ChangeRequestListItemProps> = ({
             </Grid>
             
             {/* Show approval/rejection details if available */}
-            {changeRequest.status !== ChangeRequestStatus.PENDING && (
+            {changeRequest.status !== ChangeRequestStatus.PENDING_SUB_PMO && 
+             changeRequest.status !== ChangeRequestStatus.PENDING_MAIN_PMO && (
               <>
                 <Grid item xs={12}>
                   <Divider sx={{ my: 1 }} />
@@ -367,7 +370,8 @@ const ChangeRequestListItem: React.FC<ChangeRequestListItemProps> = ({
                 </Button>
                 
                 {/* For admin users, show approve/reject buttons if change request is pending */}
-                {isAdmin && changeRequest.status === ChangeRequestStatus.PENDING && (
+                {isAdmin && (changeRequest.status === ChangeRequestStatus.PENDING_SUB_PMO || 
+                            changeRequest.status === ChangeRequestStatus.PENDING_MAIN_PMO) && (
                   <>
                     <Button
                       variant="contained"

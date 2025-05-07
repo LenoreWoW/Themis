@@ -1,0 +1,145 @@
+/* 
+ * Global Bidirectional (RTL/LTR) CSS Variables and Utilities
+ * These variables can be used throughout the application
+ * to maintain consistent RTL/LTR behavior
+ */
+
+:root {
+  /* Default LTR variables */
+  --text-align: left;
+  --reverse-direction: row;
+  --start-direction: left;
+  --end-direction: right;
+  --transform-direction: 1; /* For transforms like translateX() */
+  --start-padding: 0;
+  --end-padding: 0;
+}
+
+/* RTL (Arabic) specific overrides */
+html[dir="rtl"] {
+  --text-align: right;
+  --reverse-direction: row-reverse;
+  --start-direction: right;
+  --end-direction: left;
+  --transform-direction: -1; /* Invert transforms for RTL */
+  --start-padding: 0;
+  --end-padding: 0;
+}
+
+/* RTL-aware alignment classes */
+.text-start {
+  text-align: var(--text-align) !important;
+}
+
+.bidi-row {
+  display: flex;
+  flex-direction: var(--reverse-direction) !important;
+}
+
+.ms-auto {
+  margin-left: auto !important;
+  margin-right: initial !important;
+}
+
+html[dir="rtl"] .ms-auto {
+  margin-right: auto !important;
+  margin-left: initial !important;
+}
+
+.me-auto {
+  margin-right: auto !important;
+  margin-left: initial !important;
+}
+
+html[dir="rtl"] .me-auto {
+  margin-left: auto !important;
+  margin-right: initial !important;
+}
+
+/* RTL-aware padding classes */
+.ps-1 { padding-left: 0.25rem !important; }
+.ps-2 { padding-left: 0.5rem !important; }
+.ps-3 { padding-left: 1rem !important; }
+.ps-4 { padding-left: 1.5rem !important; }
+.ps-5 { padding-left: 3rem !important; }
+
+.pe-1 { padding-right: 0.25rem !important; }
+.pe-2 { padding-right: 0.5rem !important; }
+.pe-3 { padding-right: 1rem !important; }
+.pe-4 { padding-right: 1.5rem !important; }
+.pe-5 { padding-right: 3rem !important; }
+
+html[dir="rtl"] .ps-1 { padding-left: 0 !important; padding-right: 0.25rem !important; }
+html[dir="rtl"] .ps-2 { padding-left: 0 !important; padding-right: 0.5rem !important; }
+html[dir="rtl"] .ps-3 { padding-left: 0 !important; padding-right: 1rem !important; }
+html[dir="rtl"] .ps-4 { padding-left: 0 !important; padding-right: 1.5rem !important; }
+html[dir="rtl"] .ps-5 { padding-left: 0 !important; padding-right: 3rem !important; }
+
+html[dir="rtl"] .pe-1 { padding-right: 0 !important; padding-left: 0.25rem !important; }
+html[dir="rtl"] .pe-2 { padding-right: 0 !important; padding-left: 0.5rem !important; }
+html[dir="rtl"] .pe-3 { padding-right: 0 !important; padding-left: 1rem !important; }
+html[dir="rtl"] .pe-4 { padding-right: 0 !important; padding-left: 1.5rem !important; }
+html[dir="rtl"] .pe-5 { padding-right: 0 !important; padding-left: 3rem !important; }
+
+/* RTL-aware margin classes */
+.ms-1 { margin-left: 0.25rem !important; }
+.ms-2 { margin-left: 0.5rem !important; }
+.ms-3 { margin-left: 1rem !important; }
+.ms-4 { margin-left: 1.5rem !important; }
+.ms-5 { margin-left: 3rem !important; }
+
+.me-1 { margin-right: 0.25rem !important; }
+.me-2 { margin-right: 0.5rem !important; }
+.me-3 { margin-right: 1rem !important; }
+.me-4 { margin-right: 1.5rem !important; }
+.me-5 { margin-right: 3rem !important; }
+
+html[dir="rtl"] .ms-1 { margin-left: 0 !important; margin-right: 0.25rem !important; }
+html[dir="rtl"] .ms-2 { margin-left: 0 !important; margin-right: 0.5rem !important; }
+html[dir="rtl"] .ms-3 { margin-left: 0 !important; margin-right: 1rem !important; }
+html[dir="rtl"] .ms-4 { margin-left: 0 !important; margin-right: 1.5rem !important; }
+html[dir="rtl"] .ms-5 { margin-left: 0 !important; margin-right: 3rem !important; }
+
+html[dir="rtl"] .me-1 { margin-right: 0 !important; margin-left: 0.25rem !important; }
+html[dir="rtl"] .me-2 { margin-right: 0 !important; margin-left: 0.5rem !important; }
+html[dir="rtl"] .me-3 { margin-right: 0 !important; margin-left: 1rem !important; }
+html[dir="rtl"] .me-4 { margin-right: 0 !important; margin-left: 1.5rem !important; }
+html[dir="rtl"] .me-5 { margin-right: 0 !important; margin-left: 3rem !important; }
+
+/* Special styles for Arabic font */
+html[dir="rtl"] .arabic-text {
+  font-family: 'Cairo', 'Roboto', 'Helvetica', 'Arial', sans-serif;
+  letter-spacing: 0; /* Remove letter spacing for Arabic */
+}
+
+/* Fix for Material-UI components in RTL mode */
+html[dir="rtl"] .MuiInputBase-input {
+  text-align: right;
+}
+
+html[dir="rtl"] .MuiFormLabel-root {
+  right: 0;
+  left: auto;
+  transform-origin: top right;
+}
+
+html[dir="rtl"] .MuiInputLabel-shrink {
+  transform-origin: top right;
+}
+
+/* Ensure numbers are always Western digits */
+.western-digits {
+  font-feature-settings: "tnum" on, "lnum" on;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Fix for Drawer placement in RTL mode */
+html[dir="rtl"] .MuiDrawer-paperAnchorLeft {
+  right: 0;
+  left: auto;
+}
+
+html[dir="rtl"] .MuiDrawer-paperAnchorRight {
+  left: 0;
+  right: auto;
+} 

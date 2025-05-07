@@ -8,16 +8,24 @@ using Themis.Core.Enums;
 using Themis.Core.Interfaces;
 using Themis.Core.Models;
 using Themis.Infrastructure.Data;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Themis.Infrastructure.Services
 {
     public class ProjectService : IProjectService
     {
         private readonly ApplicationDbContext _context;
+        private readonly IAuditLogService _auditLogService;
+        private readonly ILogger<ProjectService> _logger;
+        private readonly IServiceProvider _serviceProvider;
 
-        public ProjectService(ApplicationDbContext context)
+        public ProjectService(ApplicationDbContext context, IAuditLogService auditLogService, ILogger<ProjectService> logger, IServiceProvider serviceProvider)
         {
             _context = context;
+            _auditLogService = auditLogService;
+            _logger = logger;
+            _serviceProvider = serviceProvider;
         }
 
         public async Task<Project> GetProjectByIdAsync(Guid id)
@@ -87,15 +95,22 @@ namespace Themis.Infrastructure.Services
             await _context.Projects.AddAsync(project);
             
             // Create an audit log entry
-            await _context.AuditLogs.AddAsync(new AuditLog
+            await _auditLogService.LogActionAsync(userId, "Project", project.Id.ToString(), "Create", $"Created project: {project.Title}");
+            
+            // Create a chat channel for the project
+            try
             {
-                EntityType = "Project",
-                EntityId = project.Id,
-                UserId = userId,
-                Action = "Create",
-                Details = $"Created project: {project.Title}",
-                Timestamp = DateTime.UtcNow
-            });
+                var chatService = _serviceProvider.GetService<IChatService>();
+                if (chatService != null)
+                {
+                    await chatService.CreateProjectChannelAsync(project.Id.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log the error but don't fail the project creation
+                _logger.LogError(ex, "Failed to create project chat channel");
+            }
             
             await _context.SaveChangesAsync();
             
@@ -110,7 +125,7 @@ namespace Themis.Infrastructure.Services
                 
             if (existingProject == null)
             {
-                return null;
+                throw new ArgumentException($"Project with ID {project.Id} not found");
             }
 
             // Don't allow PMO-level status changes through direct updates
@@ -153,15 +168,26 @@ namespace Themis.Infrastructure.Services
             }
 
             // Create an audit log entry
-            await _context.AuditLogs.AddAsync(new AuditLog
+            await _auditLogService.LogActionAsync(userId, "Project", project.Id.ToString(), "Update", $"Updated project: {project.Title}");
+            
+            // If project is now completed, archive its chat channel
+            bool isCompletingProject = existingProject.Status != "COMPLETED" && project.Status == "COMPLETED";
+            if (isCompletingProject)
             {
-                EntityType = "Project",
-                EntityId = project.Id,
-                UserId = userId,
-                Action = "Update",
-                Details = $"Updated project: {project.Title}",
-                Timestamp = DateTime.UtcNow
-            });
+                try
+                {
+                    var chatService = _serviceProvider.GetService<IChatService>();
+                    if (chatService != null)
+                    {
+                        await chatService.HandleProjectCompletionAsync(project.Id.ToString());
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Log the error but don't fail the project update
+                    _logger.LogError(ex, "Failed to archive project chat channel");
+                }
+            }
             
             await _context.SaveChangesAsync();
             
@@ -317,15 +343,7 @@ namespace Themis.Infrastructure.Services
             await _context.Approvals.AddAsync(approval);
             
             // Create audit log
-            await _context.AuditLogs.AddAsync(new AuditLog
-            {
-                EntityType = "Project",
-                EntityId = projectId,
-                UserId = userId,
-                Action = "SubmitForApproval",
-                Details = $"Project submitted for {requestType} approval.",
-                Timestamp = DateTime.UtcNow
-            });
+            await _auditLogService.LogActionAsync(userId, "Project", projectId.ToString(), "SubmitForApproval", $"Project submitted for {requestType} approval.");
             
             await _context.SaveChangesAsync();
 
@@ -397,15 +415,7 @@ namespace Themis.Infrastructure.Services
                 project.Status = newStatus;
                 
                 // Create audit log
-                await _context.AuditLogs.AddAsync(new AuditLog
-                {
-                    EntityType = "Project",
-                    EntityId = project.Id,
-                    UserId = userId,
-                    Action = "ApproveRequest",
-                    Details = $"Project {approval.RequestType} request approved by Main PMO.",
-                    Timestamp = DateTime.UtcNow
-                });
+                await _auditLogService.LogActionAsync(userId, "Project", project.Id.ToString(), "ApproveRequest", $"Project {approval.RequestType} request approved by Main PMO.");
                 
                 await _context.SaveChangesAsync();
                 
@@ -483,15 +493,7 @@ namespace Themis.Infrastructure.Services
                 project.Status = previousStatus;
                 
                 // Create audit log
-                await _context.AuditLogs.AddAsync(new AuditLog
-                {
-                    EntityType = "Project",
-                    EntityId = project.Id,
-                    UserId = userId,
-                    Action = "RejectRequest",
-                    Details = $"Project {approval.RequestType} request rejected by Main PMO.",
-                    Timestamp = DateTime.UtcNow
-                });
+                await _auditLogService.LogActionAsync(userId, "Project", project.Id.ToString(), "RejectRequest", $"Project {approval.RequestType} request rejected by Main PMO.");
                 
                 await _context.SaveChangesAsync();
                 

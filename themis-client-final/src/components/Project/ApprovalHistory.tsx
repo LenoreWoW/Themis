@@ -20,11 +20,12 @@ import {
   CheckCircle as ApproveIcon, 
   Cancel as RejectIcon, 
   Edit as EditIcon,
-  DoneAll as DoneAllIcon,
   Pending as PendingIcon,
   ErrorOutline as ErrorIcon
 } from '@mui/icons-material';
 import { ApprovalStatus } from '../../context/AuthContext';
+import { format } from 'date-fns';
+
 // Instead of importing from types, define it locally
 interface ReviewComment {
   id?: string;
@@ -38,7 +39,6 @@ interface ReviewComment {
   };
   action: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES' | 'SUBMIT';
 }
-import { format } from 'date-fns';
 
 interface ApprovalHistoryProps {
   approvalStatus: ApprovalStatus;

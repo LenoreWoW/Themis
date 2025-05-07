@@ -24,10 +24,12 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { loginWithAuth0 } from '../services/auth';
 
 const LoginPage: React.FC = () => {
   const { t } = useTranslation();
-  const [adIdentifier, setAdIdentifier] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [credentialsOpen, setCredentialsOpen] = useState(false);
@@ -45,8 +47,14 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!adIdentifier.trim()) {
-      setError(t('auth.enterActiveDirectoryId'));
+    if (!username.trim()) {
+      setError(t('auth.enterUsername'));
+      return;
+    }
+    
+    // For 'admin' username, we don't need to check password
+    if (username.toLowerCase() !== 'admin' && !password.trim()) {
+      setError(t('auth.enterPassword'));
       return;
     }
     
@@ -54,7 +62,22 @@ const LoginPage: React.FC = () => {
     setError(null);
     
     try {
-      await login(adIdentifier);
+      console.log('Attempting login with:', username);
+      
+      // Handle test accounts with a simplified flow
+      if (username.toLowerCase() === 'admin' || 
+          username === 'john.smith@acme.com' || 
+          username === 'sarah.johnson@acme.com' || 
+          username === 'emma.garcia@acme.com' || 
+          username === 'robert.taylor@acme.com' || 
+          username === 'david.wilson@acme.com' || 
+          username === 'jessica.brown@acme.com' || 
+          username === 'michael.chen@acme.com') {
+        
+        console.log('Using test account flow for:', username);
+      }
+      
+      await login(username, password);
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
@@ -73,18 +96,37 @@ const LoginPage: React.FC = () => {
   };
 
   const handleAccountSelect = (email: string) => {
-    setAdIdentifier(email);
+    setUsername(email);
     setCredentialsOpen(false);
+    
+    // Automatically login with test account
+    setIsLoading(true);
+    setError(null);
+    
+    try {
+      console.log('Auto-logging in with test account:', email);
+      login(email, '').then(() => {
+        navigate('/');
+      }).catch(err => {
+        console.error('Auto-login error:', err);
+        setError(t('auth.authFailed'));
+        setIsLoading(false);
+      });
+    } catch (err) {
+      console.error('Auto-login setup error:', err);
+      setError(t('auth.authFailed'));
+      setIsLoading(false);
+    }
   };
 
   const testAccounts = [
-    { role: 'Admin', email: 'john.smith@acme.com' },
-    { role: 'Project Manager', email: 'sarah.johnson@acme.com' },
-    { role: 'Department Director', email: 'emma.garcia@acme.com' },
-    { role: 'Executive', email: 'robert.taylor@acme.com' },
-    { role: 'Main PMO', email: 'david.wilson@acme.com' },
-    { role: 'Sub PMO', email: 'jessica.brown@acme.com' },
-    { role: 'Developer', email: 'michael.chen@acme.com' }
+    { role: 'Admin', email: 'john.smith@acme.com', department: 'IT Department' },
+    { role: 'Project Manager', email: 'sarah.johnson@acme.com', department: 'Digital Transformation' },
+    { role: 'Department Director', email: 'emma.garcia@acme.com', department: 'Finance Department' },
+    { role: 'Executive', email: 'robert.taylor@acme.com', department: 'Executive Office' },
+    { role: 'Main PMO', email: 'david.wilson@acme.com', department: 'IT Department' },
+    { role: 'Sub PMO', email: 'jessica.brown@acme.com', department: 'Digital Transformation' },
+    { role: 'Developer', email: 'michael.chen@acme.com', department: 'Development Department' }
   ];
   
   return (
@@ -128,7 +170,7 @@ const LoginPage: React.FC = () => {
             }}
           >
             <Typography variant="h3" fontWeight="bold" sx={{ mb: 2 }}>
-              {t('auth.welcomeToThemis')}
+              {t('auth.welcome')}
             </Typography>
             <Typography variant="h6" sx={{ mb: 4, fontWeight: 'normal' }}>
               {t('auth.centralizedWorkspace')}
@@ -144,7 +186,7 @@ const LoginPage: React.FC = () => {
             >
               <Box
                 component="img"
-                src="/logo512.png"
+                src="/Finallogo.jpg"
                 alt={t('auth.projectManagement')}
                 sx={{
                   width: '100%',
@@ -185,7 +227,7 @@ const LoginPage: React.FC = () => {
           >
             <Box 
               component="img"
-              src="/assets/images/LogoClickUP.png"
+              src="/Finallogo.jpg"
               alt={t('app.title')}
               sx={{ 
                 height: 80,
@@ -211,16 +253,16 @@ const LoginPage: React.FC = () => {
             align="center"
             sx={{ mb: 1 }}
           >
-            {t('auth.loginToThemis')}
+            {t('auth.loginTitle')}
           </Typography>
           
           <Typography 
             variant="subtitle1" 
             align="center" 
-            color="text.secondary" 
+            color="text.primary" 
             sx={{ mb: 4 }}
           >
-            {t('auth.signInWithAD')}
+            {t('auth.signIn')}
           </Typography>
           
           {error && (
@@ -239,24 +281,66 @@ const LoginPage: React.FC = () => {
             </Alert>
           )}
           
-          <Box component="form" onSubmit={handleSubmit} noValidate sx={{ width: '100%' }}>
+          <form onSubmit={handleSubmit}>
             <TextField
+              variant="outlined"
               margin="normal"
               required
               fullWidth
-              id="adIdentifier"
-              label={t('auth.activeDirectoryId')}
-              name="adIdentifier"
+              id="username"
+              label={t('auth.username')}
+              name="username"
               autoComplete="username"
               autoFocus
-              value={adIdentifier}
-              onChange={(e) => setAdIdentifier(e.target.value)}
-              disabled={isLoading}
-              sx={{
-                mb: 3,
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              sx={{ 
+                mb: 2,
+                '& .MuiInputBase-input': {
+                  color: 'text.primary',
+                },
                 '& .MuiOutlinedInput-root': {
-                  borderRadius: '8px',
+                  '& fieldset': {
+                    borderColor: 'rgba(0, 0, 0, 0.23)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main',
+                  },
                 }
+              }}
+              InputProps={{
+                style: { color: 'black' }
+              }}
+            />
+            
+            <TextField
+              variant="outlined"
+              margin="normal"
+              required
+              fullWidth
+              name="password"
+              label={t('auth.password')}
+              type="password"
+              id="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              sx={{ 
+                mb: 3,
+                '& .MuiInputBase-input': {
+                  color: 'text.primary',
+                },
+                '& .MuiOutlinedInput-root': {
+                  '& fieldset': {
+                    borderColor: 'rgba(0, 0, 0, 0.23)',
+                  },
+                  '&:hover fieldset': {
+                    borderColor: 'primary.main',
+                  },
+                }
+              }}
+              InputProps={{
+                style: { color: 'black' }
               }}
             />
             
@@ -268,72 +352,49 @@ const LoginPage: React.FC = () => {
               size="large"
               disabled={isLoading}
               sx={{ 
-                mt: 3, 
-                mb: 2, 
-                height: 56, 
+                py: 1.5,
+                mb: 2,
                 borderRadius: '8px',
-                backgroundColor: '#8A1538',
-                '&:hover': {
-                  backgroundColor: '#6E0020',
-                }
+                fontWeight: 600,
+                textTransform: 'none',
+                fontSize: '1rem'
               }}
             >
-              {isLoading ? (
-                <CircularProgress size={24} color="inherit" />
-              ) : (
-                t('auth.signin')
-              )}
+              {isLoading ? <CircularProgress size={24} /> : t('auth.signIn')}
+            </Button>
+          </form>
+          
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <Button
+              color="primary"
+              variant="outlined"
+              onClick={handleCredentialsOpen}
+              sx={{ 
+                textTransform: 'none',
+                fontWeight: 500,
+                px: 3,
+                py: 1
+              }}
+            >
+              {t('auth.testAccounts')}
             </Button>
           </Box>
           
-          {isLoading && (
-            <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-              <CircularProgress />
-            </Box>
-          )}
-          
-          {/* Test Credentials Button */}
-          <Button
-            variant="outlined"
-            fullWidth
-            onClick={handleCredentialsOpen}
-            sx={{
-              mt: 3,
-              height: 48,
-              borderRadius: '8px',
-              borderColor: '#8A1538',
-              color: '#8A1538',
-              '&:hover': {
-                borderColor: '#6E0020',
-                backgroundColor: 'rgba(138, 21, 56, 0.04)',
-              }
-            }}
-          >
-            {t('auth.testCredentials')}
-          </Button>
-
-          {/* Test Credentials Dialog */}
           <Dialog 
             open={credentialsOpen} 
             onClose={handleCredentialsClose}
             maxWidth="sm"
             fullWidth
           >
-            <DialogTitle sx={{ backgroundColor: '#8A1538', color: 'white' }}>
-              {t('auth.testCredentials')}
-            </DialogTitle>
+            <DialogTitle>{t('auth.testAccounts')}</DialogTitle>
             <DialogContent>
-              <Typography variant="body2" color="text.secondary" sx={{ my: 2 }}>
-                {t('auth.useTheseAccounts')}
-              </Typography>
-              <List sx={{ pt: 0 }}>
+              <List>
                 {testAccounts.map((account, index) => (
                   <React.Fragment key={account.email}>
                     <ListItemButton onClick={() => handleAccountSelect(account.email)}>
                       <ListItemText 
-                        primary={account.role} 
-                        secondary={account.email}
-                        primaryTypographyProps={{ fontWeight: 'bold' }}
+                        primary={`${account.role} (${account.email})`} 
+                        secondary={account.department} 
                       />
                     </ListItemButton>
                     {index < testAccounts.length - 1 && <Divider />}
@@ -342,8 +403,8 @@ const LoginPage: React.FC = () => {
               </List>
             </DialogContent>
             <DialogActions>
-              <Button onClick={handleCredentialsClose} sx={{ color: '#8A1538' }}>
-                {t('common.cancel')}
+              <Button onClick={handleCredentialsClose}>
+                {t('common.close')}
               </Button>
             </DialogActions>
           </Dialog>

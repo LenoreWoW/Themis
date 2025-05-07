@@ -1,217 +1,204 @@
 import React from 'react';
 import {
-  Badge,
-  IconButton,
-  Menu,
-  MenuItem,
+  Box,
   Typography,
+  List,
+  ListItem,
+  ListItemText,
   Divider,
   Button,
-  Box
+  Paper
 } from '@mui/material';
-import {
-  Notifications as NotificationsIcon,
-  TaskAlt as TaskIcon,
-  AccessTime as TimeIcon,
-  Warning as WarningIcon,
-  Update as UpdateIcon,
-  ThumbUp as ApproveIcon,
-  ThumbDown as RejectIcon,
-  HowToReg as ApprovalNeededIcon
-} from '@mui/icons-material';
-import MarkEmailReadIcon from '@mui/icons-material/MarkEmailRead';
+import { format } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
-import { useNotifications } from '../context/NotificationContext';
+import useNotifications from '../hooks/useNotifications';
+import { useAuth } from '../hooks/useAuth';
 
-// Define a local notification type since we don't have access to the old one
-interface NotificationItem {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  isRead: boolean;
-  relatedItemId?: string;
-  relatedItemType?: string;
-  createdAt: string;
+// Local definition since imports are having issues
+enum NotificationType {
+  TASK_ASSIGNED = 'TASK_ASSIGNED',
+  TASK_DUE_SOON = 'TASK_DUE_SOON',
+  TASK_OVERDUE = 'TASK_OVERDUE',
+  APPROVAL_NEEDED = 'APPROVAL_NEEDED',
+  CHANGE_REQUEST_APPROVED = 'CHANGE_REQUEST_APPROVED',
+  CHANGE_REQUEST_REJECTED = 'CHANGE_REQUEST_REJECTED',
+  UPDATE_DUE = 'UPDATE_DUE',
+  GENERAL = 'GENERAL'
 }
 
-const getNotificationIcon = (notificationType: string) => {
-  switch (notificationType) {
-    case 'TASK_ASSIGNED':
-    case 'TASK_DUE_SOON':
-    case 'TASK_OVERDUE':
-      return <TaskIcon fontSize="small" />;
-    case 'UPDATE_DUE':
-      return <TimeIcon fontSize="small" />;
-    case 'UPDATE_APPROVED':
-      return <ApproveIcon fontSize="small" />;
-    case 'UPDATE_REJECTED':
-    case 'CHANGE_REQUEST_REJECTED':
-      return <RejectIcon fontSize="small" />;
-    case 'CHANGE_REQUEST_APPROVED':
-      return <ApproveIcon fontSize="small" />;
-    case 'APPROVAL_NEEDED':
-      return <ApprovalNeededIcon fontSize="small" />;
+interface NotificationPanelProps {
+  onClose: () => void;
+}
+
+const getNotificationIcon = (type: NotificationType): string => {
+  switch (type) {
+    case NotificationType.TASK_ASSIGNED:
+      return '📋';
+    case NotificationType.TASK_DUE_SOON:
+      return '⏰';
+    case NotificationType.TASK_OVERDUE:
+      return '⚠️';
+    case NotificationType.APPROVAL_NEEDED:
+      return '✅';
+    case NotificationType.CHANGE_REQUEST_APPROVED:
+      return '✅';
+    case NotificationType.CHANGE_REQUEST_REJECTED:
+      return '❌';
+    case NotificationType.UPDATE_DUE:
+      return '📅';
     default:
-      return <WarningIcon fontSize="small" />;
+      return '📌';
   }
 };
 
-const NotificationPanel: React.FC = () => {
-  // Mock data for notifications
-  const mockNotifications: NotificationItem[] = [
-    {
-      id: '1',
-      type: 'TASK_ASSIGNED',
-      title: 'New Task Assigned',
-      message: 'You have been assigned a new task: "Complete project documentation"',
-      isRead: false,
-      relatedItemId: 'task-123',
-      relatedItemType: 'task',
-      createdAt: new Date().toISOString()
-    },
-    {
-      id: '2',
-      type: 'UPDATE_DUE',
-      title: 'Weekly Update Due',
-      message: 'Your weekly project update is due tomorrow',
-      isRead: false,
-      relatedItemId: 'project-456',
-      relatedItemType: 'project',
-      createdAt: new Date().toISOString()
-    }
-  ];
-  
-  const { showAlert } = useNotifications();
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+const NotificationPanel: React.FC<NotificationPanelProps> = ({ onClose }) => {
+  const { user } = useAuth();
+  const { notifications, markAllAsRead, markAsRead } = useNotifications(user?.id);
   const navigate = useNavigate();
-  
-  const notifications = mockNotifications;
-  const unreadCount = notifications.filter(n => !n.isRead).length;
-  
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorEl(event.currentTarget);
+
+  // Handle marking all notifications as read
+  const handleMarkAllAsRead = () => {
+    markAllAsRead();
   };
-  
-  const handleMenuClose = () => {
-    setAnchorEl(null);
+
+  // Format the notification timestamp
+  const formatTimestamp = (timestamp: string): string => {
+    try {
+      const date = new Date(timestamp);
+      return format(date, 'MMM d, yyyy h:mm a');
+    } catch (error) {
+      return timestamp;
+    }
   };
-  
-  const handleNotificationClick = (notification: NotificationItem) => {
-    // Mark as read
-    // Navigate to related item if applicable
+
+  // Navigate to the appropriate detail view based on notification type and related item
+  const handleNotificationClick = (notification: any) => {
+    // Mark the notification as read when clicked
+    markAsRead(notification.id);
+    
+    // Close the notification panel
+    onClose();
+    
+    // Navigate to the appropriate page based on notification type and related item
     if (notification.relatedItemId && notification.relatedItemType) {
-      if (notification.relatedItemType === 'task') {
-        navigate(`/tasks/${notification.relatedItemId}`);
-      } else if (notification.relatedItemType === 'project') {
-        navigate(`/projects/${notification.relatedItemId}`);
+      switch (notification.relatedItemType.toLowerCase()) {
+        case 'task':
+          navigate(`/tasks?id=${notification.relatedItemId}`);
+          break;
+        case 'assignment':
+          navigate(`/assignments?id=${notification.relatedItemId}`);
+          break;
+        case 'project':
+          navigate(`/projects/${notification.relatedItemId}`);
+          break;
+        case 'request':
+        case 'changerequest':
+          navigate(`/requests?id=${notification.relatedItemId}`);
+          break;
+        case 'approval':
+          navigate(`/approvals?id=${notification.relatedItemId}`);
+          break;
+        case 'update':
+          navigate(`/projects/${notification.relatedItemId}?tab=updates`);
+          break;
+        default:
+          // If we don't have a specific mapping, try a generic approach
+          navigate(`/${notification.relatedItemType.toLowerCase()}s?id=${notification.relatedItemId}`);
+      }
+    } else {
+      // For notifications without a specific related item, navigate based on type
+      switch (notification.type) {
+        case NotificationType.TASK_ASSIGNED:
+        case NotificationType.TASK_DUE_SOON:
+        case NotificationType.TASK_OVERDUE:
+          navigate('/tasks');
+          break;
+        case NotificationType.APPROVAL_NEEDED:
+        case NotificationType.CHANGE_REQUEST_APPROVED:
+        case NotificationType.CHANGE_REQUEST_REJECTED:
+          navigate('/approvals');
+          break;
+        case NotificationType.UPDATE_DUE:
+          navigate('/projects');
+          break;
+        default:
+          // For general notifications, just close the panel
+          break;
       }
     }
-    
-    handleMenuClose();
-    showAlert('Notification marked as read', 'success');
   };
-  
-  const handleMarkAllAsRead = () => {
-    // Mark all notifications as read
-    handleMenuClose();
-    showAlert('All notifications marked as read', 'success');
-  };
-  
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
-    
-    if (diffInMinutes < 1) {
-      return 'Just now';
-    } else if (diffInMinutes < 60) {
-      return `${diffInMinutes} minute${diffInMinutes === 1 ? '' : 's'} ago`;
-    } else if (diffInMinutes < 24 * 60) {
-      const hours = Math.floor(diffInMinutes / 60);
-      return `${hours} hour${hours === 1 ? '' : 's'} ago`;
-    } else {
-      const days = Math.floor(diffInMinutes / (24 * 60));
-      return `${days} day${days === 1 ? '' : 's'} ago`;
-    }
-  };
-  
+
   return (
-    <>
-      <IconButton 
-        color="inherit" 
-        onClick={handleMenuOpen}
-        aria-label="notifications"
-      >
-        <Badge badgeContent={unreadCount} color="error">
-          <NotificationsIcon />
-        </Badge>
-      </IconButton>
-      
-      <Menu
-        anchorEl={anchorEl}
-        open={Boolean(anchorEl)}
-        onClose={handleMenuClose}
-        PaperProps={{
-          sx: { 
-            width: 350,
-            maxHeight: 500
-          }
-        }}
-      >
-        <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography variant="h6">
-            Notifications
-          </Typography>
-          {unreadCount > 0 && (
-            <Button 
-              size="small" 
-              startIcon={<MarkEmailReadIcon />}
-              onClick={handleMarkAllAsRead}
-            >
-              Mark all as read
-            </Button>
-          )}
-        </Box>
-        
-        <Divider />
-        
-        {notifications.length === 0 ? (
-          <MenuItem disabled>
-            No notifications
-          </MenuItem>
-        ) : (
-          notifications.map((notification) => (
-            <MenuItem 
-              key={notification.id} 
-              onClick={() => handleNotificationClick(notification)}
-              sx={{ 
-                py: 1.5,
-                px: 2,
-                borderLeft: notification.isRead ? 'none' : '4px solid',
-                borderLeftColor: 'primary.main',
-                backgroundColor: notification.isRead ? 'inherit' : 'action.hover'
-              }}
-            >
-              <Box sx={{ mr: 1.5, color: 'text.secondary' }}>
-                {getNotificationIcon(notification.type)}
-              </Box>
-              <Box sx={{ flexGrow: 1 }}>
-                <Typography variant="subtitle2" component="div">
-                  {notification.title}
-                </Typography>
-                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
-                  {notification.message}
-                </Typography>
-                <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block' }}>
-                  {formatTimeAgo(notification.createdAt)}
-                </Typography>
-              </Box>
-            </MenuItem>
-          ))
+    <Paper elevation={3} sx={{ width: 400, maxHeight: '80vh', overflowY: 'auto' }}>
+      <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h6">Notifications</Typography>
+        {notifications.length > 0 && (
+          <Button size="small" onClick={handleMarkAllAsRead}>
+            Mark all as read
+          </Button>
         )}
-      </Menu>
-    </>
+      </Box>
+      <Divider />
+      
+      {notifications.length === 0 ? (
+        <Box sx={{ p: 4, textAlign: 'center' }}>
+          <Typography variant="body1" color="textSecondary">
+            No notifications
+          </Typography>
+        </Box>
+      ) : (
+        <List disablePadding>
+          {notifications.map((notification) => (
+            <React.Fragment key={notification.id}>
+              <ListItem
+                alignItems="flex-start"
+                sx={{
+                  backgroundColor: notification.isRead ? 'inherit' : 'rgba(0, 0, 0, 0.04)',
+                  transition: 'background-color 0.3s',
+                  '&:hover': { 
+                    backgroundColor: 'rgba(0, 0, 0, 0.08)',
+                    cursor: 'pointer'
+                  }
+                }}
+                onClick={() => handleNotificationClick(notification)}
+                button
+              >
+                <Box sx={{ mr: 2, fontSize: '1.5rem' }}>
+                  {getNotificationIcon(notification.type)}
+                </Box>
+                <ListItemText
+                  primary={notification.title}
+                  secondary={
+                    <React.Fragment>
+                      <Typography
+                        sx={{ display: 'block' }}
+                        component="span"
+                        variant="body2"
+                        color="text.primary"
+                      >
+                        {notification.message}
+                      </Typography>
+                      <Typography
+                        component="span"
+                        variant="caption"
+                        color="text.secondary"
+                      >
+                        {formatTimestamp(notification.createdAt)}
+                      </Typography>
+                    </React.Fragment>
+                  }
+                />
+              </ListItem>
+              <Divider component="li" />
+            </React.Fragment>
+          ))}
+        </List>
+      )}
+      
+      <Box sx={{ p: 2, display: 'flex', justifyContent: 'flex-end' }}>
+        <Button onClick={onClose}>Close</Button>
+      </Box>
+    </Paper>
   );
 };
 

@@ -1,23 +1,23 @@
 {
-  "short_name": "Themis",
-  "name": "Themis Project Management",
+  "short_name": "نظام المشاريع",
+  "name": "نظام ادارة المشاريع",
   "icons": [
     {
-      "src": "favicon.ico",
+      "src": "Finallogo.jpg",
       "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon"
+      "type": "image/jpeg"
     },
     {
-      "src": "assets/images/LogoClickUP.png",
-      "type": "image/png",
-      "sizes": "177x285"
+      "src": "Finallogo.jpg",
+      "type": "image/jpeg",
+      "sizes": "192x192"
     }
   ],
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#7B68EE",
   "background_color": "#ffffff",
-  "description": "A comprehensive project management system for PMO offices",
+  "description": "نظام ادارة المشاريع",
   "orientation": "portrait-primary",
   "scope": "/",
   "categories": ["productivity", "business", "project management"]

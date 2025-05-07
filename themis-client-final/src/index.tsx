@@ -1,34 +1,14 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter } from 'react-router-dom';
 import './index.css';
-import './styles/easterEgg.css';
-import './i18n';
 import App from './App';
+import { BrowserRouter } from 'react-router-dom';
+import { Provider } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
+import store, { persistor } from './redux/store';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
 import { EasterEggProvider } from './context/EasterEggContext';
-import { cleanupMockData } from './utils/cleanupUtils';
-
-// FORCE CLEAN: Remove all mock data by directly purging localStorage
-// This is a brute force approach to clean up corrupt data
-console.log('FORCE CLEAN: Purging localStorage of corrupt mock data');
-localStorage.removeItem('changeRequests');
-localStorage.setItem('changeRequests', JSON.stringify([]));
-
-// Set initial direction before app renders
-const savedLanguage = localStorage.getItem('themisLanguage');
-if (savedLanguage === 'ar') {
-  document.documentElement.dir = 'rtl';
-  document.dir = 'rtl';
-  
-  // Load Arabic font
-  const link = document.createElement('link');
-  link.rel = 'stylesheet';
-  link.id = 'arabic-font';
-  link.href = 'https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap';
-  document.head.appendChild(link);
-}
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
@@ -36,11 +16,15 @@ const root = ReactDOM.createRoot(
 
 root.render(
   <React.StrictMode>
-    <BrowserRouter>
-      <EasterEggProvider>
-        <App />
-      </EasterEggProvider>
-    </BrowserRouter>
+    <Provider store={store}>
+      <PersistGate loading={null} persistor={persistor}>
+        <BrowserRouter>
+          <EasterEggProvider>
+            <App />
+          </EasterEggProvider>
+        </BrowserRouter>
+      </PersistGate>
+    </Provider>
   </React.StrictMode>
 );
 

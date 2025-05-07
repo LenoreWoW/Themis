@@ -46,14 +46,14 @@
       
       try {
         // Save language preference
-        const language = localStorage.getItem('themisLanguage');
+        const language = localStorage.getItem('pmsLanguage');
         
         // Clear everything
         localStorage.clear();
         
         // Restore language
         if (language) {
-          localStorage.setItem('themisLanguage', language);
+          localStorage.setItem('pmsLanguage', language);
         }
         
         // Initialize empty arrays

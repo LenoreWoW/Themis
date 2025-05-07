@@ -27,9 +27,9 @@ import {
   Card,
   CardContent,
   Divider,
-  Container
+  Container,
+  Grid
 } from '@mui/material';
-import { GridContainer, GridItem } from '../components/common/MuiGridWrapper';
 import {
   Search as SearchIcon,
   FilterList as FilterIcon,
@@ -49,7 +49,28 @@ import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import api from '../services/api';
-import { PageHeader } from '../components/common/PageHeader';
+
+// Simple Grid wrapper components
+const GridContainer = (props: any) => (
+  <Grid container spacing={props.spacing || 2} {...props}>
+    {props.children}
+  </Grid>
+);
+
+const GridItem = (props: any) => (
+  <Grid item xs={props.xs || 12} sm={props.sm} md={props.md} lg={props.lg} xl={props.xl} {...props}>
+    {props.children}
+  </Grid>
+);
+
+// Simple PageHeader component
+const PageHeader: React.FC<{ title: string }> = ({ title }) => (
+  <Box sx={{ mb: 3 }}>
+    <Typography variant="h4" component="h1">
+      {title}
+    </Typography>
+  </Box>
+);
 
 const AuditLogPage: React.FC = () => {
   const { t } = useTranslation();
@@ -79,15 +100,15 @@ const AuditLogPage: React.FC = () => {
   // All users should have access to the audit logs page, but with different visibility
   // Each role has different level of access:
   // - PROJECT_MANAGER can see only logs related to their projects
-  // - SUB_PMO & MAIN_PMO can see logs for their department
-  // - ADMIN, EXECUTIVE, etc. can see all logs
+  // - DEPARTMENT_DIRECTOR & SUB_PMO can see logs for their department
+  // - MAIN_PMO & EXECUTIVE can see all logs
+  // - ADMIN can see all logs
   const hasPermission = user && [
     UserRole.ADMIN,
     UserRole.EXECUTIVE,
     UserRole.MAIN_PMO,
     UserRole.SUB_PMO,
     UserRole.PROJECT_MANAGER,
-    UserRole.DEVELOPER,
     UserRole.DEPARTMENT_DIRECTOR
   ].includes(user.role as UserRole);
 
@@ -99,8 +120,11 @@ const AuditLogPage: React.FC = () => {
       case UserRole.PROJECT_MANAGER:
         return t('auditLogs.projectManagerTitle', 'My Projects Audit Logs');
       case UserRole.SUB_PMO:
+      case UserRole.DEPARTMENT_DIRECTOR:
+        return t('auditLogs.departmentTitle', 'Department Audit Logs');
       case UserRole.MAIN_PMO:
-        return t('auditLogs.pmoTitle', 'Department Audit Logs');
+      case UserRole.EXECUTIVE:
+        return t('auditLogs.allTitle', 'Organization Audit Logs');
       default:
         return t('auditLogs.title', 'Audit Logs');
     }
@@ -142,11 +166,11 @@ const AuditLogPage: React.FC = () => {
             // If couldn't get projects, at least show logs created by the user
             fetchedLogs = fetchedLogs.filter((log: any) => log.userId === user.id);
           }
-        } else if (user.role === UserRole.SUB_PMO || user.role === UserRole.MAIN_PMO) {
-          // PMO roles can see logs for their department
+        } else if (user.role === UserRole.SUB_PMO || user.role === UserRole.DEPARTMENT_DIRECTOR) {
+          // Department directors and Sub PMOs can see logs for their department
           if (user.department) {
             const departmentProjects = await api.projects.getProjectsByDepartment(
-              user.department.toString(), // Convert department to string
+              user.department.id, 
               token || ''
             );
             
@@ -154,13 +178,13 @@ const AuditLogPage: React.FC = () => {
               const projectIds = departmentProjects.data.map((project: any) => project.id);
               fetchedLogs = fetchedLogs.filter((log: any) => 
                 projectIds.includes(log.projectId) || // Project is in user's department
-                (log.department && log.department === user.department) || // Log is for user's department
+                (log.departmentId && log.departmentId === user.department.id) || // Log is for user's department
                 (log.userId === user.id) // User created the log
               );
             }
           }
         }
-        // ADMIN, EXECUTIVE, and others see all logs (no additional filtering)
+        // EXECUTIVE, MAIN_PMO, and ADMIN see all logs (no additional filtering)
       }
 
       setLogs(fetchedLogs);

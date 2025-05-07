@@ -2,6 +2,7 @@ import React from 'react';
 import { Typography, Card, CardContent, Box, Chip, LinearProgress } from '@mui/material';
 import { Project, ProjectStatus } from '../../types';
 import { CalendarToday, Person, Business, History } from '@mui/icons-material';
+import { getDeadlineColor } from '../../utils/helpers';
 
 interface ProjectCardProps {
   project: Project;
@@ -42,21 +43,10 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
     return 'primary';
   };
 
-  // Get status chip color
-  const getStatusColor = (status: ProjectStatus) => {
-    // Check if project is overdue first
-    const daysLeft = calculateDaysUntilDeadline();
-    if (daysLeft < 0 && status === ProjectStatus.IN_PROGRESS) return 'error';
-    
-    // Default status colors
-    switch (status) {
-      case ProjectStatus.PLANNING: return 'default';
-      case ProjectStatus.IN_PROGRESS: return 'primary';
-      case ProjectStatus.ON_HOLD: return 'warning';
-      case ProjectStatus.COMPLETED: return 'success';
-      case ProjectStatus.CANCELLED: return 'error';
-      default: return 'default';
-    }
+  // Check if project was completed before deadline
+  const wasCompletedOnTime = () => {
+    if (project.status !== ProjectStatus.COMPLETED) return undefined;
+    return new Date(project.updatedAt) <= new Date(project.endDate);
   };
 
   // Format date
@@ -116,7 +106,15 @@ const ProjectCard = ({ project, onClick }: ProjectCardProps) => {
           <Chip 
             label={project.status} 
             size="small" 
-            color={getStatusColor(project.status)}
+            sx={{
+              bgcolor: getDeadlineColor(
+                project.status,
+                project.startDate,
+                project.endDate,
+                wasCompletedOnTime()
+              ),
+              color: 'white'
+            }}
           />
           <Chip 
             label={project.priority} 

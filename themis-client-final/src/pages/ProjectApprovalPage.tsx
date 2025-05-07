@@ -6,9 +6,10 @@ import ProjectApprovalForm from '../components/Project/ProjectApprovalForm';
 import { useAuth } from '../context/AuthContext';
 import { WorkflowAction } from '../components/shared/WorkflowForm';
 import { Project, Department, User } from '../types';
-import { ApprovalStatus } from '../context/AuthContext';
+import { ApprovalStatus, getNextApprovalStatus } from '../context/AuthContext';
 import api from '../services/api';
 import PermissionGuard, { Permission } from '../components/shared/PermissionGuard';
+import { UserRole } from '../types';
 
 const ProjectApprovalPage: React.FC = () => {
   const { projectId } = useParams<{ projectId: string }>();
@@ -69,34 +70,48 @@ const ProjectApprovalPage: React.FC = () => {
       return;
     }
     
+    // Executives cannot take approval actions
+    if (user?.role === UserRole.EXECUTIVE && action !== 'SAVE_DRAFT') {
+      setError('As an Executive, you have view-only access and cannot take approval actions');
+      return;
+    }
+    
     try {
+      // Get current approval status
+      const currentStatus = (project as any)?.approvalStatus || ApprovalStatus.DRAFT;
+      
+      // Determine if the user is from the same department as the project
+      const isSameDepartment = user?.department?.id === project?.department?.id;
+      
       // Determine next approval status based on current status and action
       let nextStatus: ApprovalStatus;
       
-      switch (action) {
-        case 'SAVE_DRAFT':
-          nextStatus = ApprovalStatus.DRAFT;
-          break;
-        case 'SUBMIT':
-          nextStatus = ApprovalStatus.SUBMITTED;
-          break;
-        case 'APPROVE':
-          if (user?.role === 'SUB_PMO') {
-            nextStatus = ApprovalStatus.SUB_PMO_APPROVED;
-          } else if (user?.role === 'MAIN_PMO' || user?.role === 'ADMIN') {
-            nextStatus = ApprovalStatus.APPROVED;
-          } else {
-            nextStatus = (project as any)?.approvalStatus || ApprovalStatus.DRAFT;
-          }
-          break;
-        case 'REJECT':
-          nextStatus = ApprovalStatus.REJECTED;
-          break;
-        case 'REQUEST_CHANGES':
-          nextStatus = ApprovalStatus.CHANGES_REQUESTED;
-          break;
-        default:
-          nextStatus = (project as any)?.approvalStatus || ApprovalStatus.DRAFT;
+      if (action === 'SAVE_DRAFT') {
+        nextStatus = ApprovalStatus.DRAFT;
+      } else if (action === 'SUBMIT') {
+        nextStatus = getNextApprovalStatus(
+          ApprovalStatus.DRAFT,
+          user?.role,
+          'SUBMIT',
+          isSameDepartment,
+          'PROJECT'
+        ) || ApprovalStatus.DRAFT;
+      } else {
+        // For APPROVE, REJECT, REQUEST_CHANGES
+        const nextApprovalStatus = getNextApprovalStatus(
+          currentStatus,
+          user?.role,
+          action as 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES',
+          isSameDepartment,
+          'PROJECT'
+        );
+        
+        if (!nextApprovalStatus) {
+          setError('Invalid status transition');
+          return;
+        }
+        
+        nextStatus = nextApprovalStatus;
       }
       
       // Add review details if provided

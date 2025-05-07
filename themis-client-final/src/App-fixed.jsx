@@ -11,11 +11,11 @@ import MainLayout from './components/Layout/MainLayout';
 // Import pages
 import Dashboard from './pages/Dashboard';
 import KanbanBoard from './pages/KanbanBoard';
-import MindMap from './pages/MindMap';
 import Projects from './pages/Projects';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound/index';
+import ProjectRelationshipMapPage from './pages/ProjectRelationshipMapPage';
 // Will be enabled when UserManagement is available
 // import UserManagement from './pages/UserManagement';
 
@@ -33,8 +33,9 @@ function App() {
               <Route index element={<Dashboard />} />
               <Route path="projects" element={<Projects />} />
               <Route path="board" element={<KanbanBoard />} />
-              <Route path="mind-map" element={<MindMap />} />
               <Route path="settings" element={<Settings />} />
+              <Route path="project-relationships" element={<ProjectRelationshipMapPage />} />
+              <Route path="project-relationships/:projectId" element={<ProjectRelationshipMapPage />} />
               {/* <Route path="users" element={<UserManagement />} /> */}
             </Route>
             

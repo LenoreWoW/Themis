@@ -10,10 +10,15 @@ export enum ChangeRequestType {
 }
 
 export enum ChangeRequestStatus {
-  PENDING = 'PENDING',
+  DRAFT = 'DRAFT',
+  PENDING_SUB_PMO = 'PENDING_SUB_PMO',
+  APPROVED_BY_SUB_PMO = 'APPROVED_BY_SUB_PMO',
+  REJECTED_BY_SUB_PMO = 'REJECTED_BY_SUB_PMO',
+  PENDING_MAIN_PMO = 'PENDING_MAIN_PMO',
   APPROVED = 'APPROVED',
   REJECTED = 'REJECTED',
   WITHDRAWN = 'WITHDRAWN',
+  CHANGES_REQUESTED = 'CHANGES_REQUESTED'
 }
 
 export interface ChangeRequest {
@@ -33,8 +38,23 @@ export interface ChangeRequest {
     lastName: string;
   };
   requestedAt: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  approvalLevel: 'SUB_PMO' | 'MAIN_PMO';
+  status: ChangeRequestStatus;
+  department: {
+    id: string;
+    name: string;
+  };
+  reviewHistory?: {
+    id: string;
+    action: 'APPROVE' | 'REJECT' | 'REQUEST_CHANGES';
+    comments: string;
+    timestamp: string;
+    reviewer: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+    };
+  }[];
   approvedBy?: {
     id: string;
     firstName: string;
@@ -48,7 +68,11 @@ export interface ChangeRequest {
   };
   rejectedAt?: string;
   rejectionReason?: string;
-  finalApproval: boolean;
+  changesRequested?: string;
+  lastReviewedAt?: string;
+  submissionDate?: string;
+  implementedAt?: string;
+  implemented: boolean;
 }
 
 export interface ChangeRequestSubmitData {

@@ -55,7 +55,6 @@ import {
   Group as TeamIcon,
   ViewKanban as KanbanIcon,
   Timeline as GanttIcon,
-  AccountTree as MindMapIcon,
   ArrowBack as BackIcon,
   Add as AddIcon,
   PersonAdd as PersonAddIcon,
@@ -79,7 +78,8 @@ import {
   AccountBalanceWallet as AccountBalanceWalletIcon,
   People as PeopleIcon,
   Category as CategoryIcon,
-  Comment as CommentIcon
+  Comment as CommentIcon,
+  AccountTree as RelationshipMapIcon
 } from '@mui/icons-material';
 import { useAuth } from '../context/AuthContext';
 import { useTasks } from '../context/TaskContext';
@@ -106,7 +106,6 @@ import TaskModal from '../components/Task/TaskModal';
 import { useTranslation } from 'react-i18next';
 import KanbanBoard from '../components/Kanban/KanbanBoard';
 import AddTaskDialog from '../components/Task/AddTaskDialog';
-import MindMapView from '../components/MindMap/MindMapView';
 import ErrorBoundary from '../components/common/ErrorBoundary';
 import { useProjects } from '../context/ProjectContext';
 import AddTeamMemberDialog from '../components/Project/AddTeamMemberDialog';
@@ -115,13 +114,17 @@ import GanttChart from '../components/Gantt/GanttChart';
 import ChangeRequestDialog from '../components/Project/ChangeRequestDialog';
 import { canAddTasks, canRequestTasks, canManageProjects, canApproveProjects } from '../utils/permissions';
 import { v4 as uuidv4 } from 'uuid';
-import { DragDropContext, DropResult } from 'react-beautiful-dnd';
+import { DropResult } from 'react-beautiful-dnd';
 import EditTaskDialog from '../components/Task/EditTaskDialog';
 import FilePreviewDialog from '../components/FilePreview/FilePreviewDialog';
 import TaskDetailDialog from '../components/Task/TaskDetailDialog';
 import DeleteTaskDialog from '../components/Task/DeleteTaskDialog';
 import { formatEnumValue } from '../utils/helpers';
 import { mockUsers as importedMockUsers } from '../services/mockData';
+import { getDeadlineColor } from '../utils/helpers';
+import { calculateProjectProgress } from '../utils/helpers';
+import ProjectClosureApproval from '../components/Project/ProjectClosureApproval';
+import { ApprovalStatus } from '../context/AuthContext';
 
 // Add this enum at the top of your file, just before const mockUsers
 enum AuditAction {
@@ -619,7 +622,7 @@ const ProjectDetailPage: React.FC<{}> = () => {
   const [updatedStatus, setUpdatedStatus] = useState<ProjectStatus | null>(null);
   const [updatedCost, setUpdatedCost] = useState<number | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
-  const [activeTaskView, setActiveTaskView] = useState<'kanban' | 'gantt' | 'mindmap'>('kanban');
+  const [activeTaskView, setActiveTaskView] = useState<'kanban' | 'gantt'>('kanban');
   const [projectTasks, setProjectTasks] = useState<Task[]>([]);
   const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -2131,6 +2134,37 @@ const ProjectDetailPage: React.FC<{}> = () => {
     }
   };
 
+  // Add this after other useEffects - update project progress based on tasks
+  useEffect(() => {
+    // Skip if we don't have tasks or project data
+    if (!projectTasks.length || !project || !id) return;
+
+    // Calculate progress based on tasks
+    const calculatedProgress = calculateProjectProgress(projectTasks);
+    console.log('Calculated project progress:', calculatedProgress);
+    
+    // Only update if the progress has actually changed
+    if (calculatedProgress !== project.progress) {
+      console.log('Updating project progress from', project.progress, 'to', calculatedProgress);
+      
+      // Update project progress in state
+      updateProjectState({ progress: calculatedProgress });
+      
+      // Remove this logic for showing completion notification
+      // if (
+      //   calculatedProgress === 100 && 
+      //   project.status !== ProjectStatus.COMPLETED &&
+      //   project.status !== ProjectStatus.ON_HOLD &&
+      //   project.status !== ProjectStatus.CANCELLED
+      // ) {
+      //   // Show notification to project manager
+      //   if (user?.role === UserRole.PROJECT_MANAGER || user?.role === UserRole.ADMIN) {
+      //     setIsProjectCompleteNotificationOpen(true);
+      //   }
+      // }
+    }
+  }, [projectTasks, project?.progress, project?.status, id, user?.role]);
+
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {auditResult && !auditResult.passed && (
@@ -2171,6 +2205,13 @@ const ProjectDetailPage: React.FC<{}> = () => {
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
             <Typography variant="h6">Project Details</Typography>
             <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                startIcon={<RelationshipMapIcon />}
+                onClick={() => navigate(`/project-relationships/${id}`)}
+              >
+                View Relationships
+              </Button>
               {userCanManageProjects && (
                 <>
                   <Button
@@ -2284,57 +2325,25 @@ const ProjectDetailPage: React.FC<{}> = () => {
             <Tab icon={<UploadIcon />} label="Attachments" {...a11yProps(3)} />
             <Tab icon={<SummarizeIcon />} label="Weekly Updates" {...a11yProps(4)} />
             <Tab icon={<LogIcon />} label="Logs" {...a11yProps(5)} />
+            <Tab 
+              icon={<TaskAltIcon />} 
+              label="Closure Approvals" 
+              {...a11yProps(6)} 
+              sx={{ 
+                display: user?.role === UserRole.SUB_PMO || 
+                        user?.role === UserRole.MAIN_PMO || 
+                        user?.role === UserRole.ADMIN 
+                        ? 'flex' : 'none'
+              }} 
+            />
           </Tabs>
         </Box>
         
         <TabPanel value={tabValue} index={0}>
-          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
             <Box sx={{ flex: '1 1 400px' }}>
               <Card>
                 <CardContent>
-                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                    <Typography variant="h6">Project Overview</Typography>
-                  </Box>
-                  <Divider sx={{ mb: 2 }} />
-                  
-                  {/* Status */}
-                  <Box sx={{ mb: 2.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Box>
-                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-                        Status
-                      </Typography>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Chip 
-                          label={getStatusLabel(projectData.status)} 
-                          color={getStatusColor(projectData.status, projectData.endDate) as any}
-                          size="small"
-                          sx={{ mr: 1 }}
-                        />
-                        <Typography variant="body1">{getStatusLabel(projectData.status)}</Typography>
-                      </Box>
-                    </Box>
-                    {userCanManageProjects && (
-                      <IconButton 
-                        size="small"
-                        color="primary"
-                        onClick={() => {
-                          // Make sure we're setting the status from the project object
-                          // which is our source of truth
-                          const currentStatus = project?.status || ProjectStatus.PLANNING;
-                          console.log('Setting initial status for dialog:', currentStatus);
-                          
-                          // Force status update by using the current status value
-                          setUpdatedStatus(currentStatus);
-                          
-                          // Open the dialog
-                          setIsEditStatusDialogOpen(true);
-                        }}
-                      >
-                        <EditIcon fontSize="small" />
-                      </IconButton>
-                    )}
-                  </Box>
-                  
                   {/* Budget */}
                   <Box sx={{ mb: 2.5 }}>
                     <Typography variant="subtitle2" color="text.secondary" gutterBottom>
@@ -2567,9 +2576,6 @@ const ProjectDetailPage: React.FC<{}> = () => {
                   <ToggleButton value="gantt" aria-label="gantt view">
                     <GanttIcon sx={{ mr: 1 }} /> Gantt Chart
                   </ToggleButton>
-                  <ToggleButton value="mindmap" aria-label="mindmap view">
-                    <MindMapIcon sx={{ mr: 1 }} /> Mind Map
-                  </ToggleButton>
                 </ToggleButtonGroup>
                 <Button 
                   startIcon={<RefreshIcon />}
@@ -2657,21 +2663,6 @@ const ProjectDetailPage: React.FC<{}> = () => {
                       />
                     </Box>
                   </ErrorBoundary>
-                </>
-              )}
-
-              {activeTaskView === 'mindmap' && (
-                <>
-                  <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-                    Visualize project structure, tasks, and relationships in a mind map.
-                  </Typography>
-                  
-                  <Box sx={{ height: '600px' }}>
-                    <MindMapView 
-                      project={convertToFullProject(projectData)}
-                      tasks={projectTasks}
-                    />
-                  </Box>
                 </>
               )}
             </Box>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Paper, Typography, TextField, Button, Alert } from '@mui/material';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 const Login: React.FC = () => {
   const [adIdentifier, setAdIdentifier] = useState('');
@@ -9,6 +10,7 @@ const Login: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -45,11 +47,30 @@ const Login: React.FC = () => {
           width: '100%',
         }}
       >
-        <Typography variant="h4" component="h1" gutterBottom align="center">
-          Themis Project Management
-        </Typography>
+        <Box 
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            mb: 3
+          }}
+        >
+          <Box 
+            component="img"
+            src="/Finallogo.jpg"
+            alt="نظام ادارة المشاريع"
+            sx={{ 
+              height: 80,
+              objectFit: 'contain',
+              mb: 2
+            }}
+          />
+          <Typography variant="h4" component="h1" gutterBottom align="center">
+            {t('app.title')}
+          </Typography>
+        </Box>
         <Typography variant="subtitle1" gutterBottom align="center" mb={4}>
-          Sign in with your Active Directory credentials
+          {t('auth.signInWithAD')}
         </Typography>
 
         {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}

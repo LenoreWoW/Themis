@@ -75,6 +75,19 @@ const ApprovalsPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // Get tab from URL query parameter or from location state
+  const getInitialTabValue = () => {
+    const searchParams = new URLSearchParams(location.search);
+    const tabParam = searchParams.get('tab');
+    
+    if (tabParam !== null) {
+      const tabValue = parseInt(tabParam);
+      return isNaN(tabValue) ? 0 : tabValue;
+    }
+    
+    return location.state?.activeTab ?? 0;
+  };
+
   const [projects, setProjects] = useState<Project[]>([]);
   const [pendingApprovals, setPendingApprovals] = useState<Project[]>([]);
   const [completedApprovals, setCompletedApprovals] = useState<Project[]>([]);
@@ -83,9 +96,8 @@ const ApprovalsPage: React.FC = () => {
   const [crLoading, setCrLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   
-  // Get the initial tab value from location state if available
-  const initialTab = location.state?.activeTab ?? 0;
-  const [tabValue, setTabValue] = useState(initialTab);
+  // Get the initial tab value from URL or location state
+  const [tabValue, setTabValue] = useState(getInitialTabValue());
 
   // Dialog states
   const [openDialog, setOpenDialog] = useState(false);
@@ -155,8 +167,6 @@ const ApprovalsPage: React.FC = () => {
   };
 
   const fetchChangeRequests = async () => {
-    if (!token || !user) return;
-
     setCrLoading(true);
     setError(null);
 
@@ -165,7 +175,10 @@ const ApprovalsPage: React.FC = () => {
       const response = await changeRequestsService.getAllChangeRequests(token);
       if (response.success && response.data) {
         // Filter to only show pending change requests that require approval
-        const pendingRequests = response.data.filter(cr => cr.status === 'PENDING');
+        const pendingRequests = response.data.filter(cr => 
+          cr.status === ChangeRequestStatus.PENDING_SUB_PMO || 
+          cr.status === ChangeRequestStatus.PENDING_MAIN_PMO
+        );
         setChangeRequests(pendingRequests);
       } else {
         setError('Failed to fetch change requests');
@@ -186,8 +199,10 @@ const ApprovalsPage: React.FC = () => {
     fetchChangeRequests();
   };
 
+  // Update URL when tab changes
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
+    navigate(`/approvals${newValue > 0 ? `?tab=${newValue}` : ''}`, { replace: true });
   };
 
   const handleViewProject = (projectId: string) => {
@@ -378,48 +393,40 @@ const ApprovalsPage: React.FC = () => {
 
   const canApproveChangeRequest = (changeRequest: ChangeRequest): boolean => {
     if (!user) return false;
-    if (!changeRequest) return false;
-    if (!changeRequest.requestedBy) return false;
     
-    // Cannot approve your own change request
-    if (changeRequest.requestedBy.id === user.id) return false;
+    // Executives can only view, not approve
+    if (user.role === UserRole.EXECUTIVE) {
+      return false;
+    }
     
-    // Admin can approve anything
+    // Admin can approve any change request
     if (user.role === UserRole.ADMIN) return true;
     
-    // Check based on approvalLevel
-    if (changeRequest.approvalLevel === 'SUB_PMO' && user.role === UserRole.SUB_PMO) {
+    // Check based on status
+    if (changeRequest.status === ChangeRequestStatus.PENDING_SUB_PMO && user.role === UserRole.SUB_PMO) {
       return true;
     }
     
-    if (changeRequest.approvalLevel === 'MAIN_PMO' && user.role === UserRole.MAIN_PMO) {
+    if (changeRequest.status === ChangeRequestStatus.PENDING_MAIN_PMO && user.role === UserRole.MAIN_PMO) {
       return true;
     }
     
-    // General permission check
-    return canApproveProjects(user.role);
+    return false;
   };
 
   const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'DRAFT':
-        return t('status.draft');
-      case 'SUBMITTED':
-        return t('status.submitted');
-      case 'SUB_PMO_REVIEW':
-        return t('status.subPmoReview');
-      case 'SUB_PMO_APPROVED':
-        return t('status.subPmoApproved');
-      case 'MAIN_PMO_REVIEW':
-        return t('status.mainPmoReview');
-      case 'APPROVED':
-        return t('status.approved');
-      case 'REJECTED':
-        return t('status.rejected');
-      case 'CHANGES_REQUESTED':
-        return t('status.changesRequested');
-      case 'PENDING':
-        return t('status.pending');
+      case ChangeRequestStatus.PENDING_SUB_PMO:
+      case ChangeRequestStatus.PENDING_MAIN_PMO:
+        return t('common.pending');
+      case ChangeRequestStatus.APPROVED:
+      case ChangeRequestStatus.APPROVED_BY_SUB_PMO:
+        return t('common.approved');
+      case ChangeRequestStatus.REJECTED:
+      case ChangeRequestStatus.REJECTED_BY_SUB_PMO:
+        return t('common.rejected');
+      case ChangeRequestStatus.CHANGES_REQUESTED:
+        return t('common.changesRequested');
       default:
         return status;
     }
@@ -427,21 +434,17 @@ const ApprovalsPage: React.FC = () => {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'DRAFT':
-        return 'default';
-      case 'SUBMITTED':
-      case 'SUB_PMO_REVIEW':
-      case 'MAIN_PMO_REVIEW':
-      case 'PENDING':
-        return 'info';
-      case 'SUB_PMO_APPROVED':
-        return 'secondary';
-      case 'APPROVED':
-        return 'success';
-      case 'REJECTED':
-        return 'error';
-      case 'CHANGES_REQUESTED':
+      case ChangeRequestStatus.PENDING_SUB_PMO:
+      case ChangeRequestStatus.PENDING_MAIN_PMO:
         return 'warning';
+      case ChangeRequestStatus.APPROVED:
+      case ChangeRequestStatus.APPROVED_BY_SUB_PMO:
+        return 'success';
+      case ChangeRequestStatus.REJECTED:
+      case ChangeRequestStatus.REJECTED_BY_SUB_PMO:
+        return 'error';
+      case ChangeRequestStatus.CHANGES_REQUESTED:
+        return 'info';
       default:
         return 'default';
     }
@@ -580,11 +583,11 @@ const ApprovalsPage: React.FC = () => {
               const projectName = project ? project.name : request.projectId;
               
               // Format the approval level to be more readable
-              const formattedApprovalLevel = request.approvalLevel === 'SUB_PMO' 
+              const formattedApprovalLevel = request.status === ChangeRequestStatus.PENDING_SUB_PMO
                 ? t('common.subPMO', 'Sub PMO')
-                : request.approvalLevel === 'MAIN_PMO'
+                : request.status === ChangeRequestStatus.PENDING_MAIN_PMO
                   ? t('common.mainPMO', 'Main PMO')
-                  : request.approvalLevel;
+                  : request.status;
 
               // Check if this item is expanded
               const isExpanded = expandedState[request.id] || false;
@@ -750,7 +753,7 @@ const ApprovalsPage: React.FC = () => {
       <Box sx={{ py: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
           <Typography variant="h4" component="h1">
-            {t('approvals.title', 'Approvals')}
+            {t('approvals.title', 'Approvals Dashboard')}
           </Typography>
           
           <Box>

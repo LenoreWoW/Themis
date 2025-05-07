@@ -29,7 +29,7 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useAuth } from '../../context/AuthContext';
 // Replace the import with our local function
 // import { formatDate } from '../../utils/formatters';
-import { ChangeRequest, ChangeRequestType } from '../../types/change-request';
+import { ChangeRequest, ChangeRequestType, ChangeRequestStatus } from '../../types/change-request';
 import { UserRole } from '../../types';
 import changeRequestsService from '../../services/changeRequests';
 import ChangeRequestFormDialog from './ChangeRequestDialog';
@@ -65,7 +65,8 @@ const ChangeRequestsSection: React.FC<ChangeRequestsSectionProps> = ({ projectId
   const [approvalDialogOpen, setApprovalDialogOpen] = useState(false);
   const [selectedChangeRequest, setSelectedChangeRequest] = useState<ChangeRequest | null>(null);
 
-  const canApprove = user?.role ? canApproveProjects(user.role) : false;
+  // Get canApprove based on user role, hide approval buttons for executives
+  const canApprove = user?.role ? (user.role !== UserRole.EXECUTIVE && canApproveProjects(user.role)) : false;
 
   // Fetch change requests for this project
   useEffect(() => {
@@ -111,7 +112,7 @@ const ChangeRequestsSection: React.FC<ChangeRequestsSectionProps> = ({ projectId
 
   // Navigate to approvals page
   const handleGoToApprovals = () => {
-    navigate('/project-approvals', { state: { activeTab: 2 } }); // Navigate to the approvals page with the Change Requests tab active
+    navigate('/approvals?tab=2'); // Navigate to the approvals page with the Change Requests tab active
   };
 
   // Get icon for change request type
@@ -237,7 +238,8 @@ const ChangeRequestsSection: React.FC<ChangeRequestsSectionProps> = ({ projectId
                     {formatDate(new Date(request.requestedAt))}
                   </TableCell>
                   <TableCell>
-                    {request.status === 'PENDING' && (
+                    {(request.status === ChangeRequestStatus.PENDING_SUB_PMO || 
+                      request.status === ChangeRequestStatus.PENDING_MAIN_PMO) && (
                       <Chip 
                         label="Pending" 
                         color="warning" 
@@ -245,7 +247,7 @@ const ChangeRequestsSection: React.FC<ChangeRequestsSectionProps> = ({ projectId
                         icon={<ScheduleIcon fontSize="small" />} 
                       />
                     )}
-                    {request.status === 'APPROVED' && (
+                    {request.status === ChangeRequestStatus.APPROVED && (
                       <Chip 
                         label="Approved" 
                         color="success" 
@@ -253,7 +255,8 @@ const ChangeRequestsSection: React.FC<ChangeRequestsSectionProps> = ({ projectId
                         icon={<CheckCircleIcon fontSize="small" />} 
                       />
                     )}
-                    {request.status === 'REJECTED' && (
+                    {(request.status === ChangeRequestStatus.REJECTED || 
+                      request.status === ChangeRequestStatus.REJECTED_BY_SUB_PMO) && (
                       <Chip 
                         label="Rejected" 
                         color="error" 
@@ -264,7 +267,8 @@ const ChangeRequestsSection: React.FC<ChangeRequestsSectionProps> = ({ projectId
                   </TableCell>
                   <TableCell>
                     <Box sx={{ display: 'flex' }}>
-                      {request.status === 'PENDING' && canApprove && (
+                      {(request.status === ChangeRequestStatus.PENDING_SUB_PMO || 
+                        request.status === ChangeRequestStatus.PENDING_MAIN_PMO) && canApprove && (
                         <>
                           <Tooltip title="Approve">
                             <IconButton 

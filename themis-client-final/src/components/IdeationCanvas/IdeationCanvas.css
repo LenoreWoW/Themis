@@ -1,0 +1,205 @@
+/* IdeationCanvas Styles */
+.ideation-canvas {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.ideation-canvas.panning {
+  cursor: grabbing;
+}
+
+/* Card styles */
+.ideation-card {
+  position: absolute;
+  background-color: #ffffff;
+  border-radius: 4px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  padding: 12px;
+  overflow: hidden;
+  transition: box-shadow 0.2s ease, transform 0.1s ease;
+  transform-origin: center center;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+}
+
+.ideation-card:hover {
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.15);
+}
+
+.ideation-card.selected {
+  box-shadow: 0 0 0 2px #3f51b5, 0 5px 15px rgba(0, 0, 0, 0.15);
+  z-index: 20;
+}
+
+.ideation-card .card-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
+.ideation-card .text-content {
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 14px;
+  line-height: 1.4;
+  height: 100%;
+}
+
+.ideation-card .card-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.ideation-card:hover .card-actions {
+  opacity: 1;
+}
+
+.ideation-card .resize-handle {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+  background-image: radial-gradient(circle, #888 1px, transparent 1px);
+  background-size: 4px 4px;
+  background-position: bottom right;
+  background-repeat: no-repeat;
+}
+
+/* Card editor */
+.card-editor {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 14px;
+  line-height: 1.4;
+  font-family: inherit;
+}
+
+/* Connection line styles */
+.connection {
+  pointer-events: none;
+}
+
+.connection.selected line {
+  stroke-width: 3px !important;
+  stroke: #3f51b5 !important;
+}
+
+.connection text {
+  pointer-events: auto;
+  cursor: pointer;
+  font-size: 12px;
+  background-color: white;
+}
+
+.connection text:hover {
+  font-weight: bold;
+}
+
+/* Card types */
+.ideation-card.text {
+  background-color: #ffffff;
+}
+
+.ideation-card.note {
+  background-color: #f5f5dc;
+}
+
+.ideation-card.image {
+  background-color: #f8f9fa;
+}
+
+.ideation-card.webpage {
+  background-color: #f0f8ff;
+}
+
+.ideation-card.file {
+  background-color: #fff0f5;
+}
+
+/* Group styles */
+.card-group {
+  position: absolute;
+  border: 2px dashed rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  background-color: rgba(0, 0, 0, 0.03);
+  z-index: 5;
+}
+
+.card-group.selected {
+  border-color: #3f51b5;
+}
+
+.card-group-title {
+  position: absolute;
+  top: -24px;
+  left: 10px;
+  background-color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  font-size: 12px;
+  font-weight: bold;
+  z-index: 6;
+}
+
+/* Canvas SVG Arrow styles */
+marker#arrowhead path {
+  fill: #888;
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .ideation-card {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  
+  .ideation-card.text {
+    background-color: #2d2d2d;
+  }
+  
+  .ideation-card.note {
+    background-color: #3a3a2c;
+  }
+  
+  .ideation-card.image {
+    background-color: #2a2a30;
+  }
+  
+  .ideation-card.webpage {
+    background-color: #2a3240;
+  }
+  
+  .ideation-card.file {
+    background-color: #3d2a30;
+  }
+  
+  .card-editor {
+    background-color: #2d2d2d;
+    color: #e0e0e0;
+  }
+  
+  .card-group-title {
+    background-color: #333;
+    color: #e0e0e0;
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+  
+  .card-actions {
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+} 

@@ -6,7 +6,8 @@ export const FEATURES = {
   OFFLINE_MODE: true,
   ENABLE_NOTIFICATIONS: true,
   ENABLE_AUDIT_LOGS: true,
-  ENABLE_ANALYTICS: false
+  ENABLE_ANALYTICS: false,
+  CHAT_ENABLED: true
 };
 
 // Auth Configuration
@@ -14,6 +15,16 @@ export const AUTH_CONFIG = {
   TOKEN_STORAGE_KEY: 'token',
   REFRESH_TOKEN_STORAGE_KEY: 'refreshToken',
   TOKEN_EXPIRY_BUFFER_MS: 300000, // 5 minutes before expiry
+};
+
+// Auth0 Configuration
+export const AUTH0_CONFIG = {
+  DOMAIN: 'your-domain.auth0.com',
+  CLIENT_ID: 'your-client-id',
+  AUDIENCE: 'https://your-api-identifier',
+  REDIRECT_URI: 'http://localhost:3000/callback',
+  SCOPE: 'openid profile email',
+  FORCE_FIRST_PASSWORD_CHANGE: true,
 };
 
 // Notification Configuration
@@ -50,7 +61,7 @@ export const AD_CONFIG = {
 export const EMAIL_CONFIG = {
   ENABLED: true, // Set to true to enable email notifications
   SENDER_EMAIL: 'themis-no-reply@yourcompany.com',
-  SENDER_NAME: 'Themis Project Management',
+  SENDER_NAME: 'Project Management System',
   // Email templates
   TEMPLATES: {
     TASK_ASSIGNED: {
@@ -64,6 +75,14 @@ export const EMAIL_CONFIG = {
     APPROVAL_NEEDED: {
       SUBJECT: 'Approval Required: {requestType} for {projectName}',
       BODY: 'Your approval is required for a {requestType} in project {projectName}. Please login to review.'
+    },
+    NEW_USER_REQUEST: {
+      SUBJECT: 'New User Request: {username}',
+      BODY: 'A new user request has been submitted for {username}. Please login to review and approve.'
+    },
+    USER_REQUEST_APPROVED: {
+      SUBJECT: 'User Request Approved',
+      BODY: 'Your user request has been approved. You can now log in with the temporary password provided. You will be prompted to change your password on first login.'
     }
   }
 };
@@ -97,6 +116,11 @@ export const PERMISSIONS = {
   USER_UPDATE: ['ADMIN'],
   USER_DELETE: ['ADMIN'],
   USER_ASSIGN_ROLE: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'MAIN_PMO'],
+  USER_REQUEST_CREATE: ['SUB_PMO', 'DEPARTMENT_DIRECTOR', 'MAIN_PMO', 'EXECUTIVE'],
+  USER_REQUEST_APPROVE_DEPT: ['DEPARTMENT_DIRECTOR'],
+  USER_REQUEST_APPROVE_SUB_PMO: ['SUB_PMO'],
+  USER_REQUEST_APPROVE_MAIN_PMO: ['MAIN_PMO'],
+  USER_REQUEST_VIEW: ['SUB_PMO', 'DEPARTMENT_DIRECTOR', 'MAIN_PMO', 'EXECUTIVE', 'ADMIN'],
   
   // Risk/Issue management
   RISK_CREATE: ['PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO', 'ADMIN'],
@@ -108,4 +132,15 @@ export const PERMISSIONS = {
   
   // Audit logs
   AUDIT_LOGS_VIEW: ['ADMIN', 'MAIN_PMO'],
+  
+  // Faculty management
+  FACULTY_VIEW: ['SUB_PMO', 'DEPARTMENT_DIRECTOR', 'MAIN_PMO', 'EXECUTIVE', 'ADMIN'],
+  FACULTY_MANAGE: ['DEPARTMENT_DIRECTOR', 'MAIN_PMO', 'ADMIN'],
+  
+  // Chat & Announcements permissions
+  GENERAL_ANNOUNCEMENT_POST: ['MAIN_PMO', 'EXECUTIVE', 'ADMIN'],
+  DEPARTMENT_ANNOUNCEMENT_POST: ['DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'ADMIN'],
+  CHAT_VIEW: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE'],
+  CHAT_POST: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE'],
+  CHAT_MANAGE: ['ADMIN', 'MAIN_PMO']
 }; 

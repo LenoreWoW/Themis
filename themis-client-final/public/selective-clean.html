@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Themis Selective Data Clean</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 600px;
+      margin: 40px auto;
+      padding: 20px;
+      text-align: center;
+    }
+    button {
+      background: #0275d8;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 20px 0;
+    }
+    button:hover {
+      background: #025aa5;
+    }
+    .message {
+      margin: 20px 0;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+    .preserved {
+      text-align: left;
+      margin: 20px 0;
+      padding: 12px;
+      background: #e8f4f8;
+      border-radius: 4px;
+    }
+    .removed {
+      text-align: left;
+      margin: 20px 0;
+      padding: 12px;
+      background: #f8e8e8;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Themis Selective Data Clean</h1>
+  <p>This tool will clear all mock data EXCEPT for users and departments.</p>
+  
+  <div class="message">
+    <strong>What this will do:</strong><br>
+    Keep user and department data for testing, but remove everything else.
+  </div>
+  
+  <div class="preserved">
+    <strong>Data to be preserved:</strong>
+    <ul>
+      <li>Users</li>
+      <li>Departments</li>
+      <li>Language settings</li>
+    </ul>
+  </div>
+  
+  <div class="removed">
+    <strong>Data to be removed:</strong>
+    <ul>
+      <li>Projects</li>
+      <li>Tasks</li>
+      <li>Change Requests</li>
+      <li>Meetings</li>
+      <li>Risks & Issues</li>
+      <li>Audit Logs</li>
+      <li>All other application data</li>
+    </ul>
+  </div>
+  
+  <button id="cleanButton">Run Selective Clean</button>
+  <div id="status"></div>
+
+  <script>
+    document.getElementById('cleanButton').addEventListener('click', function() {
+      const status = document.getElementById('status');
+      status.innerHTML = "Running selective clean...";
+      
+      try {
+        // 1. Get a list of all localStorage keys
+        const allKeys = Object.keys(localStorage);
+        console.log(`Found ${allKeys.length} total items in localStorage`);
+        
+        // 2. Keys to preserve (users, departments, language settings)
+        const preserveKeys = [
+          'pmsLanguage',
+          'pms_clean_initialized',
+          'themis_departments',
+          'departments',
+          'users'
+        ];
+        
+        // 3. Save any data we want to preserve
+        const preservedData = {};
+        preserveKeys.forEach(key => {
+          if (localStorage.getItem(key)) {
+            preservedData[key] = localStorage.getItem(key);
+            console.log(`Preserved: ${key}`);
+          }
+        });
+        
+        // 4. Clear ALL localStorage data
+        console.log('Clearing all localStorage data...');
+        localStorage.clear();
+        
+        // 5. Restore preserved data
+        Object.keys(preservedData).forEach(key => {
+          localStorage.setItem(key, preservedData[key]);
+          console.log(`Restored: ${key}`);
+        });
+        
+        // 6. Initialize empty arrays for essential data structures
+        const initializeEmptyArrays = [
+          'changeRequests',
+          'auditLogs',
+          'projects',
+          'tasks',
+          'themis_projects',
+          'themis_tasks',
+          'themis_reviews',
+          'themis_approvals',
+          'themis_meetings',
+          'themis_risks',
+          'themis_issues',
+          'themis_independent_tasks'
+        ];
+        
+        initializeEmptyArrays.forEach(key => {
+          localStorage.setItem(key, JSON.stringify([]));
+          console.log(`Initialized empty array for: ${key}`);
+        });
+        
+        // 7. Update status
+        status.innerHTML = "Selective clean complete! <a href='/'>Return to application</a>";
+        
+        // 8. Show confirmation
+        console.log('✅ SELECTIVE CLEAN COMPLETE');
+        console.log('Users and departments data has been preserved.');
+        console.log('All other mock data has been cleared.');
+      } catch (error) {
+        console.error('❌ Error during selective clean:', error);
+        status.innerHTML = "Error during selective clean: " + error.message;
+      }
+    });
+  </script>
+</body>
+</html> 
