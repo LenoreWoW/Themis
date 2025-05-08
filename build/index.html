@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <link rel="icon" href="/Finallogo.jpg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="description" content="نظام ادارة المشاريع" />
+    <link rel="apple-touch-icon" href="/Finallogo.jpg" />
+    <link rel="manifest" href="/manifest.json" />
+    <title>نظام ادارة المشاريع</title>
+    
+    <!-- Font for RTL support -->
+    <link id="rtl-font" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap">
+    
+    <!-- Script to set language and direction attributes -->
+    <script>
+      // Set language attributes on HTML tag
+      const savedLanguage = localStorage.getItem('pmsLanguage') || 'en';
+      const direction = savedLanguage === 'ar' ? 'rtl' : 'ltr';
+      document.documentElement.lang = savedLanguage;
+      document.documentElement.dir = direction;
+    </script>
+    
+    <!-- Force reset local storage data -->
+    <script>
+      // Check for URL parameters - adding ?reset=true to the URL will force a reset
+      const urlParams = new URLSearchParams(window.location.search);
+      const shouldReset = urlParams.get('reset') === 'true';
+      
+      // Always reset changeRequests
+      console.log('Running emergency cleanup of localStorage data...');
+      
+      // Save language preference
+      const language = localStorage.getItem('pmsLanguage');
+      
+      // If reset parameter is present, do a complete clear
+      if (shouldReset) {
+        console.log('Full reset requested via URL parameter');
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Restore language
+        if (language) {
+          localStorage.setItem('pmsLanguage', language);
+        }
+      }
+      
+      // Always reset these values
+      localStorage.removeItem('changeRequests');
+      localStorage.setItem('changeRequests', JSON.stringify([]));
+      
+      // Initialize other common arrays
+      const initializeEmptyArrays = [
+        'auditLogs',
+        'themis_reviews',
+        'themis_approvals'
+      ];
+      
+      initializeEmptyArrays.forEach(key => {
+        if (!localStorage.getItem(key)) {
+          localStorage.setItem(key, JSON.stringify([]));
+        }
+      });
+      
+      console.log('Initial localStorage cleanup complete');
+      
+      // Remove the reset parameter from URL if it exists
+      if (shouldReset) {
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, document.title, newUrl);
+      }
+    </script>
+    
+    <!-- Asset links - these need to be updated with your actual asset paths -->
+    <link href="/assets/css/main.css" rel="stylesheet">
+  </head>
+  <body>
+    <noscript>You need to enable JavaScript to run this app.</noscript>
+    <div id="root"></div>
+    
+    <!-- Asset scripts - these need to be updated with your actual asset paths -->
+    <script src="/assets/js/main.js"></script>
+  </body>
+</html> 

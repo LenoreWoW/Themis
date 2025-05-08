@@ -1,0 +1,12 @@
+# Image Asset Credits
+
+The following image assets are needed for the 8-bit Easter egg mode:
+
+- `pixel-grid.png`: A subtle pixel grid background for the 8-bit mode
+  - Create a seamless pattern with small pixels for the background
+  - Recommended: 20x20 pixel grid with subtle gray lines on a transparent background
+
+- `retro-cursor.png`: A custom 8-bit style cursor
+  - Create or source a small pixelated cursor icon
+  - Recommended size: 16x16 or 24x24 pixels
+  - Format with transparent background 
