@@ -17,14 +17,16 @@ export const AUTH_CONFIG = {
   TOKEN_EXPIRY_BUFFER_MS: 300000, // 5 minutes before expiry
 };
 
-// Auth0 Configuration
-export const AUTH0_CONFIG = {
-  DOMAIN: 'your-domain.auth0.com',
-  CLIENT_ID: 'your-client-id',
-  AUDIENCE: 'https://your-api-identifier',
-  REDIRECT_URI: 'http://localhost:3000/callback',
-  SCOPE: 'openid profile email',
-  FORCE_FIRST_PASSWORD_CHANGE: true,
+// Passport.js Configuration
+export const PASSPORT_CONFIG = {
+  AUTH_SERVER_URL: 'http://localhost:4000',
+  LOGIN_ENDPOINT: '/auth/login',
+  REGISTER_ENDPOINT: '/auth/register',
+  PROFILE_ENDPOINT: '/auth/profile',
+  REFRESH_TOKEN_ENDPOINT: '/auth/refresh-token',
+  JWT_SECRET: process.env.JWT_SECRET || 'your-jwt-secret-key', // Should be set via environment variables
+  TOKEN_EXPIRY: '1d', // 1 day
+  REFRESH_TOKEN_EXPIRY: '7d', // 7 days
 };
 
 // Notification Configuration
