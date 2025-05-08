@@ -1,0 +1,47 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+  functions = "netlify/functions"
+
+[dev]
+  command = "npm start"
+  port = 3000
+  targetPort = 3000
+  publish = "build"
+  autoLaunch = true
+
+# Handle SPA routing - this is crucial for React Router to work properly
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = true
+
+# Environment variables for different contexts
+[context.production.environment]
+  REACT_APP_API_BASE_URL = "/.netlify/functions/api"
+  REACT_APP_ENVIRONMENT = "production"
+
+[context.deploy-preview.environment]
+  REACT_APP_API_BASE_URL = "/.netlify/functions/api"
+  REACT_APP_ENVIRONMENT = "preview"
+
+[context.branch-deploy.environment]
+  REACT_APP_API_BASE_URL = "/.netlify/functions/api"
+  REACT_APP_ENVIRONMENT = "development"
+
+# Set cache headers for static assets
+[[headers]]
+  for = "/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Set security headers
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-XSS-Protection = "1; mode=block"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "no-referrer-when-downgrade"
+    Content-Security-Policy = "default-src 'self'; connect-src 'self' https://*.netlify.app *.netlify.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; worker-src 'self' blob:;" 

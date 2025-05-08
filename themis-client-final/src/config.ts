@@ -1,5 +1,10 @@
+// Get the current environment
+const isProduction = process.env.NODE_ENV === 'production';
+const isNetlify = process.env.NETLIFY === 'true';
+
 // API Configuration
-export const API_BASE_URL = 'http://localhost:3000/api';
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 
+  (isProduction ? window.location.origin + '/api' : 'http://localhost:3000/api');
 
 // Feature flags
 export const FEATURES = {
@@ -8,6 +13,15 @@ export const FEATURES = {
   ENABLE_AUDIT_LOGS: true,
   ENABLE_ANALYTICS: false,
   CHAT_ENABLED: true
+};
+
+// Auth0 Configuration
+export const AUTH0_CONFIG = {
+  DOMAIN: 'your-auth0-tenant.auth0.com',
+  CLIENT_ID: 'your-auth0-client-id',
+  REDIRECT_URI: window.location.origin,
+  AUDIENCE: 'https://api.themis.app',
+  SCOPE: 'openid profile email',
 };
 
 // Auth Configuration

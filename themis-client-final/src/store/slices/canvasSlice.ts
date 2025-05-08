@@ -146,6 +146,14 @@ export const canvasSlice = createSlice({
     setIsPanning: (state, action: PayloadAction<boolean>) => {
       state.viewport.isPanning = action.payload;
     },
+    updateViewport: (state, action: PayloadAction<{ pan?: Position, zoom?: number }>) => {
+      if (action.payload.pan) {
+        state.viewport.pan = action.payload.pan;
+      }
+      if (action.payload.zoom !== undefined) {
+        state.viewport.zoom = action.payload.zoom;
+      }
+    },
     
     // Card actions
     addCard: (state, action: PayloadAction<Card>) => {
@@ -315,6 +323,17 @@ export const canvasSlice = createSlice({
         state.selectedCardIds.push(cardId);
       }
     },
+    selectMultipleCards: (state, action: PayloadAction<{ids: string[], addToSelection: boolean}>) => {
+      const { ids, addToSelection } = action.payload;
+      if (!addToSelection) {
+        state.selectedCardIds = [];
+      }
+      ids.forEach(id => {
+        if (state.cards[id] && !state.selectedCardIds.includes(id)) {
+          state.selectedCardIds.push(id);
+        }
+      });
+    },
     selectConnection: (state, action: PayloadAction<string>) => {
       const connectionId = action.payload;
       if (state.connections[connectionId] && !state.selectedConnectionIds.includes(connectionId)) {
@@ -404,6 +423,7 @@ export const {
   setPan,
   setZoom,
   setIsPanning,
+  updateViewport,
   addCard,
   updateCard,
   removeCard,
@@ -414,6 +434,7 @@ export const {
   updateGroup,
   removeGroup,
   selectCard,
+  selectMultipleCards,
   selectConnection,
   selectGroup,
   deselectCard,

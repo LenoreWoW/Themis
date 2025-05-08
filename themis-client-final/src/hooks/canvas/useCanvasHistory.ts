@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
-import { undo, redo } from '../../store/slices/canvasSlice';
+import { undoCanvas as undo, redoCanvas as redo } from '../../store/slices/canvasSlice';
 
 /**
  * Custom hook for managing canvas history (undo/redo)
