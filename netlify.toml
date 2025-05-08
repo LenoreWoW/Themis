@@ -1,0 +1,11 @@
+[build]
+  base = "themis-client-final"
+  command = "npm run build"
+  publish = "build"
+  functions = "netlify/functions"
+
+# This redirects all routes to index.html for SPA routing
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200 
