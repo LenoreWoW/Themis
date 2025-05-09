@@ -236,26 +236,22 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     { 
       text: t('navigation.tutorials'), 
       icon: <SchoolIcon />, 
-      path: '/settings/tutorials',
-      role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE', 'PROJECT_MANAGER'] 
+      path: '/settings/tutorials'
     },
     { 
       text: t('navigation.help', 'Help'), 
       icon: <HelpIcon />, 
-      path: '/help',
-      role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE', 'PROJECT_MANAGER', 'TEAM_MEMBER'] 
+      path: '/help'
     },
     { 
       text: t('navigation.auditLogs'), 
       icon: <VerifiedUserIcon />, 
-      path: '/audit-logs',
-      role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO'] 
+      path: '/audit-logs'
     },
     { 
       text: t('navigation.complianceAudit', 'Compliance Audit'), 
       icon: <VerifiedUserIcon />, 
-      path: '/audit',
-      role: ['ADMIN', 'MAIN_PMO'] 
+      path: '/audit'
     }
   ];
 
@@ -903,36 +899,24 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
           </Box>
           
           <List sx={{ pt: 1 }}>
-            {settingsMenuItems.map((item) => {
-              // Check if the route requires a specific role
-              // Skip role check for User Management, Faculty, and Departments
-              const isAdminItem = item.text === t('navigation.userManagement', 'User Management') ||
-                                  item.text === t('navigation.faculty') ||
-                                  item.text === t('navigation.departments');
-                                  
-              if (item.role && user?.role && !item.role.includes(user.role) && !isAdminItem) {
-                return null;
-              }
-              
-              return (
-                <ListItem 
-                  key={item.text} 
-                  button
-                  onClick={() => handleNavigateToSettings(item.path)}
-                  sx={{
-                    py: 1.5,
-                    '&:hover': {
-                      backgroundColor: theme.palette.action.hover,
-                    }
-                  }}
-                >
-                  <ListItemIcon>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText primary={item.text} />
-                </ListItem>
-              );
-            })}
+            {settingsMenuItems.map((item) => (
+              <ListItem 
+                key={item.text} 
+                button
+                onClick={() => handleNavigateToSettings(item.path)}
+                sx={{
+                  py: 1.5,
+                  '&:hover': {
+                    backgroundColor: theme.palette.action.hover,
+                  }
+                }}
+              >
+                <ListItemIcon>
+                  {item.icon}
+                </ListItemIcon>
+                <ListItemText primary={item.text} />
+              </ListItem>
+            ))}
           </List>
         </Paper>
       </Slide>
