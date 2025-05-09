@@ -36,7 +36,7 @@ import {
   KeyboardArrowDown as KeyboardArrowDownIcon
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../context/AuthContext';
 import { Project, ProjectStatus, UserRole } from '../types';
 import { ApprovalStatus, getNextApprovalStatus } from '../context/AuthContext';
 import { formatDate } from '../utils/helpers';
@@ -762,63 +762,68 @@ const ApprovalsPage: React.FC = () => {
 
   return (
     <Container maxWidth="xl">
-      <Box sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1">
-            {t('approvals.title', 'Approvals Dashboard')}
-          </Typography>
-          
-          <Box>
-            <IconButton onClick={handleRefresh} disabled={loading || crLoading}>
-              {loading || crLoading ? <CircularProgress size={24} /> : <RefreshIcon />}
-            </IconButton>
-          </Box>
-        </Box>
-        
+      <Box sx={{ mb: 4, mt: 2 }}>
+        <Typography variant="h4" gutterBottom>
+          {t('navigation.approvals')} - {t('common.review')} {t('common.approve')} {t('navigation.projects')}
+        </Typography>
+        <Typography variant="subtitle1" color="text.secondary" paragraph>
+          {user?.role === UserRole.PROJECT_MANAGER ? 
+            t('approvals.pmDescription', 'Track the status of your project and change requests here.') :
+            t('approvals.pmoDescription', 'Review and approve project and change requests. View the status of items you have approved.')}
+        </Typography>
         {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
+          <Alert severity="error" sx={{ mb: 2 }}>
             {error}
           </Alert>
         )}
-        
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab label={t('approvals.pendingProjects', 'Pending Projects')} />
-            <Tab label={t('approvals.completedProjects', 'Completed Projects')} />
-            <Tab label={t('approvals.changeRequests', 'Change Requests')} />
-          </Tabs>
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2 }}>
+          <Button 
+            startIcon={<RefreshIcon />} 
+            onClick={handleRefresh}
+            sx={{ ml: 1 }}
+          >
+            {t('common.refresh')}
+          </Button>
         </Box>
-        
-        <TabPanel value={tabValue} index={0}>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            renderApprovalsTable(pendingApprovals)
-          )}
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={1}>
-          {loading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            renderApprovalsTable(completedApprovals)
-          )}
-        </TabPanel>
-        
-        <TabPanel value={tabValue} index={2}>
-          {crLoading ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
-              <CircularProgress />
-            </Box>
-          ) : (
-            renderChangeRequestsTable()
-          )}
-        </TabPanel>
       </Box>
+      
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs value={tabValue} onChange={handleTabChange}>
+          <Tab label={t('approvals.pendingProjects', 'Pending Projects')} />
+          <Tab label={t('approvals.completedProjects', 'Completed Projects')} />
+          <Tab label={t('approvals.changeRequests', 'Change Requests')} />
+        </Tabs>
+      </Box>
+      
+      <TabPanel value={tabValue} index={0}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          renderApprovalsTable(pendingApprovals)
+        )}
+      </TabPanel>
+      
+      <TabPanel value={tabValue} index={1}>
+        {loading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          renderApprovalsTable(completedApprovals)
+        )}
+      </TabPanel>
+      
+      <TabPanel value={tabValue} index={2}>
+        {crLoading ? (
+          <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
+            <CircularProgress />
+          </Box>
+        ) : (
+          renderChangeRequestsTable()
+        )}
+      </TabPanel>
       
       {/* Approval/Rejection Dialog */}
       <Dialog 

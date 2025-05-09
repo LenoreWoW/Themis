@@ -79,7 +79,17 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("CorsPolicy", policy =>
     {
-        policy.WithOrigins(builder.Configuration.GetSection("CorsOrigins").Get<string[]>())
+        // Add localhost:3002 to the allowed origins for local development
+        var corsOrigins = builder.Configuration.GetSection("CorsOrigins").Get<string[]>() ?? new string[] {};
+        var allOrigins = corsOrigins.ToList();
+        
+        // Ensure localhost:3002 is in the list for local development
+        if (!allOrigins.Contains("http://localhost:3002"))
+        {
+            allOrigins.Add("http://localhost:3002");
+        }
+        
+        policy.WithOrigins(allOrigins.ToArray())
             .AllowAnyHeader()
             .AllowAnyMethod()
             .AllowCredentials();

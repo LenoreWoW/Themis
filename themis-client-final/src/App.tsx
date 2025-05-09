@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate, BrowserRouter } from 'react-router-dom';
 import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction, Stack, CircularProgress, Box } from '@mui/material';
 import createAppTheme from './theme';
 import { useAuth } from './hooks/useAuth';
@@ -28,6 +28,7 @@ import GoalsPage from './pages/GoalsPage';
 import DepartmentsPage from './pages/DepartmentsPage';
 import ProjectApprovalPage from './pages/ProjectApprovalPage';
 import ApprovalsPage from './pages/ApprovalsPage';
+import ApprovalsDirectPage from './pages/ApprovalsDirectPage';
 import AuditPage from './pages/AuditPage';
 import AuditLogPage from './pages/AuditLogPage';
 import SupabaseConnectionTest from './components/SupabaseConnectionTest';
@@ -243,8 +244,9 @@ const AppContent: React.FC = () => {
                       <Route path="users" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE']}><UserManagementPage /></PrivateRoute>} />
                       <Route path="faculty" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE']}><FacultyPage /></PrivateRoute>} />
                       <Route path="projects/new" element={<PrivateRoute roleRequired={['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO']}><ProjectApprovalPage /></PrivateRoute>} />
-                      <Route path="approvals" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']}><ApprovalsPage /></PrivateRoute>} />
-                      <Route path="approvals/:tab" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']}><ApprovalsPage /></PrivateRoute>} />
+                      <Route path="approvals-direct" element={<ApprovalsDirectPage />} />
+                      <Route path="approvals" element={<PrivateRoute><ApprovalsPage /></PrivateRoute>} />
+                      <Route path="approvals/:tab" element={<PrivateRoute><ApprovalsPage /></PrivateRoute>} />
                       <Route path="project-approvals" element={<Navigate to="/approvals" replace />} />
                       <Route path="change-requests" element={<Navigate to="/approvals?tab=2" replace />} />
                       <Route path="ideation" element={<PrivateRoute><IdeationPage /></PrivateRoute>} />

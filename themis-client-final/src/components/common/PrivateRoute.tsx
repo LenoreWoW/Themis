@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { UserRole } from '../../types';
 
 interface PrivateRouteProps {
   children: React.ReactNode;
@@ -22,6 +23,12 @@ const PrivateRoute: React.FC<PrivateRouteProps> = ({
   // If specific roles are required, check if the user has the required role
   if (roleRequired && user) {
     const requiredRoles = Array.isArray(roleRequired) ? roleRequired : [roleRequired];
+    
+    // Admin users should always have access to all routes
+    if (user.role === UserRole.ADMIN) {
+      return <>{children}</>;
+    }
+    
     const hasRequiredRole = requiredRoles.includes(user.role);
 
     if (!hasRequiredRole) {

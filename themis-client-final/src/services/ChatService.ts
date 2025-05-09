@@ -32,9 +32,17 @@ class ChatService {
       return Promise.reject(new Error('No authentication token available'));
     }
     
-    // Create the connection
+    // Create the connection - using withAutomaticReconnect and proper URL format
+    const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+    const hubUrl = apiUrl.endsWith('/api') 
+      ? apiUrl.substring(0, apiUrl.length - 4) + '/hubs/chat'
+      : apiUrl + '/hubs/chat';
+    
     this.connection = new HubConnectionBuilder()
-      .withUrl(`${process.env.REACT_APP_API_URL || 'http://localhost:3000/api'}/hubs/chat?access_token=${this.token}`)
+      .withUrl(hubUrl, {
+        accessTokenFactory: () => this.token || '',
+        withCredentials: false // Don't send credentials with the request
+      })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Information)
       .build();
@@ -46,10 +54,12 @@ class ChatService {
     this.connectionPromise = this.connection.start()
       .then(() => {
         console.log('Connected to chat hub');
+        this.isConnected = true;
       })
       .catch(err => {
         console.error('Error connecting to chat hub:', err);
         this.connectionPromise = null;
+        this.isConnected = false;
         throw err;
       });
       
@@ -526,9 +536,15 @@ class ChatService {
       
       // If we were connecting to a real hub, we would use this code:
       /*
+      const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:3000/api';
+      const hubUrl = apiUrl.endsWith('/api') 
+        ? apiUrl.substring(0, apiUrl.length - 4) + '/hubs/chat'
+        : apiUrl + '/hubs/chat';
+        
       this.connection = new HubConnectionBuilder()
-        .withUrl(`${apiBaseUrl}/hubs/chat`, {
+        .withUrl(hubUrl, {
           accessTokenFactory: () => localStorage.getItem('token') || '',
+          withCredentials: false
         })
         .withAutomaticReconnect()
         .build();

@@ -198,7 +198,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
         { text: t('navigation.dependencies'), icon: <AccountTreeIcon />, path: '/dependencies' },
         { text: t('navigation.repository'), icon: <StorageIcon />, path: '/repository' },
         { text: t('navigation.chat'), icon: <ChatIcon />, path: '/chat' },
-        { text: t('navigation.approvals'), icon: <CheckCircleIcon />, path: '/approvals' },
+        { text: t('navigation.approvals'), icon: <CheckCircleIcon />, path: '/approvals-direct' },
         { 
           text: t('navigation.myWork'), 
           icon: <WorkIcon />, 

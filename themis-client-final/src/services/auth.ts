@@ -143,7 +143,7 @@ export const login = async (username: string, password: string): Promise<AuthRes
         firstName: username.split('@')[0].split('.')[0],
         lastName: username.split('@')[0].split('.')[1] || '',
         email: username,
-        role: username.toLowerCase() === 'admin' ? UserRole.ADMIN : 
+        role: username.toLowerCase() === 'admin' || username.toLowerCase() === 'john.smith@acme.com' ? UserRole.ADMIN : 
               username.toLowerCase().includes('manager') ? UserRole.PROJECT_MANAGER :
               username.toLowerCase().includes('director') ? UserRole.DEPARTMENT_DIRECTOR :
               username.toLowerCase().includes('executive') ? UserRole.EXECUTIVE :

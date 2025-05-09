@@ -77,6 +77,8 @@
     "riskAssessment": "Risk Assessment",
     "budgetStatus": "Budget Status",
     "resourceAllocation": "Resource Allocation",
+    "lastUpdated": "Last Updated",
+    "refresh": "Refresh",
     "projectStatus": {
       "onTrack": "On Track",
       "atRisk": "At Risk",
@@ -140,6 +142,7 @@
     "name": "Name",
     "progress": "Progress",
     "deadline": "Deadline",
+    "dueDate": "Due Date",
     "viewRelationships": "View Relationships",
     "createNewToStart": "Create a new project to get started.",
     "subtitle": "Manage and monitor all your organizational projects"
@@ -744,5 +747,13 @@
     "selectCentralGoal": "Select Central Goal",
     "selectNodePrompt": "Please select a node to view relationships",
     "mindMapHelp": "Drag to pan, scroll to zoom, click on a node to center the mind map"
+  },
+  "approvals": {
+    "title": "Approvals Dashboard",
+    "pendingProjects": "Pending Projects",
+    "completedProjects": "Completed Projects",
+    "changeRequests": "Change Requests",
+    "pmDescription": "Track the status of your project and change requests here.",
+    "pmoDescription": "Review and approve project and change requests. View the status of items you have approved."
   }
 } 

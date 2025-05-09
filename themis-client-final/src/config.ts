@@ -6,11 +6,17 @@ const isNetlify = process.env.NETLIFY === 'true';
 export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 
   (isProduction ? window.location.origin + '/api' : 'http://localhost:3000/api');
 
+// Hub Configuration for SignalR
+export const HUB_BASE_URL = API_BASE_URL.endsWith('/api') 
+  ? API_BASE_URL.substring(0, API_BASE_URL.length - 4) 
+  : API_BASE_URL;
+
 // Export API config for services
 export const apiConfig = {
   API_BASE_URL,
+  HUB_BASE_URL,
   TIMEOUT: 30000, // 30 seconds
-  WITH_CREDENTIALS: false,
+  WITH_CREDENTIALS: false, // Don't send credentials in cross-origin requests
   HEADERS: {
     'Content-Type': 'application/json',
     'Accept': 'application/json',
