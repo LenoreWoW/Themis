@@ -25,11 +25,12 @@ import {
   Timeline as HierarchyIcon,
   Search as SearchIcon
 } from '@mui/icons-material';
-import { Project, Goal } from '../types';
+import { Project, Goal, UserRole } from '../types';
 import ProjectGoalMindMap from '../components/MindMap/ProjectGoalMindMap';
 import api from '../services/api';
 import { useTranslation } from 'react-i18next';
 import { useProjects } from '../context/ProjectContext';
+import { useAuth } from '../hooks/useAuth';
 
 // Interface for visualization type
 type VisualizationType = 'mind-map' | 'hierarchy';
@@ -39,6 +40,7 @@ const ProjectRelationshipMapPage: React.FC = () => {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId?: string }>();
   const { projects, loading: projectsLoading } = useProjects();
+  const { user } = useAuth();
   
   const [visType, setVisType] = useState<VisualizationType>('mind-map');
   const [goals, setGoals] = useState<Goal[]>([]);
@@ -48,6 +50,51 @@ const ProjectRelationshipMapPage: React.FC = () => {
   const [selectedGoalId, setSelectedGoalId] = useState<string | null>(null);
   const [expandAll, setExpandAll] = useState(false);
   const [rootType, setRootType] = useState<'project' | 'goal'>('project');
+  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
+
+  // Filter projects based on user role
+  useEffect(() => {
+    if (!projects || projects.length === 0) return;
+
+    let filtered: Project[] = [];
+
+    if (user) {
+      switch (user.role) {
+        case UserRole.PROJECT_MANAGER:
+          // Project Managers see only what's related to their projects
+          filtered = projects.filter(p => p.projectManager?.id === user.id);
+          break;
+          
+        case UserRole.SUB_PMO:
+        case UserRole.DEPARTMENT_DIRECTOR:
+          // Sub-PMO and Department Directors see their department scope
+          const userDepartmentId = user.department?.id;
+          filtered = projects.filter(p => p.department?.id === userDepartmentId);
+          break;
+          
+        case UserRole.MAIN_PMO:
+        case UserRole.EXECUTIVE:
+        case UserRole.ADMIN:
+          // Main PMO, Executives, and Admins see everything
+          filtered = [...projects];
+          break;
+          
+        default:
+          // Default - see your own projects
+          filtered = projects.filter(p => 
+            p.projectManager?.id === user.id || 
+            p.teamMembers?.some(m => m.id === user.id)
+          );
+      }
+    }
+    
+    setFilteredProjects(filtered);
+    
+    // If selected project is not in filtered list, reset selection
+    if (selectedProjectId && !filtered.some(p => p.id === selectedProjectId)) {
+      setSelectedProjectId(null);
+    }
+  }, [projects, user, selectedProjectId]);
 
   // Fetch goals data
   useEffect(() => {
@@ -104,7 +151,7 @@ const ProjectRelationshipMapPage: React.FC = () => {
 
   // Find the selected project or goal
   const selectedProject = selectedProjectId 
-    ? projects.find(p => p.id === selectedProjectId) 
+    ? filteredProjects.find(p => p.id === selectedProjectId) 
     : null;
     
   const selectedGoal = selectedGoalId 
@@ -172,7 +219,7 @@ const ProjectRelationshipMapPage: React.FC = () => {
               disabled={loading || projectsLoading}
             >
               <MenuItem value="all">{t('project.all')}</MenuItem>
-              {projects.map(project => (
+              {filteredProjects.map(project => (
                 <MenuItem key={project.id} value={project.id}>
                   {project.name}
                 </MenuItem>
@@ -290,7 +337,7 @@ const ProjectRelationshipMapPage: React.FC = () => {
         ) : (
           visType === 'mind-map' ? (
             <ProjectGoalMindMap
-              projects={projects}
+              projects={filteredProjects}
               goals={goals}
               rootId={selectedProjectId || selectedGoalId || undefined}
               rootType={rootType}

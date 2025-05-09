@@ -30,9 +30,26 @@ import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { format } from 'date-fns';
-import { useSelector } from 'react-redux';
-import { RootState } from '../../redux/store';
-import api from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import axios from 'axios';
+import { API_BASE_URL } from '../../config';
+
+// Create an api instance with axios
+const apiClient = axios.create({
+  baseURL: API_BASE_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
+// Add a request interceptor to add the auth token to requests
+apiClient.interceptors.request.use((config) => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 interface AvailabilitySlot {
   id?: string;
@@ -53,7 +70,7 @@ const DEFAULT_SLOT: AvailabilitySlot = {
 };
 
 const BookingSettings: React.FC = () => {
-  const { user } = useSelector((state: RootState) => state.auth);
+  const { user } = useAuth();
   const [slots, setSlots] = useState<AvailabilitySlot[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [editSlot, setEditSlot] = useState<AvailabilitySlot | null>(null);
@@ -78,7 +95,7 @@ const BookingSettings: React.FC = () => {
   const loadSlots = async () => {
     try {
       setLoading(true);
-      const response = await api.get(`/booking/slots?userId=${user?.id}`);
+      const response = await apiClient.get(`/booking/slots?userId=${user?.id}`);
       
       // Convert string dates to Date objects
       const formattedSlots = response.data.map((slot: any) => ({
@@ -114,7 +131,7 @@ const BookingSettings: React.FC = () => {
     if (!id) return;
     
     try {
-      await api.delete(`/booking/slots/${id}`);
+      await apiClient.delete(`/booking/slots/${id}`);
       setSlots(slots.filter(slot => slot.id !== id));
       setSnackbar({
         open: true,
@@ -154,7 +171,7 @@ const BookingSettings: React.FC = () => {
         }]
       };
       
-      const response = await api.post('/booking/slots', payload);
+      const response = await apiClient.post('/booking/slots', payload);
       
       // Update the local state
       if (editSlot.id) {

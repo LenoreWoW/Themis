@@ -6,6 +6,17 @@ const isNetlify = process.env.NETLIFY === 'true';
 export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 
   (isProduction ? window.location.origin + '/api' : 'http://localhost:3000/api');
 
+// Export API config for services
+export const apiConfig = {
+  API_BASE_URL,
+  TIMEOUT: 30000, // 30 seconds
+  WITH_CREDENTIALS: false,
+  HEADERS: {
+    'Content-Type': 'application/json',
+    'Accept': 'application/json',
+  }
+};
+
 // Feature flags
 export const FEATURES = {
   OFFLINE_MODE: true,

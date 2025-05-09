@@ -9,7 +9,8 @@ export enum CalendarEventType {
   TASK = 'task',
   ASSIGNMENT = 'assignment',
   MEETING = 'meeting',
-  DEADLINE = 'deadline'
+  DEADLINE = 'deadline',
+  BOOKING = 'booking'
 }
 
 /**
@@ -39,9 +40,24 @@ export interface CalendarEvent {
 }
 
 /**
+ * Booking slot interface
+ */
+export interface BookingSlot {
+  id: string;
+  user_id: string;
+  start_time: string;
+  end_time: string;
+  service_type: 'built-in' | 'external';
+  external_link?: string;
+  booked: boolean;
+  booker_name?: string;
+  booker_email?: string;
+}
+
+/**
  * Service to handle calendar-related operations
  */
-class CalendarService {
+const calendarService = {
   /**
    * Fetches calendar events based on user role and permissions
    */
@@ -54,6 +70,7 @@ class CalendarService {
       let tasks: Task[] = [];
       let assignments: Assignment[] = [];
       let meetings: Meeting[] = [];
+      let bookingSlots: BookingSlot[] = [];
       
       // Fetch projects based on user role
       if (this.canViewAllProjects(user.role)) {
@@ -104,12 +121,21 @@ class CalendarService {
         }
       }
       
+      // Fetch booking slots
+      try {
+        const bookingSlotsResponse = await this.getBookingSlots(user.id, token);
+        bookingSlots = bookingSlotsResponse || [];
+      } catch (error) {
+        console.error('Error fetching booking slots:', error);
+      }
+      
       // 2. Transform data into calendar events
       const events: CalendarEvent[] = [
         ...this.transformTasksToEvents(tasks),
         ...this.transformAssignmentsToEvents(assignments),
         ...this.transformMeetingsToEvents(meetings),
-        ...this.transformProjectDeadlinesToEvents(projects)
+        ...this.transformProjectDeadlinesToEvents(projects),
+        ...this.transformBookingSlotsToEvents(bookingSlots)
       ];
       
       return events;
@@ -117,7 +143,7 @@ class CalendarService {
       console.error('Error fetching calendar events:', error);
       return [];
     }
-  }
+  },
 
   /**
    * Update a calendar event (task, assignment, meeting)
@@ -162,7 +188,8 @@ class CalendarService {
           break;
         
         case CalendarEventType.DEADLINE:
-          // Don't allow updating deadlines via drag-and-drop
+        case CalendarEventType.BOOKING:
+          // Don't allow updating deadlines or booking slots via drag-and-drop
           return false;
       }
       
@@ -171,12 +198,49 @@ class CalendarService {
       console.error(`Error updating ${eventType}:`, error);
       return false;
     }
-  }
+  },
+
+  /**
+   * Get booking slots for the current user
+   */
+  async getBookingSlots(userId: string, token: string): Promise<BookingSlot[]> {
+    try {
+      // Instead of fetching from a non-existent API endpoint, return mock data
+      // Generate 5 random booking slots for demo purposes
+      const now = new Date();
+      const mockSlots: BookingSlot[] = [];
+      
+      for (let i = 0; i < 5; i++) {
+        const startTime = new Date(now);
+        startTime.setDate(now.getDate() + Math.floor(i / 2));
+        startTime.setHours(9 + i % 8, 0, 0, 0);
+        
+        const endTime = new Date(startTime);
+        endTime.setHours(startTime.getHours() + 1);
+        
+        mockSlots.push({
+          id: `slot-${i}-${userId}`,
+          user_id: userId,
+          start_time: startTime.toISOString(),
+          end_time: endTime.toISOString(),
+          service_type: 'built-in',
+          booked: i % 3 === 0, // Every third slot is booked
+          booker_name: i % 3 === 0 ? 'Example User' : undefined,
+          booker_email: i % 3 === 0 ? 'user@example.com' : undefined
+        });
+      }
+      
+      return mockSlots;
+    } catch (error) {
+      console.error('Error fetching booking slots:', error);
+      return [];
+    }
+  },
 
   /**
    * Transform tasks to calendar events
    */
-  private transformTasksToEvents(tasks: Task[]): CalendarEvent[] {
+  transformTasksToEvents(tasks: Task[]): CalendarEvent[] {
     return tasks.map(task => ({
       id: task.id,
       title: task.title,
@@ -195,12 +259,12 @@ class CalendarService {
         projectName: task.project?.name
       }
     }));
-  }
+  },
 
   /**
    * Transform assignments to calendar events
    */
-  private transformAssignmentsToEvents(assignments: Assignment[]): CalendarEvent[] {
+  transformAssignmentsToEvents(assignments: Assignment[]): CalendarEvent[] {
     return assignments.map(assignment => ({
       id: assignment.id,
       title: assignment.title,
@@ -221,12 +285,12 @@ class CalendarService {
         }
       }
     }));
-  }
+  },
 
   /**
    * Transform meetings to calendar events
    */
-  private transformMeetingsToEvents(meetings: Meeting[]): CalendarEvent[] {
+  transformMeetingsToEvents(meetings: Meeting[]): CalendarEvent[] {
     return meetings.map(meeting => ({
       id: meeting.id,
       title: meeting.title,
@@ -243,39 +307,59 @@ class CalendarService {
         projectName: meeting.projectId ? 'Project Meeting' : 'General Meeting'
       }
     }));
-  }
+  },
+
+  /**
+   * Transform booking slots to calendar events
+   */
+  transformBookingSlotsToEvents(slots: BookingSlot[]): CalendarEvent[] {
+    return slots.map(slot => ({
+      id: slot.id,
+      title: slot.booked ? `Booked: ${slot.booker_name || 'Anonymous'}` : 'Available Slot',
+      type: CalendarEventType.BOOKING,
+      start: slot.start_time,
+      end: slot.end_time,
+      allDay: false,
+      color: '#ff9800', // Orange
+      editable: false,
+      extendedProps: {
+        description: slot.booked ? `Booked by: ${slot.booker_name || 'Anonymous'} (${slot.booker_email || 'No email'})` : 'Available for booking',
+        status: slot.booked ? 'booked' : 'available',
+      }
+    }));
+  },
 
   /**
    * Transform project deadlines to calendar events
    */
-  private transformProjectDeadlinesToEvents(projects: Project[]): CalendarEvent[] {
+  transformProjectDeadlinesToEvents(projects: Project[]): CalendarEvent[] {
     return projects.map(project => ({
-      id: `deadline-${project.id}`,
-      title: `${project.name} deadline`,
+      id: `deadline_${project.id}`,
+      title: `${project.name} Deadline`,
       type: CalendarEventType.DEADLINE,
       projectId: project.id,
       start: project.endDate,
       end: project.endDate,
       allDay: true,
       color: '#f44336', // Red
-      editable: false, // Deadlines are not editable
+      editable: false,
       extendedProps: {
-        projectName: project.name,
-        status: project.status
+        description: `Project deadline for ${project.name}`,
+        projectName: project.name
       }
     }));
-  }
+  },
 
   /**
    * Check if user can view all projects
    */
-  private canViewAllProjects(role: UserRole): boolean {
+  canViewAllProjects(role: UserRole): boolean {
     return [
       UserRole.ADMIN,
       UserRole.MAIN_PMO,
       UserRole.EXECUTIVE
     ].includes(role);
   }
-}
+};
 
-export default new CalendarService(); 
+export default calendarService; 

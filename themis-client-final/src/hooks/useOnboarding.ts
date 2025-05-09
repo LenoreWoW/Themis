@@ -1,51 +1,50 @@
 import { useEffect, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../redux/store';
+import { RootState, AppDispatch } from '../redux/store';
 import { 
-  fetchAvailableQuests, 
-  fetchUserQuestProgress, 
+  fetchQuests, 
+  fetchUserQuests, 
   completeQuestStep,
   completeQuest,
   resetQuest,
   setActiveQuest,
+  archiveQuest,
   startQuest,
-  completeQuestStepLocal,
-  archiveQuest
+  completeQuestStepLocal
 } from '../store/slices/onboardingSlice';
 import { Quest, QuestStatus } from '../types/Onboarding';
 import { UserRole } from '../types/index';
-import { getQuestsForRole } from '../data/quests';
 
 export const useOnboarding = (userId: string, userRole: UserRole) => {
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const { 
-    availableQuests, 
+    quests, 
     userQuests, 
-    activeQuestKey,
-    isLoading,
+    activeQuest,
+    loading: isLoading,
     error 
   } = useSelector((state: RootState) => state.onboarding);
 
   // Initialize onboarding system with quests for user role
   useEffect(() => {
     // Load quests for this role
-    const roleQuests = getQuestsForRole(userRole);
+    dispatch(fetchQuests(userRole));
     
     // Fetch user progress
     if (userId) {
-      dispatch(fetchUserQuestProgress(userId));
+      dispatch(fetchUserQuests(userId));
     }
   }, [dispatch, userId, userRole]);
 
   // Set active quest
-  const handleSetActiveQuest = useCallback((questKey: string | null) => {
-    dispatch(setActiveQuest(questKey));
+  const handleSetActiveQuest = useCallback((quest: Quest | null) => {
+    dispatch(setActiveQuest(quest));
   }, [dispatch]);
 
   // Begin a quest
   const handleStartQuest = useCallback((questKey: string) => {
-    dispatch(startQuest(questKey));
-  }, [dispatch]);
+    dispatch(startQuest({ userId, questKey }));
+  }, [dispatch, userId]);
 
   // Complete a step in a quest
   const handleCompleteQuestStep = useCallback((questKey: string, stepId: string) => {
@@ -74,31 +73,21 @@ export const useOnboarding = (userId: string, userRole: UserRole) => {
 
   // Archive a completed quest
   const handleArchiveQuest = useCallback((questKey: string) => {
-    dispatch(archiveQuest(questKey));
-  }, [dispatch]);
+    dispatch(archiveQuest({ userId, questKey }));
+  }, [dispatch, userId]);
 
-  // Get active quest
-  const activeQuest = activeQuestKey 
-    ? availableQuests.find(q => q.key === activeQuestKey) 
-    : null;
-
-  // Get user progress for active quest
-  const activeQuestProgress = activeQuestKey && userQuests[activeQuestKey] 
-    ? userQuests[activeQuestKey] 
-    : null;
-
-  // Get all quests with user progress data merged in
-  const questsWithProgress: Quest[] = availableQuests.map(quest => {
-    const userProgress = userQuests[quest.key];
+  // Convert quest arrays to objects for easier lookups
+  const questsWithProgress: Quest[] = quests.map(quest => {
+    const userQuest = userQuests.find(uq => uq.questKey === quest.key);
     
-    if (userProgress) {
+    if (userQuest) {
       return {
         ...quest,
-        status: userProgress.status,
-        completedAt: userProgress.completedAt,
+        status: userQuest.status,
+        completedAt: userQuest.completedAt,
         steps: quest.steps.map(step => ({
           ...step,
-          completed: userProgress.completedSteps.includes(step.id)
+          completed: userQuest.completedSteps.includes(step.id)
         }))
       };
     }
@@ -127,7 +116,6 @@ export const useOnboarding = (userId: string, userRole: UserRole) => {
     completedQuests,
     archivedQuests,
     activeQuest,
-    activeQuestProgress,
     setActiveQuest: handleSetActiveQuest,
     startQuest: handleStartQuest,
     completeQuestStep: handleCompleteQuestStep,

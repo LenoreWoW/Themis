@@ -35,6 +35,9 @@ import {
   Card,
   CardHeader,
   CardContent,
+  CardActions,
+  Grid,
+  InputAdornment,
   Avatar,
   LinearProgress,
   Container,
@@ -150,6 +153,21 @@ const getStatusWithDeadlineColor = (project: Project) => {
   
   // Get the deadline-based color
   return getDeadlineColor(status, project.startDate, project.endDate, completedOnTime);
+};
+
+// Helper function to display status chip with appropriate color
+const getStatusChip = (status: string) => {
+  const statusLabel = getStatusLabel(status);
+  const color = getStatusColor(status);
+  return (
+    <Chip
+      label={statusLabel}
+      color={color as any}
+      size="small"
+      variant="outlined"
+      sx={{ fontWeight: 'medium' }}
+    />
+  );
 };
 
 // Map API status to component status type

@@ -336,10 +336,12 @@ const rejectChangeRequest = async (
   });
 };
 
-export default {
+const changeRequestsService = {
   submitChangeRequest,
   getAllChangeRequests,
   getChangeRequestsByProject,
   approveChangeRequest,
   rejectChangeRequest
-}; 
+};
+
+export default changeRequestsService; 

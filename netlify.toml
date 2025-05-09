@@ -1,12 +1,12 @@
 [build]
   # Directory to change to before starting build. Default is root of repo.
-  base = "themis-client-final"
+  base = "/"
   
   # Directory that contains the deployed site. Default is "build" for React apps.
-  publish = "build"
+  publish = "themis-client-final/build"
   
   # Default build command.
-  command = "npm run build"
+  command = "cd themis-client-final && npm run build"
 
 # Redirects for SPA routing - more specific first
 [[redirects]]

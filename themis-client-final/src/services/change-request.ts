@@ -276,7 +276,7 @@ const applyChangeRequest = async (changeRequestId: string, token?: string): Prom
   return updateResponse;
 };
 
-export default {
+const changeRequestService = {
   createChangeRequest,
   getAllChangeRequests,
   getProjectChangeRequests,
@@ -284,4 +284,6 @@ export default {
   getChangeRequestById,
   updateChangeRequestStatus,
   applyChangeRequest
-}; 
+};
+
+export default changeRequestService; 

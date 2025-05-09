@@ -3,9 +3,10 @@ import { API_BASE_URL } from '../config';
 import { Quest, QuestStatus, UserQuest } from '../types/Onboarding';
 import { allQuests, getQuestsForRole } from '../data/quests';
 import { UserRole } from '../types/index';
+import { apiRequest } from './api';
 
 // API helper for this service
-const api = axios.create({
+const apiHelper = axios.create({
   baseURL: API_BASE_URL,
   headers: {
     'Content-Type': 'application/json',
@@ -13,7 +14,7 @@ const api = axios.create({
 });
 
 // Add a request interceptor to add the auth token to requests
-api.interceptors.request.use((config) => {
+apiHelper.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -26,8 +27,11 @@ api.interceptors.request.use((config) => {
  */
 class TutorialService {
   private static instance: TutorialService;
+  private baseUrl: string;
 
-  private constructor() {}
+  private constructor() {
+    this.baseUrl = API_BASE_URL || '';
+  }
 
   public static getInstance(): TutorialService {
     if (!TutorialService.instance) {
@@ -77,63 +81,62 @@ class TutorialService {
   }
 
   /**
+   * Get user's tutorial status
+   * @param userId The user's ID
+   * @returns Promise<boolean> True if the tutorial is complete, false otherwise
+   */
+  public async getUserTutorialStatus(userId: string): Promise<boolean> {
+    try {
+      const response = await apiRequest(`/users/${userId}/tutorial-status`, 'GET');
+      return response.data?.tutorial_complete || false;
+    } catch (error) {
+      console.error('Error fetching tutorial status:', error);
+      return true; // Default to true if error
+    }
+  }
+
+  /**
+   * Set user's tutorial status
+   * @param userId The user's ID
+   * @param complete True if the tutorial is complete, false otherwise
+   * @returns Promise<void>
+   */
+  public async setTutorialComplete(userId: string, complete: boolean): Promise<void> {
+    try {
+      await apiRequest(`/users/${userId}/tutorial-complete`, 'POST', {
+        tutorial_complete: complete
+      });
+    } catch (error) {
+      console.error('Error updating tutorial status:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Start a quest
+   * @param userId The user's ID
+   * @param questKey The quest key
+   * @returns Promise<void> Success status
+   */
+  public async startQuest(userId: string, questKey: string): Promise<void> {
+    try {
+      await apiRequest(`/users/${userId}/quests/${questKey}/start`, 'POST');
+    } catch (error) {
+      console.error('Error starting quest:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Complete a quest step
    * @param userId The user's ID
    * @param questKey The quest key
    * @param stepId The step ID
-   * @returns Promise<any> Success status
+   * @returns Promise<void> Success status
    */
-  public async completeQuestStep(userId: string, questKey: string, stepId: string): Promise<any> {
+  public async completeQuestStep(userId: string, questKey: string, stepId: string): Promise<void> {
     try {
-      // In a real implementation, this would call the API
-      // For now, update localStorage
-      const progressKey = `tutorial_progress_${userId}`;
-      let progress: UserQuest[] = [];
-      const storedProgress = localStorage.getItem(progressKey);
-      
-      if (storedProgress) {
-        progress = JSON.parse(storedProgress);
-      }
-      
-      // Find the user quest or create it
-      let userQuest = progress.find(q => q.questKey === questKey);
-      
-      if (!userQuest) {
-        userQuest = {
-          userId,
-          questKey,
-          status: QuestStatus.IN_PROGRESS,
-          progress: 0,
-          completedSteps: [],
-          startedAt: new Date().toISOString(),
-          lastUpdatedAt: new Date().toISOString()
-        };
-        progress.push(userQuest);
-      }
-      
-      // Add the step if not already completed
-      if (!userQuest.completedSteps.includes(stepId)) {
-        userQuest.completedSteps.push(stepId);
-        
-        // Update progress percentage
-        const quest = allQuests.find(q => q.key === questKey);
-        if (quest) {
-          userQuest.progress = Math.floor((userQuest.completedSteps.length / quest.steps.length) * 100);
-          
-          // If all steps are completed, mark the quest as completed
-          if (userQuest.completedSteps.length === quest.steps.length) {
-            userQuest.status = QuestStatus.COMPLETED;
-            userQuest.completedAt = new Date().toISOString();
-          }
-        }
-        
-        userQuest.lastUpdatedAt = new Date().toISOString();
-      }
-      
-      // Save the updated progress
-      localStorage.setItem(progressKey, JSON.stringify(progress));
-      
-      return { success: true };
+      await apiRequest(`/users/${userId}/quests/${questKey}/steps/${stepId}/complete`, 'POST');
     } catch (error) {
       console.error('Error completing quest step:', error);
       throw error;
@@ -144,34 +147,11 @@ class TutorialService {
    * Complete a quest
    * @param userId The user's ID
    * @param questKey The quest key
-   * @returns Promise<any> Success status
+   * @returns Promise<void> Success status
    */
-  public async completeQuest(userId: string, questKey: string): Promise<any> {
+  public async completeQuest(userId: string, questKey: string): Promise<void> {
     try {
-      // In a real implementation, this would call the API
-      // For now, update localStorage
-      const progressKey = `tutorial_progress_${userId}`;
-      let progress: UserQuest[] = [];
-      const storedProgress = localStorage.getItem(progressKey);
-      
-      if (storedProgress) {
-        progress = JSON.parse(storedProgress);
-      }
-      
-      // Find the user quest
-      const userQuestIndex = progress.findIndex(q => q.questKey === questKey);
-      
-      if (userQuestIndex >= 0) {
-        const userQuest = progress[userQuestIndex];
-        userQuest.status = QuestStatus.COMPLETED;
-        userQuest.completedAt = new Date().toISOString();
-        userQuest.lastUpdatedAt = new Date().toISOString();
-        
-        // Save the updated progress
-        localStorage.setItem(progressKey, JSON.stringify(progress));
-      }
-      
-      return { success: true };
+      await apiRequest(`/users/${userId}/quests/${questKey}/complete`, 'POST');
     } catch (error) {
       console.error('Error completing quest:', error);
       throw error;
@@ -247,6 +227,20 @@ class TutorialService {
       return { success: true };
     } catch (error) {
       console.error('Error archiving quest:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset user's tutorial
+   * @param userId The user's ID
+   * @returns Promise<void> Success status
+   */
+  public async resetTutorial(userId: string): Promise<void> {
+    try {
+      await apiRequest(`/users/${userId}/tutorial-reset`, 'POST');
+    } catch (error) {
+      console.error('Error resetting tutorial:', error);
       throw error;
     }
   }

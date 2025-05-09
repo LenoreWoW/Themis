@@ -5,14 +5,14 @@ import api from './api';
 /**
  * Service to handle calendar notification scheduling and processing
  */
-class CalendarNotificationService {
-  private checkInterval: number | null = null;
-  private intervalTime = 60000; // Check every minute
+const calendarNotificationService = {
+  checkInterval: null as number | null,
+  intervalTime: 60000, // Check every minute
   
   /**
    * Start the notification checking service
    */
-  public startNotificationService(): void {
+  startNotificationService(): void {
     // Clear any existing interval
     this.stopNotificationService();
     
@@ -22,23 +22,23 @@ class CalendarNotificationService {
     }, this.intervalTime);
     
     console.log('Calendar notification service started');
-  }
+  },
   
   /**
    * Stop the notification checking service
    */
-  public stopNotificationService(): void {
+  stopNotificationService(): void {
     if (this.checkInterval) {
       window.clearInterval(this.checkInterval);
       this.checkInterval = null;
       console.log('Calendar notification service stopped');
     }
-  }
+  },
   
   /**
    * Check for notifications that need to be sent
    */
-  private async checkForNotifications(): Promise<void> {
+  async checkForNotifications(): Promise<void> {
     try {
       const token = localStorage.getItem('token') || '';
       
@@ -72,12 +72,12 @@ class CalendarNotificationService {
     } catch (error) {
       console.error('Error checking for calendar notifications:', error);
     }
-  }
+  },
   
   /**
    * Fetch meetings from the API
    */
-  private async fetchMeetings(token: string): Promise<Meeting[]> {
+  async fetchMeetings(token: string): Promise<Meeting[]> {
     try {
       const response = await api.meetings.getAllMeetings(token);
       return response.data || [];
@@ -85,12 +85,12 @@ class CalendarNotificationService {
       console.error('Error fetching meetings for notifications:', error);
       return [];
     }
-  }
+  },
   
   /**
    * Fetch assignments from the API
    */
-  private async fetchAssignments(token: string): Promise<Assignment[]> {
+  async fetchAssignments(token: string): Promise<Assignment[]> {
     try {
       const response = await api.assignments.getAllAssignments(token);
       return response.data || [];
@@ -98,12 +98,12 @@ class CalendarNotificationService {
       console.error('Error fetching assignments for notifications:', error);
       return [];
     }
-  }
+  },
   
   /**
    * Fetch projects from the API
    */
-  private async fetchProjects(token: string): Promise<Project[]> {
+  async fetchProjects(token: string): Promise<Project[]> {
     try {
       const response = await api.projects.getAllProjects(token);
       return response.data || [];
@@ -111,12 +111,12 @@ class CalendarNotificationService {
       console.error('Error fetching projects for notifications:', error);
       return [];
     }
-  }
+  },
   
   /**
    * Fetch users from the API
    */
-  private async fetchUsers(token: string): Promise<User[]> {
+  async fetchUsers(token: string): Promise<User[]> {
     try {
       const response = await api.users.getAllUsers(token);
       return response.data || [];
@@ -124,12 +124,12 @@ class CalendarNotificationService {
       console.error('Error fetching users for notifications:', error);
       return [];
     }
-  }
+  },
   
   /**
    * Send notifications to the server
    */
-  private async sendNotifications(notifications: any[], token: string): Promise<void> {
+  async sendNotifications(notifications: any[], token: string): Promise<void> {
     try {
       // In a real implementation, this would use an API endpoint to send notifications
       // For now, we'll just log them
@@ -141,6 +141,6 @@ class CalendarNotificationService {
       console.error('Error sending notifications:', error);
     }
   }
-}
+};
 
-export default new CalendarNotificationService(); 
+export default calendarNotificationService;

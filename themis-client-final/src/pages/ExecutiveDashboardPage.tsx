@@ -164,6 +164,7 @@ const DashboardPage: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
+  const [loadingError, setLoadingError] = useState<string | null>(null);
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
@@ -196,57 +197,98 @@ const DashboardPage: React.FC = () => {
   const [risksDialogOpen, setRisksDialogOpen] = useState(false);
   const [issuesDialogOpen, setIssuesDialogOpen] = useState(false);
 
+  // Add the missing functions to fix linter errors
+  const fetchRisksAndIssues = async (projectIds: string[]) => {
+    try {
+      const token = localStorage.getItem('token') || '';
+      
+      // Fetch risks for all projects
+      const risksPromises = projectIds.map(projectId => 
+        api.risks.getAllRisks(projectId, token)
+      );
+      
+      // Fetch issues for all projects
+      const issuesPromises = projectIds.map(projectId => 
+        api.issues.getAllIssues(projectId, token)
+      );
+      
+      // Wait for all promises to resolve
+      const risksResponses = await Promise.all(risksPromises);
+      const issuesResponses = await Promise.all(issuesPromises);
+      
+      // Extract and flatten the data
+      const allRisks = risksResponses
+        .filter(response => response.data)
+        .flatMap(response => response.data || []);
+        
+      const allIssues = issuesResponses
+        .filter(response => response.data)
+        .flatMap(response => response.data || []);
+      
+      // Update state
+      setRisks(allRisks);
+      setIssues(allIssues);
+    } catch (error) {
+      console.error('Error fetching risks and issues:', error);
+      setLoadingError('Failed to load risks and issues data. Please try again.');
+    }
+  };
+
+  const calculateDashboardMetrics = (projectsData: Project[]) => {
+    const now = new Date();
+    const twoWeeksFromNow = new Date();
+    twoWeeksFromNow.setDate(twoWeeksFromNow.getDate() + 14);
+    
+    // Calculate various metrics for the dashboard
+    const inProgressProjects = projectsData.filter(project => project.status === ProjectStatus.IN_PROGRESS);
+    const completedProjects = projectsData.filter(project => project.status === ProjectStatus.COMPLETED);
+    const onHoldProjects = projectsData.filter(project => project.status === ProjectStatus.ON_HOLD);
+    
+    // Update any other metrics or statistics needed for the dashboard
+    console.log(`Dashboard metrics calculated: ${projectsData.length} total projects, ${inProgressProjects.length} in progress, ${completedProjects.length} completed, ${onHoldProjects.length} on hold`);
+  };
+
   useEffect(() => {
     const fetchProjects = async () => {
       try {
         setIsLoading(true);
-        const response = await api.projects.getAllProjects('');
-        if (response.data) {
-          let filteredProjects = response.data;
-          
-          // Only filter projects if the user can't view all projects
-          if (!accessPermissions.canViewAllProjects && isDepartmentDirector && user?.department) {
-            filteredProjects = filteredProjects.filter((project: Project) => 
-              project.department?.id === user.department?.id
-            );
-          } else if (!accessPermissions.canViewAllProjects && user?.role === UserRole.PROJECT_MANAGER) {
-            filteredProjects = filteredProjects.filter((project: Project) => 
+        const token = localStorage.getItem('token') || '';
+        
+        // First, fetch all projects
+        const projectsResponse = await api.projects.getAllProjects(token);
+        let fetchedProjects: Project[] = projectsResponse.data || [];
+        
+        // Apply filtering based on user role
+        if (user) {
+          if (user.role === UserRole.PROJECT_MANAGER) {
+            // Project Managers see only their projects
+            fetchedProjects = fetchedProjects.filter(project => 
               project.projectManager?.id === user.id
             );
+          } else if (user.role === UserRole.SUB_PMO || user.role === UserRole.DEPARTMENT_DIRECTOR) {
+            // Sub-PMOs and Department Directors see projects in their department
+            if (user.department?.id) {
+              fetchedProjects = fetchedProjects.filter(project => 
+                project.department?.id === user.department?.id
+              );
+            }
           }
-          
-          setProjects(filteredProjects);
-          
-          // Fetch risks and issues
-          const risksPromises = filteredProjects.map((project: Project) => 
-            api.risks.getAllRisks(project.id, '')
-          );
-          
-          const issuesPromises = filteredProjects.map((project: Project) => 
-            api.issues.getAllIssues(project.id, '')
-          );
-          
-          const risksResponses = await Promise.all(risksPromises);
-          const issuesResponses = await Promise.all(issuesPromises);
-          
-          const allRisks = risksResponses
-            .filter(response => response.data)
-            .flatMap(response => response.data || []);
-            
-          const allIssues = issuesResponses
-            .filter(response => response.data)
-            .flatMap(response => response.data || []);
-          
-          setRisks(allRisks);
-          setIssues(allIssues);
-          
-          // Update last refresh time
-          setLastRefresh(new Date());
+          // Main PMO, Executives, and Admins see all projects (no filtering needed)
         }
+        
+        setProjects(fetchedProjects);
+        
+        // Also fetch risks and issues
+        await fetchRisksAndIssues(fetchedProjects.map(p => p.id));
+        
+        // Calculate metrics based on filtered projects
+        calculateDashboardMetrics(fetchedProjects);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching projects:', error);
+        setLoadingError('Failed to load dashboard data. Please try again.');
       } finally {
         setIsLoading(false);
+        setLastRefresh(new Date());
       }
     };
     

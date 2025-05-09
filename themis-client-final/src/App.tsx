@@ -13,7 +13,7 @@ import ThemeContext from './context/ThemeContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
+import ExecutiveDashboardPage from './pages/ExecutiveDashboardPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
 import TasksPage from './pages/TasksPage';
@@ -28,7 +28,6 @@ import GoalsPage from './pages/GoalsPage';
 import DepartmentsPage from './pages/DepartmentsPage';
 import ProjectApprovalPage from './pages/ProjectApprovalPage';
 import ApprovalsPage from './pages/ApprovalsPage';
-import LegacyProjectPage from './pages/LegacyProjectPage';
 import AuditPage from './pages/AuditPage';
 import AuditLogPage from './pages/AuditLogPage';
 import SupabaseConnectionTest from './components/SupabaseConnectionTest';
@@ -42,7 +41,6 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import ProjectRelationshipMapPage from './pages/ProjectRelationshipMapPage';
 import IdeationPage from './pages/IdeationPage';
-import Auth0CallbackPage from './pages/Auth0CallbackPage';
 import CalendarPage from './pages/CalendarPage';
 import ChatPage from './pages/ChatPage';
 import NotificationsPage from './pages/notifications';
@@ -51,11 +49,15 @@ import DependenciesPage from './pages/DependenciesPage';
 import CentralRepositoryPage from './pages/CentralRepositoryPage';
 import HelpPage from './pages/HelpPage';
 import BookingPage from './pages/Booking/BookingPage';
+import AvailabilityPage from './pages/Booking/AvailabilityPage';
 import BookingSettings from './pages/Settings/Booking';
 import OnboardingPage from './pages/OnboardingPage';
 import TutorialSettingsPage from './pages/Settings/TutorialSettingsPage';
 import TaskBoardPage from './pages/TaskBoardPage';
 import useOnboardingSystem from './hooks/useOnboardingSystem';
+import { TourProvider } from './context/TourContext';
+import TourManager from './components/Tour/TourManager';
+import WelcomeModal from './components/Onboarding/WelcomeModal';
 
 // Import i18n configuration
 import './i18n/index';
@@ -98,8 +100,11 @@ const AppContent: React.FC = () => {
   const selectedTheme = useMemo(() => (isDarkMode ? createAppTheme('rtl', 'dark') : createAppTheme('rtl', 'light')), [isDarkMode]);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { checkFirstTimeUser } = useOnboardingSystem();
+  
+  // State for welcome modal
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   
   // Get saved language from localStorage
   const savedLanguage = localStorage.getItem('pmsLanguage') || 'en';
@@ -119,14 +124,19 @@ const AppContent: React.FC = () => {
 
   // Check for first-time users when logged in
   useEffect(() => {
-    try {
-      if (user) {
-        checkFirstTimeUser();
+    if (user && isAuthenticated) {
+      // Check if the tutorial has been completed
+      const tutorialComplete = localStorage.getItem('tutorial_complete') === 'true';
+      if (!tutorialComplete) {
+        setShowWelcomeModal(true);
       }
-    } catch (error) {
-      console.error('Error checking first-time user status:', error);
     }
-  }, [user, checkFirstTimeUser]);
+  }, [user, isAuthenticated]);
+
+  // Handle closing the welcome modal
+  const handleCloseWelcomeModal = () => {
+    setShowWelcomeModal(false);
+  };
 
   // Force language initialization on first render
   useEffect(() => {
@@ -190,18 +200,28 @@ const AppContent: React.FC = () => {
       <MuiThemeProvider theme={currentTheme}>
         <CssBaseline />
         <NotificationProvider>
-          <AuthProvider>
-            <ProjectProvider>
-              <TaskProvider key="global-task-provider">
-                <TaskRequestProvider>
+          <ProjectProvider>
+            <TaskProvider key="global-task-provider">
+              <TaskRequestProvider>
+                <TourProvider>
+                  <TourManager />
                   <NotificationInitializer />
+                  
+                  {/* Welcome Modal for first-time users */}
+                  {user && showWelcomeModal && (
+                    <WelcomeModal 
+                      open={showWelcomeModal}
+                      onClose={handleCloseWelcomeModal}
+                    />
+                  )}
+                  
                   <Routes>
                     <Route path="/login" element={<LoginPage />} />
-                    <Route path="/callback" element={<Auth0CallbackPage />} />
                     <Route path="/" element={<PrivateRoute><Layout direction={direction} onDirectionChange={handleDirectionChange} /></PrivateRoute>}>
                       <Route index element={<Navigate to="/dashboard" replace />} />
-                      <Route path="dashboard" element={<PrivateRoute roleRequired={['ADMIN', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']}><DashboardPage /></PrivateRoute>} />
+                      <Route path="dashboard" element={<PrivateRoute><ExecutiveDashboardPage /></PrivateRoute>} />
                       <Route path="calendar" element={<PrivateRoute><CalendarPage /></PrivateRoute>} />
+                      <Route path="calendar/availability" element={<PrivateRoute><AvailabilityPage /></PrivateRoute>} />
                       <Route path="projects" element={<ProjectsPage />} />
                       <Route path="projects/:id" element={
                         <TaskProvider key="project-task-provider">
@@ -230,7 +250,6 @@ const AppContent: React.FC = () => {
                       <Route path="project-relationships" element={<PrivateRoute><ProjectRelationshipMapPage /></PrivateRoute>} />
                       <Route path="audit" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'EXECUTIVE']}><AuditPage /></PrivateRoute>} />
                       <Route path="audit-log" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'EXECUTIVE']}><AuditLogPage /></PrivateRoute>} />
-                      <Route path="legacy" element={<PrivateRoute><LegacyProjectPage /></PrivateRoute>} />
                       <Route path="test-connection" element={<PrivateRoute><SupabaseConnectionTest /></PrivateRoute>} />
                       <Route path="approve-change-request/:requestId" element={<PrivateRoute><ChangeRequestApproval /></PrivateRoute>} />
                       <Route path="notifications" element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
@@ -242,10 +261,10 @@ const AppContent: React.FC = () => {
                       <Route path="*" element={<NotFoundPage />} />
                     </Route>
                   </Routes>
-                </TaskRequestProvider>
-              </TaskProvider>
-            </ProjectProvider>
-          </AuthProvider>
+                </TourProvider>
+              </TaskRequestProvider>
+            </TaskProvider>
+          </ProjectProvider>
         </NotificationProvider>
       </MuiThemeProvider>
     </CacheProvider>
@@ -253,14 +272,14 @@ const AppContent: React.FC = () => {
 };
 
 const ProtectedRoutes = () => {
-  const { token, isLoading } = useAuth();
+  const { user, isLoading } = useAuth();
   const location = useLocation();
 
   if (isLoading) {
     return <FullScreenSpinner />;
   }
 
-  if (!token) {
+  if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
@@ -272,7 +291,9 @@ const App: React.FC = () => {
     <ThemeProvider>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
         <SnackbarProvider>
-          <AppContent />
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
         </SnackbarProvider>
       </LocalizationProvider>
     </ThemeProvider>

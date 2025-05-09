@@ -27,6 +27,21 @@ Key features:
 
 To access the Canvas feature, navigate to the Ideation section in the sidebar.
 
+### Guided Tour
+
+The application includes a guided tour feature that helps users navigate and understand the system based on their role. The guided tour:
+
+- Shows users key navigation elements when they first log in
+- Highlights important features based on their specific user role
+- Can be restarted from the Settings page if needed
+- Uses React Joyride for smooth, interactive tooltips
+
+The tour is implemented through two main components:
+- `TourContext` - Manages the tour state and tour steps based on user roles
+- `TourManager` - Handles the display of tooltips and user interactions with the tour
+
+Each user role (Admin, Project Manager, etc.) has specific tour steps tailored to their responsibilities and permissions.
+
 ## Getting Started
 
 ```bash

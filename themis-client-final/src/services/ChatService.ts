@@ -9,6 +9,7 @@ class ChatService {
   private messageListeners: Map<string, Array<(message: ChatMessage) => void>> = new Map();
   private channelStatusListeners: Map<string, Array<(channelId: string) => void>> = new Map();
   private userStatusListeners: Array<(userId: string, isOnline: boolean) => void> = [];
+  private isConnected = false;
   
   constructor() {
     this.token = localStorage.getItem('token');
@@ -76,16 +77,32 @@ class ChatService {
   }
   
   /**
-   * Get all channels for the current user
+   * Get user's accessible channels
    */
-  public async getUserChannels(): Promise<ApiResponse<ChatChannel[]>> {
-    const response = await api.chat.getChannels(this.token!);
-    // Ensure the response matches the ChatTypes.ApiResponse structure
-    return {
-      success: response.success,
-      data: response.data || [],
-      error: response.error
-    };
+  public async getChannels(): Promise<ApiResponse<ChatChannel[]>> {
+    try {
+      // Make sure we have a connection (or mock connection in this case)
+      if (!this.isConnected) {
+        await this.initializeConnection();
+      }
+      
+      // Make API call to get channels
+      const token = localStorage.getItem('token') || '';
+      const response = await api.chat.getChannels(token);
+      
+      return {
+        data: response.data || [],
+        success: response.success,
+        error: response.error
+      };
+    } catch (error) {
+      console.error('Error getting user channels:', error);
+      return {
+        data: [],
+        success: false,
+        error: 'Failed to retrieve channels'
+      };
+    }
   }
   
   /**
@@ -132,14 +149,81 @@ class ChatService {
     try {
       const channelResponse = await this.getChannel(channelId);
       if (channelResponse.success && channelResponse.data) {
+        const channel = channelResponse.data;
+        
         // Users can't post to archived channels
-        if (channelResponse.data.isArchived) {
+        if (channel.isArchived) {
           return false;
         }
         
-        // For department and project channels, check permissions based on user role
-        // This is a simplified implementation - in a real app, we'd check against the backend
-        return true;
+        // Get current user information
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+          return false;
+        }
+        
+        const currentUser = JSON.parse(userStr);
+        const userRole = currentUser.role;
+        const userDepartmentId = currentUser.department?.id;
+        
+        // Check permissions based on channel type
+        switch (channel.type) {
+          case ChannelType.General: // Announcements chat
+            // Only Executives and Main PMO can type
+            return userRole === 'EXECUTIVE' || userRole === 'MAIN_PMO' || userRole === 'ADMIN';
+            
+          case ChannelType.Department: // Department chat
+            // Department Directors can type in their department's chat
+            if (userRole === 'DEPARTMENT_DIRECTOR' && channel.department?.id === userDepartmentId) {
+              return true;
+            }
+            return userRole === 'ADMIN'; // Admins can type anywhere
+            
+          case ChannelType.DirectMessage: // Direct chat
+            const recipientId = channel.members?.find(m => m.userId !== currentUser.id)?.userId;
+            if (!recipientId) {
+              return false;
+            }
+            
+            // Get recipient user information
+            const membersResponse = await this.getChannelMembers(channelId);
+            if (!membersResponse.success || !membersResponse.data) {
+              return false;
+            }
+            
+            const recipient = membersResponse.data.find(m => m.user.id === recipientId)?.user;
+            if (!recipient) {
+              return false;
+            }
+            
+            // Main PMO and Executives can message anyone
+            if (userRole === 'EXECUTIVE' || userRole === 'MAIN_PMO' || userRole === 'ADMIN') {
+              return true;
+            }
+            
+            // Department Directors can message other Department Directors, Main PMO, Executives, 
+            // and anyone in their department
+            if (userRole === 'DEPARTMENT_DIRECTOR') {
+              return (
+                recipient.role === 'DEPARTMENT_DIRECTOR' ||
+                recipient.role === 'MAIN_PMO' ||
+                recipient.role === 'EXECUTIVE' ||
+                recipient.department?.id === userDepartmentId
+              );
+            }
+            
+            // Other users can only message within their department
+            return recipient.department?.id === userDepartmentId;
+            
+          case ChannelType.Project: // Project chat
+            // Project members can type in project channels
+            const isProjectMember = channel.project?.teamMembers?.some(m => m.id === currentUser.id) || 
+                                 channel.project?.projectManager?.id === currentUser.id;
+            return isProjectMember || userRole === 'ADMIN';
+            
+          default:
+            return userRole === 'ADMIN'; // Admins can post to any channel
+        }
       }
       return false;
     } catch (error) {
@@ -430,6 +514,45 @@ class ChatService {
     const listeners = this.messageListeners.get(message.channelId) || [];
     listeners.forEach(callback => callback(message));
   }
+
+  /**
+   * Initialize chat connection
+   */
+  public async initializeConnection(): Promise<boolean> {
+    try {
+      // For the mock implementation, we won't actually connect to SignalR
+      // but we'll simulate a successful connection
+      console.log('Initializing mock chat connection');
+      
+      // If we were connecting to a real hub, we would use this code:
+      /*
+      this.connection = new HubConnectionBuilder()
+        .withUrl(`${apiBaseUrl}/hubs/chat`, {
+          accessTokenFactory: () => localStorage.getItem('token') || '',
+        })
+        .withAutomaticReconnect()
+        .build();
+
+      await this.connection.start();
+      */
+      
+      // Instead, we'll just return success for the mock implementation
+      this.isConnected = true;
+      return true;
+    } catch (error) {
+      console.error('Error connecting to chat hub:', error);
+      this.isConnected = false;
+      return false;
+    }
+  }
+
+  /**
+   * Legacy method for backward compatibility
+   */
+  public async getUserChannels(): Promise<ApiResponse<ChatChannel[]>> {
+    return this.getChannels();
+  }
 }
 
-export default new ChatService(); 
+const chatService = new ChatService();
+export default chatService; 

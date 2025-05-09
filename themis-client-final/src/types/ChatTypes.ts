@@ -75,7 +75,24 @@ export interface ChatChannel {
   project?: {
     id: string;
     name: string;
+    projectManager?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+    };
+    teamMembers?: {
+      id: string;
+      firstName: string;
+      lastName: string;
+      role: string;
+    }[];
   };
+  members?: {
+    userId: string;
+    channelId: string;
+    role: string;
+  }[];
 }
 
 export interface ChatMessage {
@@ -112,6 +129,10 @@ export interface ChatChannelMember {
     firstName: string;
     lastName: string;
     role: string;
+    department?: {
+      id: string;
+      name: string;
+    };
   };
 }
 

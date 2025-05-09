@@ -105,6 +105,8 @@ export const cleanupProjects = () => {
   }
 };
 
-export default {
+const cleanupUtils = {
   cleanupMockData
-}; 
+};
+
+export default cleanupUtils; 

@@ -120,14 +120,16 @@ const ChatPanel: React.FC = () => {
   
   const messageRef = useRef<HTMLDivElement>(null);
   
-  // Initialize chat and load channels
+  /**
+   * Fetch initial channels when the component mounts
+   */
   useEffect(() => {
     const initChat = async () => {
       try {
         setLoading(true);
         await ChatService.init();
         console.log("Fetching user channels...");
-        const response = await ChatService.getUserChannels();
+        const response = await ChatService.getChannels();
         console.log("Chat channel response:", response);
         
         if (response.success && response.data) {

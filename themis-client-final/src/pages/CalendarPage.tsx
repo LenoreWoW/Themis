@@ -10,7 +10,8 @@ import {
   Chip,
   Grid,
   Alert,
-  Snackbar
+  Snackbar,
+  Button
 } from '@mui/material';
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -20,7 +21,8 @@ import interactionPlugin, { EventDragStartArg, EventDragStopArg } from '@fullcal
 import { EventClickArg, EventDropArg } from '@fullcalendar/core';
 import { useAuth } from '../context/AuthContext';
 import CalendarService, { CalendarEvent, CalendarEventType } from '../services/CalendarService';
-import { Info as InfoIcon } from '@mui/icons-material';
+import { Info as InfoIcon, EventAvailable as EventAvailableIcon } from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 
 /**
  * Calendar Page Component
@@ -29,6 +31,7 @@ import { Info as InfoIcon } from '@mui/icons-material';
 const CalendarPage: React.FC = () => {
   const theme = useTheme();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -82,6 +85,10 @@ const CalendarPage: React.FC = () => {
           window.location.href = `/projects/${projectId}`;
         }
         break;
+      case CalendarEventType.BOOKING:
+        // For booking slots, we could open a booking details modal
+        console.log('Open booking detail:', eventId);
+        break;
     }
   };
 
@@ -92,10 +99,14 @@ const CalendarPage: React.FC = () => {
     const newStart = info.event.start?.toISOString() || '';
     const newEnd = info.event.end?.toISOString() || newStart;
     
-    // Don't allow dragging project deadlines
-    if (eventType === CalendarEventType.DEADLINE) {
+    // Don't allow dragging project deadlines or booking slots
+    if (eventType === CalendarEventType.DEADLINE || eventType === CalendarEventType.BOOKING) {
       info.revert();
-      setSnackbarMessage('Project deadlines cannot be rescheduled via drag and drop. Please update the project end date instead.');
+      setSnackbarMessage(
+        eventType === CalendarEventType.DEADLINE 
+          ? 'Project deadlines cannot be rescheduled via drag and drop. Please update the project end date instead.'
+          : 'Booking slots cannot be rescheduled via drag and drop. Please manage your availability from the Availability page.'
+      );
       setSnackbarOpen(true);
       return;
     }
@@ -130,6 +141,11 @@ const CalendarPage: React.FC = () => {
   // Handle snackbar close
   const handleSnackbarClose = () => {
     setSnackbarOpen(false);
+  };
+
+  // Navigate to Availability page
+  const navigateToAvailability = () => {
+    navigate('/calendar/availability');
   };
 
   // Render the calendar legend
@@ -167,6 +183,11 @@ const CalendarPage: React.FC = () => {
         size="small"
         sx={{ bgcolor: '#f44336', color: 'white' }}
       />
+      <Chip
+        label="Booking Slots"
+        size="small"
+        sx={{ bgcolor: '#ff9800', color: 'white' }}
+      />
     </Box>
   );
 
@@ -192,11 +213,21 @@ const CalendarPage: React.FC = () => {
     <Box p={3}>
       <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
         <Typography variant="h4">Calendar</Typography>
-        <Tooltip title="All items are color-coded based on type. You can drag and drop to reschedule tasks, assignments, and meetings if you have edit rights. Project deadlines cannot be changed via drag and drop.">
-          <IconButton>
-            <InfoIcon />
-          </IconButton>
-        </Tooltip>
+        <Box display="flex" alignItems="center" gap={2}>
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<EventAvailableIcon />}
+            onClick={navigateToAvailability}
+          >
+            Manage Availability
+          </Button>
+          <Tooltip title="All items are color-coded based on type. You can drag and drop to reschedule tasks, assignments, and meetings if you have edit rights. Project deadlines and booking slots cannot be changed via drag and drop.">
+            <IconButton>
+              <InfoIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
       </Box>
 
       {renderLegend()}

@@ -60,6 +60,7 @@ import {
 } from '@mui/icons-material';
 import useNotifications from '../hooks/useNotifications';
 import AddIcon from '@mui/icons-material/Add';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 
 const DRAWER_WIDTH = 240;
 const COLLAPSED_WIDTH = 72;
@@ -192,7 +193,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       submenu: true,
       children: [
         { text: t('navigation.projects'), icon: <FolderIcon />, path: '/projects' },
-        { text: t('navigation.approvals'), icon: <CheckCircleIcon />, path: '/approvals' },
         { text: t('navigation.risksIssues'), icon: <WarningIcon />, path: '/risks-issues' },
         { text: t('navigation.dependencies'), icon: <AccountTreeIcon />, path: '/dependencies' },
         { text: t('navigation.repository'), icon: <StorageIcon />, path: '/repository' },
@@ -206,14 +206,13 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
             { text: t('navigation.ideation'), icon: <LightbulbIcon />, path: '/ideation' },
             { text: t('navigation.assignments'), icon: <WorkIcon />, path: '/assignments' },
             { text: t('navigation.tasks'), icon: <AssignmentIcon />, path: '/tasks' },
-            { text: t('navigation.taskBoard'), icon: <AssignmentIcon />, path: '/task-board' },
             { text: t('navigation.meetings'), icon: <GroupsIcon />, path: '/meetings' },
             { text: t('navigation.actionItems'), icon: <PlaylistAddCheckIcon />, path: '/action-items' },
           ]
         },
       ]
     },
-    { text: t('navigation.onboarding'), icon: <EmojiEventsIcon />, path: '/onboarding' },
+    { text: t('navigation.approvals'), icon: <CheckCircleIcon />, path: '/approvals' },
   ];
 
   // Settings menu items - for the slide-in panel
@@ -374,6 +373,27 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
               <ListItemText primary={t('navigation.calendar', 'Calendar')} />
             </ListItem>
             
+            {/* Add availability link under calendar */}
+            <ListItem 
+              button 
+              component={NavLink} 
+              to="/calendar/availability"
+              sx={{
+                py: 1.5,
+                pl: 7,
+                pr: 2,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: alpha('#fff', 0.1),
+                }
+              }}
+            >
+              <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
+                <EventAvailableIcon />
+              </ListItemIcon>
+              <ListItemText primary={t('navigation.availability', 'Availability')} />
+            </ListItem>
+            
             {/* Goals item */}
             <ListItem 
               button 
@@ -434,6 +454,25 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                 }}
               >
                 <CalendarTodayIcon />
+              </ListItem>
+            </Tooltip>
+            
+            {/* Availability item (collapsed) */}
+            <Tooltip title={t('navigation.availability', 'Availability')} placement={isRtl ? "left" : "right"}>
+              <ListItem 
+                button 
+                component={NavLink} 
+                to="/calendar/availability"
+                sx={{
+                  justifyContent: 'center',
+                  py: 1.5,
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: alpha('#fff', 0.1),
+                  }
+                }}
+              >
+                <EventAvailableIcon />
               </ListItem>
             </Tooltip>
             

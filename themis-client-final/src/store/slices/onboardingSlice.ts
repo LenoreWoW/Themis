@@ -47,6 +47,30 @@ export const fetchUserQuests = createAsyncThunk(
   }
 );
 
+export const fetchUserQuestProgress = createAsyncThunk(
+  'onboarding/fetchUserQuestProgress',
+  async (userId: string, { rejectWithValue }) => {
+    try {
+      const userQuests = await tutorialService.getUserQuestProgress(userId);
+      return userQuests;
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to fetch user quest progress');
+    }
+  }
+);
+
+export const startQuest = createAsyncThunk(
+  'onboarding/startQuest',
+  async ({ userId, questKey }: { userId: string; questKey: string }, { rejectWithValue }) => {
+    try {
+      await tutorialService.startQuest(userId, questKey);
+      return { userId, questKey };
+    } catch (error: any) {
+      return rejectWithValue(error.message || 'Failed to start quest');
+    }
+  }
+);
+
 export const completeQuestStep = createAsyncThunk(
   'onboarding/completeQuestStep',
   async ({ userId, questKey, stepId }: { userId: string; questKey: string; stepId: string }, { rejectWithValue }) => {
@@ -105,6 +129,25 @@ const onboardingSlice = createSlice({
     },
     clearOnboardingErrors: (state) => {
       state.error = null;
+    },
+    completeQuestStepLocal: (state, action: PayloadAction<{ questKey: string; stepId: string }>) => {
+      const { questKey, stepId } = action.payload;
+      const userQuestIndex = state.userQuests.findIndex(q => q.questKey === questKey);
+      
+      if (userQuestIndex >= 0) {
+        // Add step to completed steps if not already there
+        if (!state.userQuests[userQuestIndex].completedSteps.includes(stepId)) {
+          state.userQuests[userQuestIndex].completedSteps.push(stepId);
+          
+          // Calculate new progress
+          const quest = state.quests.find(q => q.key === questKey);
+          if (quest) {
+            const totalSteps = quest.steps.length;
+            const completedSteps = state.userQuests[userQuestIndex].completedSteps.length;
+            state.userQuests[userQuestIndex].progress = Math.round((completedSteps / totalSteps) * 100);
+          }
+        }
+      }
     },
   },
   extraReducers: (builder) => {
@@ -253,6 +296,6 @@ export const selectArchivedQuests = (state: RootState) => {
 };
 
 // Actions
-export const { setActiveQuest, clearOnboardingErrors } = onboardingSlice.actions;
+export const { setActiveQuest, clearOnboardingErrors, completeQuestStepLocal } = onboardingSlice.actions;
 
 export default onboardingSlice.reducer; 

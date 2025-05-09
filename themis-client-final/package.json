@@ -82,18 +82,12 @@
   },
   "scripts": {
     "start": "react-app-rewired start",
-    "build": "TSC_COMPILE_ON_ERROR=true react-app-rewired build",
+    "build": "react-app-rewired build && echo \"/* /index.html 200\" > build/_redirects",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",
+    "presentation": "echo '\n\n🚀 Starting Themis Presentation Mode with Mock Data\n\n' && BROWSER=none react-app-rewired start",
     "setup-supabase": "./setup-supabase.sh",
-    "migrate-data": "npx ts-node src/scripts/migrate-data.ts",
-    "compile-migrate-script": "npx esbuild src/scripts/migrate-data.ts --bundle --platform=node --outfile=dist/migrate-data.js",
-    "netlify": "netlify",
-    "netlify:deploy": "./netlify-deploy.sh",
-    "netlify:deploy:prod": "./netlify-deploy.sh --prod",
-    "netlify:dev": "netlify dev",
-    "netlify:fix": "./netlify-fix.sh",
-    "postbuild": "echo '/* /index.html 200' > build/_redirects"
+    "postinstall": "patch-package"
   },
   "eslintConfig": {
     "extends": [

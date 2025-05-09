@@ -14,6 +14,7 @@ import users from './users';
 import auth from './auth';
 import changeRequests from './changeRequests';
 import { ChatChannel, ChatMessage, ChatChannelMember, ChannelType, CreateChannelRequest, CreateMessageRequest, UpdateMessageRequest, CreateDMRequest } from '../types/ChatTypes';
+import { ChatMessageStatus } from '../types/ChatTypes';
 
 // HTTP utility functions
 const get = async <T>(url: string, token: string): Promise<ApiResponse<T>> => {
@@ -1783,39 +1784,158 @@ const apiRoutes = {
   // Chat API functions
   chat: {
     getChannels: async (token: string): Promise<ApiResponse<ChatChannel[]>> => {
-      console.log('Chat API endpoints require backend implementation');
-      return {
-        data: [],
-        success: false,
-        error: 'Chat API not implemented - requires backend integration'
-      };
+      await simulateDelay();
+      
+      try {
+        // Check if channels are already in localStorage
+        const channelsStr = localStorage.getItem('chatChannels');
+        
+        // If not, generate mock channels
+        if (!channelsStr) {
+          const channels = generateMockChannels();
+          return {
+            data: channels,
+            success: true
+          };
+        }
+        
+        // Return channels from localStorage
+        return {
+          data: JSON.parse(channelsStr),
+          success: true
+        };
+      } catch (error) {
+        console.error('Error getting channels:', error);
+        return {
+          data: [],
+          success: false,
+          error: 'Failed to get channels: ' + (error instanceof Error ? error.message : String(error))
+        };
+      }
     },
       
     getChannel: async (channelId: string, token: string): Promise<ApiResponse<ChatChannel>> => {
-      console.log('Chat API endpoints require backend implementation');
-      return {
-        data: null,
-        success: false,
-        error: 'Chat API not implemented - requires backend integration'
-      };
+      await simulateDelay();
+      
+      try {
+        const channelsStr = localStorage.getItem('chatChannels');
+        if (!channelsStr) {
+          return {
+            data: null,
+            success: false,
+            error: 'No channels found'
+          };
+        }
+        
+        const channels: ChatChannel[] = JSON.parse(channelsStr);
+        const channel = channels.find(c => c.id === channelId);
+        
+        if (!channel) {
+          return {
+            data: null,
+            success: false,
+            error: 'Channel not found'
+          };
+        }
+        
+        return {
+          data: channel,
+          success: true
+        };
+      } catch (error) {
+        console.error('Error getting channel:', error);
+        return {
+          data: null,
+          success: false,
+          error: 'Failed to get channel: ' + (error instanceof Error ? error.message : String(error))
+        };
+      }
     },
       
     getMessages: async (channelId: string, limit = 50, offset = 0, token: string): Promise<ApiResponse<ChatMessage[]>> => {
-      console.log('Chat API endpoints require backend implementation');
-      return {
-        data: [],
-        success: false,
-        error: 'Chat API not implemented - requires backend integration'
-      };
+      await simulateDelay();
+      
+      try {
+        const messages = getMockMessages(channelId);
+        
+        // Sort by createdAt and apply pagination
+        const paginatedMessages = messages
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .slice(offset, offset + limit);
+        
+        return {
+          data: paginatedMessages,
+          success: true
+        };
+      } catch (error) {
+        console.error('Error getting messages:', error);
+        return {
+          data: [],
+          success: false,
+          error: 'Failed to get messages: ' + (error instanceof Error ? error.message : String(error))
+        };
+      }
     },
       
     getMembers: async (channelId: string, token: string): Promise<ApiResponse<ChatChannelMember[]>> => {
-      console.log('Chat API endpoints require backend implementation');
-      return {
-        data: [],
-        success: false,
-        error: 'Chat API not implemented - requires backend integration'
-      };
+      await simulateDelay();
+      
+      try {
+        const channelsStr = localStorage.getItem('chatChannels');
+        if (!channelsStr) {
+          return {
+            data: [],
+            success: false,
+            error: 'No channels found'
+          };
+        }
+        
+        const channels: ChatChannel[] = JSON.parse(channelsStr);
+        const channel = channels.find(c => c.id === channelId);
+        
+        if (!channel || !channel.members) {
+          return {
+            data: [],
+            success: false,
+            error: 'Channel or members not found'
+          };
+        }
+        
+        // Convert simple members to full ChatChannelMember objects
+        const members: ChatChannelMember[] = channel.members.map(member => {
+          const user = mockUsers.find(u => u.id === member.userId);
+          return {
+            userId: member.userId,
+            channelId: channelId,
+            role: member.role,
+            joinedAt: channel.createdAt, // Assume they joined when channel was created
+            user: user ? {
+              id: user.id,
+              firstName: user.firstName,
+              lastName: user.lastName,
+              role: user.role,
+              department: user.department
+            } : {
+              id: member.userId,
+              firstName: 'Unknown',
+              lastName: 'User',
+              role: 'UNKNOWN',
+            }
+          };
+        });
+        
+        return {
+          data: members,
+          success: true
+        };
+      } catch (error) {
+        console.error('Error getting members:', error);
+        return {
+          data: [],
+          success: false,
+          error: 'Failed to get members: ' + (error instanceof Error ? error.message : String(error))
+        };
+      }
     },
       
     createChannel: async (data: { name: string, type: ChannelType, departmentId?: string, projectId?: string }, token: string): Promise<ApiResponse<ChatChannel>> => {
@@ -1836,29 +1956,170 @@ const apiRoutes = {
     },
       
     createMessage: async (channelId: string, data: { body: string, fileUrl?: string, fileType?: string, fileSize?: number }, token: string): Promise<ApiResponse<ChatMessage>> => {
-      console.log('Chat API endpoints require backend implementation');
-      return {
-        data: null,
-        success: false,
-        error: 'Chat API not implemented - requires backend integration'
-      };
+      await simulateDelay();
+      
+      try {
+        // Get current user info
+        const userStr = localStorage.getItem('user');
+        if (!userStr) {
+          return {
+            data: null,
+            success: false,
+            error: 'User not authenticated'
+          };
+        }
+        
+        const user = JSON.parse(userStr);
+        
+        // Create message
+        const message: ChatMessage = {
+          id: uuidv4(),
+          channelId,
+          senderId: user.id,
+          body: data.body,
+          fileUrl: data.fileUrl,
+          fileType: data.fileType,
+          fileSize: data.fileSize,
+          isEdited: false,
+          isDeleted: false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          status: ChatMessageStatus.Sent,
+          sender: {
+            id: user.id,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            role: user.role
+          }
+        };
+        
+        // Store message
+        const messages = getMockMessages(channelId);
+        messages.push(message);
+        storeMockMessages(channelId, messages);
+        
+        return {
+          data: message,
+          success: true
+        };
+      } catch (error) {
+        console.error('Error creating message:', error);
+        return {
+          data: null,
+          success: false,
+          error: 'Failed to create message: ' + (error instanceof Error ? error.message : String(error))
+        };
+      }
     },
       
     updateMessage: async (messageId: string, data: { body: string }, token: string): Promise<ApiResponse<ChatMessage>> => {
-      console.log('Chat API endpoints require backend implementation');
-      return {
-        data: null,
-        success: false,
-        error: 'Chat API not implemented - requires backend integration'
-      };
+      await simulateDelay();
+      
+      try {
+        // Find the message in all channels
+        const channelsStr = localStorage.getItem('chatChannels');
+        if (!channelsStr) {
+          return {
+            data: null,
+            success: false,
+            error: 'No channels found'
+          };
+        }
+        
+        const channels: ChatChannel[] = JSON.parse(channelsStr);
+        let updatedMessage: ChatMessage | null = null;
+        
+        for (const channel of channels) {
+          const messages = getMockMessages(channel.id);
+          const messageIndex = messages.findIndex(m => m.id === messageId);
+          
+          if (messageIndex >= 0) {
+            // Update the message
+            messages[messageIndex] = {
+              ...messages[messageIndex],
+              body: data.body,
+              isEdited: true,
+              updatedAt: new Date().toISOString()
+            };
+            
+            // Store updated messages
+            storeMockMessages(channel.id, messages);
+            updatedMessage = messages[messageIndex];
+            break;
+          }
+        }
+        
+        if (!updatedMessage) {
+          return {
+            data: null,
+            success: false,
+            error: 'Message not found'
+          };
+        }
+        
+        return {
+          data: updatedMessage,
+          success: true
+        };
+      } catch (error) {
+        console.error('Error updating message:', error);
+        return {
+          data: null,
+          success: false,
+          error: 'Failed to update message: ' + (error instanceof Error ? error.message : String(error))
+        };
+      }
     },
       
     deleteMessage: async (messageId: string, token: string): Promise<ApiResponse<void>> => {
-      console.log('Chat API endpoints require backend implementation');
-      return {
-        success: false,
-        error: 'Chat API not implemented - requires backend integration'
-      };
+      await simulateDelay();
+      
+      try {
+        // Find the message in all channels
+        const channelsStr = localStorage.getItem('chatChannels');
+        if (!channelsStr) {
+          return {
+            success: false,
+            error: 'No channels found'
+          };
+        }
+        
+        const channels: ChatChannel[] = JSON.parse(channelsStr);
+        let messageDeleted = false;
+        
+        for (const channel of channels) {
+          const messages = getMockMessages(channel.id);
+          const messageIndex = messages.findIndex(m => m.id === messageId);
+          
+          if (messageIndex >= 0) {
+            // Mark message as deleted
+            messages[messageIndex].isDeleted = true;
+            messages[messageIndex].updatedAt = new Date().toISOString();
+            
+            // Store updated messages
+            storeMockMessages(channel.id, messages);
+            messageDeleted = true;
+            break;
+          }
+        }
+        
+        if (!messageDeleted) {
+          return {
+            success: false,
+            error: 'Message not found'
+          };
+        }
+        
+        return {
+          success: true
+        };
+      } catch (error) {
+        console.error('Error deleting message:', error);
+        return {
+          success: false,
+          error: 'Failed to delete message: ' + (error instanceof Error ? error.message : String(error))
+        };
+      }
     },
       
     searchMessages: async (query: string, channelId: string | null, token: string): Promise<ApiResponse<ChatMessage[]>> => {
@@ -2210,4 +2471,127 @@ export const focusSessions = {
       };
     }
   }
+};
+
+// Generate mock chat channels based on user roles and projects
+const generateMockChannels = (): ChatChannel[] => {
+  // Get user information
+  const userStr = localStorage.getItem('user');
+  if (!userStr) return [];
+  
+  const currentUser = JSON.parse(userStr);
+  const userRole = currentUser.role;
+  const userDepartmentId = currentUser.department?.id;
+  
+  // Get stored projects
+  const projectsStr = localStorage.getItem('projects');
+  const projects = projectsStr ? JSON.parse(projectsStr) : [];
+  
+  const channels: ChatChannel[] = [];
+  
+  // 1. Add the General Announcements channel (for all users)
+  channels.push({
+    id: 'announcement-general',
+    name: 'General Announcements',
+    type: ChannelType.General,
+    isArchived: false,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    members: mockUsers.map(user => ({
+      userId: user.id,
+      channelId: 'announcement-general',
+      role: 'member'
+    }))
+  });
+  
+  // 2. Add Department Announcements channel
+  if (userDepartmentId) {
+    const department = importedMockDepartments.find(dept => dept.id === userDepartmentId);
+    if (department) {
+      channels.push({
+        id: `department-${userDepartmentId}`,
+        name: `${department.name} Announcements`,
+        type: ChannelType.Department,
+        departmentId: userDepartmentId,
+        isArchived: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        department: {
+          id: department.id,
+          name: department.name
+        },
+        members: mockUsers
+          .filter(user => user.department?.id === userDepartmentId)
+          .map(user => ({
+            userId: user.id,
+            channelId: `department-${userDepartmentId}`,
+            role: 'member'
+          }))
+      });
+    }
+  }
+  
+  // 3. Add Project channels
+  // If the user is a Project Manager, add channels for their projects
+  // If the user is a Sub-PMO or Department Director, add channels for projects in their department
+  // If the user is Main PMO, Executive, or Admin, add channels for all projects
+  
+  const userProjects = projects.filter(project => {
+    if (userRole === 'PROJECT_MANAGER') {
+      return project.projectManager?.id === currentUser.id;
+    } else if (userRole === 'SUB_PMO' || userRole === 'DEPARTMENT_DIRECTOR') {
+      return project.department?.id === userDepartmentId;
+    } else {
+      // Main PMO, Executive, Admin see all projects
+      return true;
+    }
+  });
+  
+  userProjects.forEach(project => {
+    channels.push({
+      id: `project-${project.id}`,
+      name: `${project.name} Chat`,
+      type: ChannelType.Project,
+      projectId: project.id,
+      isArchived: project.status === 'COMPLETED',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      project: {
+        id: project.id,
+        name: project.name,
+        projectManager: project.projectManager,
+        teamMembers: project.teamMembers || []
+      },
+      members: [
+        // Add project manager
+        ...(project.projectManager ? [{
+          userId: project.projectManager.id,
+          channelId: `project-${project.id}`,
+          role: 'manager'
+        }] : []),
+        // Add team members
+        ...(project.teamMembers || []).map(member => ({
+          userId: member.id,
+          channelId: `project-${project.id}`,
+          role: 'member'
+        }))
+      ]
+    });
+  });
+  
+  // Store channels in localStorage for persistence
+  localStorage.setItem('chatChannels', JSON.stringify(channels));
+  
+  return channels;
+};
+
+// Get mock messages for a channel
+const getMockMessages = (channelId: string): ChatMessage[] => {
+  const messagesStr = localStorage.getItem(`messages-${channelId}`);
+  return messagesStr ? JSON.parse(messagesStr) : [];
+};
+
+// Store mock messages for a channel
+const storeMockMessages = (channelId: string, messages: ChatMessage[]) => {
+  localStorage.setItem(`messages-${channelId}`, JSON.stringify(messages));
 };
