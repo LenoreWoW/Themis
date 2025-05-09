@@ -40,4 +40,4 @@ export const useTheme = (): ThemeContextType => {
   return context;
 };
 
-export default ThemeProvider; 
+export default ThemeContext; 

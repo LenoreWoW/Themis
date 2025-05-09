@@ -8,8 +8,7 @@ import { ProjectProvider } from './context/ProjectContext';
 import { TaskProvider } from './context/TaskContext';
 import { TaskRequestProvider } from './context/TaskRequestContext';
 import { NotificationProvider } from './context/NotificationContext';
-import { ThemeProvider, useTheme } from './context/ThemeContext';
-import ThemeContext from './context/ThemeContext';
+import ThemeContext, { ThemeProvider, useTheme } from './context/ThemeContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -291,15 +290,17 @@ const ProtectedRoutes = () => {
 
 const App: React.FC = () => {
   return (
-    <ThemeProvider>
+    <BrowserRouter>
       <LocalizationProvider dateAdapter={AdapterDateFns}>
-        <SnackbarProvider>
+        <SnackbarProvider maxSnack={3} autoHideDuration={3000}>
           <AuthProvider>
-            <AppContent />
+            <ThemeProvider>
+              <AppContent />
+            </ThemeProvider>
           </AuthProvider>
         </SnackbarProvider>
       </LocalizationProvider>
-    </ThemeProvider>
+    </BrowserRouter>
   );
 };
 
