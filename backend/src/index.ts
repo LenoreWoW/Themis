@@ -22,7 +22,10 @@ import {
   reportsRoutes,
   searchRoutes,
   notificationsRoutes,
-  tutorialsRoutes
+  tutorialsRoutes,
+  tasksRoutes,
+  projectsRoutes,
+  bookingRoutes
 } from './routes';
 
 // Initialize environment variables
@@ -68,6 +71,9 @@ app.use('/api/reports', reportsRoutes);
 app.use('/api/search', searchRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/tutorials', tutorialsRoutes);
+app.use('/api/tasks', tasksRoutes);
+app.use('/api/projects', projectsRoutes);
+app.use('/api/booking', bookingRoutes);
 
 // Serve static files
 app.use('/reports', express.static(reportsDir));

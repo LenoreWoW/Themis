@@ -49,6 +49,7 @@ import StorageIcon from '@mui/icons-material/Storage';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import HelpIcon from '@mui/icons-material/Help';
+import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { useLocation, NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
@@ -229,12 +230,14 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
             { text: t('navigation.ideation'), icon: <LightbulbIcon />, path: '/ideation' },
             { text: t('navigation.assignments'), icon: <WorkIcon />, path: '/assignments' },
             { text: t('navigation.tasks'), icon: <AssignmentIcon />, path: '/tasks' },
+            { text: t('navigation.taskBoard'), icon: <AssignmentIcon />, path: '/task-board' },
             { text: t('navigation.meetings'), icon: <GroupsIcon />, path: '/meetings' },
             { text: t('navigation.risksIssues'), icon: <WarningIcon />, path: '/risks-issues' },
           ]
         },
       ]
     },
+    { text: t('navigation.onboarding'), icon: <EmojiEventsIcon />, path: '/onboarding' },
     { text: t('navigation.help'), icon: <HelpIcon />, path: '/help' },
   ];
 
@@ -257,6 +260,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       icon: <SchoolIcon />, 
       path: '/faculty',
       role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE'] 
+    },
+    { 
+      text: t('navigation.tutorials'), 
+      icon: <SchoolIcon />, 
+      path: '/settings/tutorials',
+      role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE', 'PROJECT_MANAGER'] 
     },
     { 
       text: t('navigation.auditLogs'), 

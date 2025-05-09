@@ -4,6 +4,7 @@ import { persistStore, persistReducer, Persistor } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { dragReducer } from './reducers/dragReducer';
 import canvasReducer from '../store/slices/canvasSlice';
+import onboardingReducer from '../store/slices/onboardingSlice';
 
 // Configure redux-persist
 const canvasPersistConfig = {
@@ -12,9 +13,16 @@ const canvasPersistConfig = {
   blacklist: ['history', 'selectedCardIds', 'selectedConnectionIds', 'selectedGroupIds']
 };
 
+const onboardingPersistConfig = {
+  key: 'onboarding',
+  storage,
+  blacklist: ['isLoading', 'error']
+};
+
 const rootReducer = combineReducers({
   drag: dragReducer,
   canvas: persistReducer(canvasPersistConfig, canvasReducer),
+  onboarding: persistReducer(onboardingPersistConfig, onboardingReducer),
 });
 
 export type RootState = ReturnType<typeof rootReducer>;

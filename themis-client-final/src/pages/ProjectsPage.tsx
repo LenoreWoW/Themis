@@ -37,7 +37,9 @@ import {
   CardContent,
   Avatar,
   LinearProgress,
-  Container
+  Container,
+  Tabs,
+  Tab
 } from '@mui/material';
 import {
   FilterList as FilterIcon,
@@ -47,7 +49,11 @@ import {
   ViewList as ListViewIcon,
   History as HistoryIcon,
   ExpandMore as ExpandMoreIcon,
-  AccountTree as RelationshipMapIcon
+  AccountTree as RelationshipMapIcon,
+  MoreVert as MoreIcon,
+  EditOutlined as EditIcon,
+  DeleteOutline as DeleteIcon,
+  Timeline as TimelineIcon
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -64,6 +70,7 @@ import { mockUsers, mockDepartments } from '../services/mockData';
 import { canManageProjects } from '../utils/permissions';
 import { alpha } from '@mui/material/styles';
 import { getDeadlineColor } from '../utils/helpers';
+import ProjectGanttChart from '../components/Gantt/ProjectGanttChart';
 
 // Define Department type for the dialog
 interface Department {
@@ -155,6 +162,12 @@ const mapStatusToType = (status: string): 'planning' | 'inProgress' | 'onHold' |
   return 'todo';
 };
 
+// Enum for view modes
+enum ViewMode {
+  LIST = 'list',
+  GANTT = 'gantt'
+}
+
 const ProjectsPage: React.FC = () => {
   const { t } = useTranslation();
   const theme = useTheme();
@@ -171,8 +184,11 @@ const ProjectsPage: React.FC = () => {
   const [isAddProjectDialogOpen, setIsAddProjectDialogOpen] = useState(false);
   const [departments, setDepartments] = useState(mockDepartments);
   const [users, setUsers] = useState(mockUsers);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.LIST);
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [menuAnchorEl, setMenuAnchorEl] = useState<null | HTMLElement>(null);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [tabValue, setTabValue] = useState<number>(0);
   
   const navigate = useNavigate();
   const { isProjectManager, isAdmin, token, user } = useAuth();
@@ -483,183 +499,202 @@ const ProjectsPage: React.FC = () => {
     return userRole === 'SUB_PMO' || userRole === 'MAIN_PMO' || userRole === 'ADMIN';
   };
 
+  // Handle tab change
+  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
+    setTabValue(newValue);
+  };
+  
+  // Handle view mode toggle
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+  };
+  
+  // Project menu handlers
+  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, projectId: string) => {
+    event.stopPropagation();
+    setMenuAnchorEl(event.currentTarget);
+    setSelectedProjectId(projectId);
+  };
+  
+  const handleMenuClose = () => {
+    setMenuAnchorEl(null);
+    setSelectedProjectId(null);
+  };
+  
+  const handleEditProject = () => {
+    if (selectedProjectId) {
+      navigate(`/projects/${selectedProjectId}/edit`);
+    }
+    handleMenuClose();
+  };
+  
+  const handleDeleteProject = () => {
+    // Implementation for delete project
+    console.log('Delete project:', selectedProjectId);
+    handleMenuClose();
+  };
+  
+  const handleViewProject = () => {
+    if (selectedProjectId) {
+      navigate(`/projects/${selectedProjectId}`);
+    }
+    handleMenuClose();
+  };
+
   return (
-    <Container maxWidth="xl">
-      <Box sx={{ py: 4 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h4" component="h1">
-            {t('project.title', 'Projects')}
-          </Typography>
+    <Container maxWidth="xl" sx={{ mt: 3, mb: 3 }}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Typography variant="h4">Projects</Typography>
+        
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={handleCreateProject}
+        >
+          New Project
+        </Button>
+      </Box>
+      
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Tabs value={tabValue} onChange={handleTabChange}>
+          <Tab label="All" />
+          <Tab label="Active" />
+          <Tab label="Planning" />
+          <Tab label="Completed" />
+        </Tabs>
+        
+        <Box display="flex" alignItems="center">
+          <TextField
+            placeholder="Search projects..."
+            size="small"
+            value={searchQuery}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+            sx={{ mr: 2 }}
+          />
           
-          <Box sx={{ display: 'flex', gap: 1 }}>
-            {(isAdmin || isProjectManager) && (
-              <Tooltip title={t('project.addProjectHint', 'Create a new project')} arrow>
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleCreateProject}
-                >
-                  {t('project.add')}
-                </Button>
-              </Tooltip>
-            )}
-            
-            <Button
-              variant="outlined"
-              startIcon={<RelationshipMapIcon />}
-              onClick={() => navigate('/project-relationships')}
-              sx={{ borderRadius: 1 }}
-            >
-              {t('project.viewRelationships')}
-            </Button>
-            
-            <Tooltip title={viewMode === 'grid' ? t('common.listView') : t('common.gridView')} arrow>
+          <Stack direction="row" spacing={1}>
+            <Tooltip title="List View">
               <IconButton 
-                onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
-                color="primary"
+                color={viewMode === ViewMode.LIST ? "primary" : "default"}
+                onClick={() => handleViewModeChange(ViewMode.LIST)}
               >
-                {viewMode === 'grid' ? <ListViewIcon /> : <ViewModuleIcon />}
+                <ListViewIcon />
               </IconButton>
             </Tooltip>
-          </Box>
-        </Box>
-        
-        {error && (
-          <Alert severity="error" sx={{ mb: 3 }}>
-            {error}
-          </Alert>
-        )}
-        
-        <Paper sx={{ width: '100%', mb: 4, borderRadius: 1, overflow: 'hidden' }}>
-          <Toolbar 
-            sx={{ 
-              p: 2, 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              flexWrap: 'wrap',
-              gap: 2,
-              borderBottom: '1px solid',
-              borderColor: 'divider'
-            }}
-          >
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <TextField
-                size="small"
-                variant="outlined"
-                placeholder={t('common.search')}
-                value={searchQuery}
-                onChange={handleSearchChange}
-                InputProps={{
-                  startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} />,
-                }}
-              />
-              
-              <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
-                <InputLabel>{t('project.status')}</InputLabel>
-                <Select
-                  label={t('project.status')}
-                  value={statusFilter}
-                  onChange={handleStatusFilterChange}
-                  input={<OutlinedInput label={t('project.status')} />}
-                >
-                  {statusOptions.map((status) => (
-                    <MenuItem key={status} value={status}>
-                      {status === 'All' ? t('common.all') : getTranslatedStatusLabel(status)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              
-              <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
-                <InputLabel>{t('project.department')}</InputLabel>
-                <Select
-                  label={t('project.department')}
-                  value={departmentFilter}
-                  onChange={handleDepartmentFilterChange}
-                  input={<OutlinedInput label={t('project.department')} />}
-                >
-                  {departmentOptions.map((department) => (
-                    <MenuItem key={department} value={department}>
-                      {department === 'All' ? t('common.all') : department}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          </Toolbar>
-          
-          {loading ? (
-            <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-              <CircularProgress />
-            </Box>
-          ) : error ? (
-            <Box sx={{ p: 4, textAlign: 'center' }}>
-              <Alert 
-                severity="error" 
-                sx={{ 
-                  maxWidth: 500, 
-                  mx: 'auto',
-                  borderRadius: 1
-                }}
+            
+            <Tooltip title="Gantt Chart">
+              <IconButton 
+                color={viewMode === ViewMode.GANTT ? "primary" : "default"}
+                onClick={() => handleViewModeChange(ViewMode.GANTT)}
               >
-                {error}
-              </Alert>
-            </Box>
-          ) : paginatedProjects.length === 0 ? (
-            <Box sx={{ p: 8, textAlign: 'center' }}>
-              <Box sx={{ mb: 3, opacity: 0.7 }}>
-                <svg width="100" height="100" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M8 5V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M16 5V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  <path d="M3 9H21" stroke="currentColor" strokeWidth="2"/>
-                  <path d="M9 13H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                </svg>
-              </Box>
-              <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>
-                {t('common.noData')}
-              </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
-                {searchQuery || statusFilter !== 'All' || departmentFilter !== 'All'
-                  ? t('common.adjustSearchCriteria')
-                  : t('project.createNewToStart')}
-              </Typography>
-              
-              {(isAdmin || isProjectManager) && (searchQuery === '' && statusFilter === 'All' && departmentFilter === 'All') && (
-                <Button
-                  variant="contained"
-                  startIcon={<AddIcon />}
-                  onClick={handleCreateProject}
-                >
-                  {t('project.add')}
-                </Button>
-              )}
-            </Box>
-          ) : (
-            <Box sx={{ p: 3 }}>
-              {viewMode === 'grid' ? renderGridView() : renderListView()}
-            </Box>
-          )}
-          
-          <TablePagination
-            rowsPerPageOptions={[6, 12, 24]}
-            component="div"
-            count={filteredProjects.length}
-            rowsPerPage={rowsPerPage}
-            page={page}
-            onPageChange={handleChangePage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            labelRowsPerPage={t('common.rowsPerPage')}
-            labelDisplayedRows={({ from, to, count }) =>
-              `${from}-${to} ${t('common.of')} ${count}`
-            }
-            sx={{
-              borderTop: '1px solid',
-              borderColor: 'divider'
-            }}
-          />
-        </Paper>
+                <TimelineIcon />
+              </IconButton>
+            </Tooltip>
+          </Stack>
+        </Box>
       </Box>
+      
+      {viewMode === ViewMode.GANTT ? (
+        <Paper elevation={2} sx={{ p: 3 }}>
+          <ProjectGanttChart />
+        </Paper>
+      ) : (
+        <Grid container spacing={3}>
+          {filteredProjects.length === 0 ? (
+            <Grid item xs={12}>
+              <Paper sx={{ p: 3, textAlign: 'center' }}>
+                <Typography color="textSecondary">
+                  No projects found matching your criteria.
+                </Typography>
+              </Paper>
+            </Grid>
+          ) : (
+            filteredProjects.map(project => (
+              <Grid item xs={12} sm={6} md={4} key={project.id}>
+                <Card 
+                  sx={{ 
+                    height: '100%', 
+                    display: 'flex', 
+                    flexDirection: 'column',
+                    '&:hover': { boxShadow: 3 }
+                  }}
+                >
+                  <CardContent sx={{ flexGrow: 1 }}>
+                    <Box display="flex" justifyContent="space-between" alignItems="start">
+                      <Typography variant="h6" component="h2" gutterBottom>
+                        {project.name}
+                      </Typography>
+                      
+                      <IconButton 
+                        size="small"
+                        onClick={(e) => handleMenuOpen(e, project.id)}
+                      >
+                        <MoreIcon />
+                      </IconButton>
+                    </Box>
+                    
+                    <Typography color="textSecondary" gutterBottom>
+                      {project.description}
+                    </Typography>
+                    
+                    <Box mt={2} mb={1}>
+                      {getStatusChip(project.status)}
+                    </Box>
+                    
+                    <Typography variant="body2" color="textSecondary">
+                      <strong>Department:</strong> {project.department?.name || t('common.noDepartment')}
+                    </Typography>
+                    
+                    <Typography variant="body2" color="textSecondary">
+                      <strong>Owner:</strong> {project.projectManager ? `${project.projectManager.firstName} ${project.projectManager.lastName}` : t('common.unassigned')}
+                    </Typography>
+                    
+                    <Typography variant="body2" color="textSecondary">
+                      <strong>Timeline:</strong> {new Date(project.startDate).toLocaleDateString()} - {new Date(project.endDate).toLocaleDateString()}
+                    </Typography>
+                  </CardContent>
+                  
+                  <CardActions>
+                    <Button 
+                      size="small" 
+                      onClick={() => handleProjectClick(project.id)}
+                    >
+                      View Details
+                    </Button>
+                  </CardActions>
+                </Card>
+              </Grid>
+            ))
+          )}
+        </Grid>
+      )}
+      
+      {/* Project Actions Menu */}
+      <Menu
+        anchorEl={menuAnchorEl}
+        open={Boolean(menuAnchorEl)}
+        onClose={handleMenuClose}
+      >
+        <MenuItem onClick={handleViewProject}>
+          <ListViewIcon fontSize="small" sx={{ mr: 1 }} />
+          View Details
+        </MenuItem>
+        <MenuItem onClick={handleEditProject}>
+          <EditIcon fontSize="small" sx={{ mr: 1 }} />
+          Edit Project
+        </MenuItem>
+        <MenuItem onClick={handleDeleteProject}>
+          <DeleteIcon fontSize="small" sx={{ mr: 1 }} color="error" />
+          <Typography color="error">Delete Project</Typography>
+        </MenuItem>
+      </Menu>
       
       {/* Add Project Dialog */}
       <AddProjectDialog

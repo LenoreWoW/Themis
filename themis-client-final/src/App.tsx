@@ -50,6 +50,12 @@ import ActionItemsPage from './pages/ActionItemsPage';
 import DependenciesPage from './pages/DependenciesPage';
 import CentralRepositoryPage from './pages/CentralRepositoryPage';
 import HelpPage from './pages/HelpPage';
+import BookingPage from './pages/Booking/BookingPage';
+import BookingSettings from './pages/Settings/Booking';
+import OnboardingPage from './pages/OnboardingPage';
+import TutorialSettingsPage from './pages/Settings/TutorialSettingsPage';
+import TaskBoardPage from './pages/TaskBoardPage';
+import useOnboardingSystem from './hooks/useOnboardingSystem';
 
 // Import i18n configuration
 import './i18n/index';
@@ -92,6 +98,8 @@ const AppContent: React.FC = () => {
   const selectedTheme = useMemo(() => (isDarkMode ? createAppTheme('rtl', 'dark') : createAppTheme('rtl', 'light')), [isDarkMode]);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { checkFirstTimeUser } = useOnboardingSystem();
   
   // Get saved language from localStorage
   const savedLanguage = localStorage.getItem('pmsLanguage') || 'en';
@@ -108,6 +116,13 @@ const AppContent: React.FC = () => {
     }
     setIsAppReady(true);
   }, []);
+
+  // Check for first-time users when logged in
+  useEffect(() => {
+    if (user) {
+      checkFirstTimeUser();
+    }
+  }, [user, checkFirstTimeUser]);
 
   // Force language initialization on first render
   useEffect(() => {
@@ -190,11 +205,16 @@ const AppContent: React.FC = () => {
                         </TaskProvider>
                       } />
                       <Route path="tasks" element={<TasksPage />} />
+                      <Route path="task-board" element={<PrivateRoute><TaskBoardPage /></PrivateRoute>} />
                       <Route path="assignments" element={<AssignmentsPage />} />
                       <Route path="profile" element={<ProfilePage />} />
                       <Route path="risks-issues" element={<RiskIssuesPage />} />
                       <Route path="meetings" element={<MeetingsPage />} />
                       <Route path="goals" element={<GoalsPage />} />
+                      <Route path="booking/:userId" element={<BookingPage />} />
+                      <Route path="settings/booking" element={<PrivateRoute><BookingSettings /></PrivateRoute>} />
+                      <Route path="settings/tutorials" element={<PrivateRoute><TutorialSettingsPage /></PrivateRoute>} />
+                      <Route path="onboarding" element={<PrivateRoute><OnboardingPage /></PrivateRoute>} />
                       <Route path="departments" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']}><DepartmentsPage /></PrivateRoute>} />
                       <Route path="users" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE']}><UserManagementPage /></PrivateRoute>} />
                       <Route path="faculty" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE']}><FacultyPage /></PrivateRoute>} />
