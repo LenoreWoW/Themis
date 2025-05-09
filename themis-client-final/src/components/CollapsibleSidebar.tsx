@@ -192,42 +192,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       submenu: true,
       children: [
         { text: t('navigation.projects'), icon: <FolderIcon />, path: '/projects' },
-        { 
-          text: t('navigation.approvals'), 
-          icon: <CheckCircleIcon />, 
-          path: '/approvals',
-          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']
-        },
-        { 
-          text: t('navigation.actionItems'), 
-          icon: <PlaylistAddCheckIcon />, 
-          path: '/action-items',
-          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']
-        },
-        { 
-          text: t('navigation.dependencies'), 
-          icon: <AccountTreeIcon />, 
-          path: '/dependencies',
-          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']
-        },
-        { 
-          text: t('navigation.repository'), 
-          icon: <StorageIcon />, 
-          path: '/repository',
-          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']
-        },
-        { 
-          text: t('navigation.chat'), 
-          icon: <ChatIcon />, 
-          path: '/chat',
-          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR', 'TEAM_MEMBER']
-        },
-        { 
-          text: t('navigation.announcements', 'Announcements'), 
-          icon: <NotificationsIcon />, 
-          path: '/announcements',
-          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR', 'TEAM_MEMBER']
-        },
+        { text: t('navigation.approvals'), icon: <CheckCircleIcon />, path: '/approvals' },
+        { text: t('navigation.actionItems'), icon: <PlaylistAddCheckIcon />, path: '/action-items' },
+        { text: t('navigation.dependencies'), icon: <AccountTreeIcon />, path: '/dependencies' },
+        { text: t('navigation.repository'), icon: <StorageIcon />, path: '/repository' },
+        { text: t('navigation.chat'), icon: <ChatIcon />, path: '/chat' },
+        { text: t('navigation.announcements', 'Announcements'), icon: <NotificationsIcon />, path: '/announcements' },
         { 
           text: t('navigation.myWork'), 
           icon: <WorkIcon />, 
@@ -563,7 +533,9 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                   <List component="div" disablePadding sx={{ background: alpha('#000', 0.1) }}>
                     {item.children?.map((child) => {
                       // Check if the child route requires a specific role
-                      if (child.role && user?.role && !child.role.includes(user.role)) {
+                      // Skip role checks for workspace items
+                      if (child.role && user?.role && !child.role.includes(user.role) && 
+                          item.text !== t('navigation.workspaceMain')) {
                         return null;
                       }
 
@@ -614,7 +586,9 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                               <List component="div" disablePadding sx={{ background: alpha('#000', 0.1) }}>
                                 {child.children?.map((grandchild) => {
                                   // Check if the grandchild route requires a specific role
-                                  if (grandchild.role && user?.role && !grandchild.role.includes(user.role)) {
+                                  // Skip role checks for workspace submenu items
+                                  if (grandchild.role && user?.role && !grandchild.role.includes(user.role) && 
+                                      item.text !== t('navigation.workspaceMain')) {
                                     return null;
                                   }
 
