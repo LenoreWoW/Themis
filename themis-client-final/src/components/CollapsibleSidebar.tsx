@@ -193,11 +193,10 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       children: [
         { text: t('navigation.projects'), icon: <FolderIcon />, path: '/projects' },
         { text: t('navigation.approvals'), icon: <CheckCircleIcon />, path: '/approvals' },
-        { text: t('navigation.actionItems'), icon: <PlaylistAddCheckIcon />, path: '/action-items' },
+        { text: t('navigation.risksIssues'), icon: <WarningIcon />, path: '/risks-issues' },
         { text: t('navigation.dependencies'), icon: <AccountTreeIcon />, path: '/dependencies' },
         { text: t('navigation.repository'), icon: <StorageIcon />, path: '/repository' },
         { text: t('navigation.chat'), icon: <ChatIcon />, path: '/chat' },
-        { text: t('navigation.announcements', 'Announcements'), icon: <NotificationsIcon />, path: '/announcements' },
         { 
           text: t('navigation.myWork'), 
           icon: <WorkIcon />, 
@@ -209,7 +208,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
             { text: t('navigation.tasks'), icon: <AssignmentIcon />, path: '/tasks' },
             { text: t('navigation.taskBoard'), icon: <AssignmentIcon />, path: '/task-board' },
             { text: t('navigation.meetings'), icon: <GroupsIcon />, path: '/meetings' },
-            { text: t('navigation.risksIssues'), icon: <WarningIcon />, path: '/risks-issues' },
+            { text: t('navigation.actionItems'), icon: <PlaylistAddCheckIcon />, path: '/action-items' },
           ]
         },
       ]
