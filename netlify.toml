@@ -5,8 +5,8 @@
   # Directory that contains the deployed site. Default is "build" for React apps.
   publish = "themis-client-final/build"
   
-  # Default build command.
-  command = "cd themis-client-final && npm run build"
+  # Updated build command to ensure dependencies are installed correctly
+  command = "cd themis-client-final && npm install && npm run build"
 
 # Plugin to install function dependencies
 [[plugins]]
