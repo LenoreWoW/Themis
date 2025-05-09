@@ -8,6 +8,10 @@
   # Default build command.
   command = "cd themis-client-final && npm run build"
 
+# Plugin to install function dependencies
+[[plugins]]
+  package = "@netlify/plugin-functions-install-core"
+
 # Redirects for SPA routing - more specific first
 [[redirects]]
   from = "/static/*"
