@@ -59,6 +59,7 @@ import {
   CalendarToday as CalendarTodayIcon
 } from '@mui/icons-material';
 import useNotifications from '../hooks/useNotifications';
+import AddIcon from '@mui/icons-material/Add';
 
 const DRAWER_WIDTH = 240;
 const COLLAPSED_WIDTH = 72;
@@ -275,7 +276,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     { 
       text: t('navigation.help', 'Help'), 
       icon: <HelpIcon />, 
-      path: '/settings/help',
+      path: '/help',
       role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE', 'PROJECT_MANAGER', 'TEAM_MEMBER'] 
     },
     { 
@@ -667,7 +668,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                                           }}
                                         >
                                           <Tooltip title={t('projects.addProject', 'Add Project')}>
-                                            <PeopleIcon fontSize="small" />
+                                            <AddIcon fontSize="small" />
                                           </Tooltip>
                                         </IconButton>
                                       )}
@@ -730,7 +731,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                               }}
                             >
                               <Tooltip title={t('projects.addProject', 'Add Project')}>
-                                <PeopleIcon fontSize="small" />
+                                <AddIcon fontSize="small" />
                               </Tooltip>
                             </IconButton>
                           )}
