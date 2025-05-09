@@ -55,7 +55,7 @@ const ProjectRelationshipMapPage: React.FC = () => {
       try {
         setLoading(true);
         // Use API service to fetch goals
-        const response = await api.goals.getAllGoals();
+        const response = await api.goals.getAllGoals('');
         if (response.success) {
           setGoals(response.data);
         } else {
@@ -115,7 +115,7 @@ const ProjectRelationshipMapPage: React.FC = () => {
   const pageTitle = selectedProject 
     ? `${t('project.relationships')}: ${selectedProject.name}` 
     : selectedGoal 
-      ? `${t('goal.relationships')}: ${selectedGoal.title || selectedGoal.name || 'Unnamed Goal'}` 
+      ? `${t('goal.relationships')}: ${selectedGoal.title || 'Unnamed Goal'}` 
       : t('project.allRelationships');
 
   return (
@@ -196,7 +196,7 @@ const ProjectRelationshipMapPage: React.FC = () => {
               <MenuItem value="all">{t('goal.all')}</MenuItem>
               {goals.map(goal => (
                 <MenuItem key={goal.id} value={goal.id}>
-                  {goal.title || goal.name || 'Unnamed Goal'}
+                  {goal.title || 'Unnamed Goal'}
                 </MenuItem>
               ))}
             </Select>

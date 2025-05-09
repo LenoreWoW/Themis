@@ -47,14 +47,8 @@ const LoginPage: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!username.trim()) {
-      setError(t('auth.enterUsername'));
-      return;
-    }
-    
-    // For 'admin' username, we don't need to check password
-    if (username.toLowerCase() !== 'admin' && !password.trim()) {
-      setError(t('auth.enterPassword'));
+    if (!username || !password) {
+      setError(t('auth.usernamePasswordRequired'));
       return;
     }
     
@@ -78,6 +72,10 @@ const LoginPage: React.FC = () => {
       }
       
       await login(username, password);
+      
+      // Dispatch custom event to initialize services
+      window.dispatchEvent(new Event('themis:login'));
+      
       navigate('/');
     } catch (err) {
       console.error('Login error:', err);
@@ -105,7 +103,11 @@ const LoginPage: React.FC = () => {
     
     try {
       console.log('Auto-logging in with test account:', email);
-      login(email, '').then(() => {
+      // Use empty password for test accounts
+      login(email, 'password').then(() => {
+        // Dispatch custom event to initialize services
+        window.dispatchEvent(new Event('themis:login'));
+        
         navigate('/');
       }).catch(err => {
         console.error('Auto-login error:', err);
@@ -265,120 +267,110 @@ const LoginPage: React.FC = () => {
             {t('auth.signIn')}
           </Typography>
           
-          {error && (
-            <Alert 
-              severity="error" 
+          <Paper
+            elevation={3}
+            sx={{
+              p: 4,
+              borderRadius: '12px',
+              width: '100%',
+            }}
+          >
+            <Typography 
+              variant="h6" 
               sx={{ 
-                width: '100%', 
                 mb: 3, 
-                borderRadius: '8px',
-                '& .MuiAlert-icon': {
-                  alignItems: 'center'
-                }
+                textAlign: 'center',
+                fontWeight: 500 
               }}
             >
-              {error}
-            </Alert>
-          )}
-          
-          <form onSubmit={handleSubmit}>
-            <TextField
-              variant="outlined"
-              margin="normal"
-              required
-              fullWidth
-              id="username"
-              label={t('auth.username')}
-              name="username"
-              autoComplete="username"
-              autoFocus
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              sx={{ 
-                mb: 2,
-                '& .MuiInputBase-input': {
-                  color: 'text.primary',
-                },
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'rgba(0, 0, 0, 0.23)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'primary.main',
-                  },
-                }
-              }}
-              InputProps={{
-                style: { color: 'black' }
-              }}
-            />
+              {t('auth.signIn')}
+            </Typography>
             
-            <TextField
-              variant="outlined"
-              margin="normal"
-              required
-              fullWidth
-              name="password"
-              label={t('auth.password')}
-              type="password"
-              id="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              sx={{ 
-                mb: 3,
-                '& .MuiInputBase-input': {
-                  color: 'text.primary',
-                },
-                '& .MuiOutlinedInput-root': {
-                  '& fieldset': {
-                    borderColor: 'rgba(0, 0, 0, 0.23)',
-                  },
-                  '&:hover fieldset': {
-                    borderColor: 'primary.main',
-                  },
-                }
-              }}
-              InputProps={{
-                style: { color: 'black' }
-              }}
-            />
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
+              </Alert>
+            )}
             
-            <Button
-              type="submit"
-              fullWidth
-              variant="contained"
-              color="primary"
-              size="large"
-              disabled={isLoading}
-              sx={{ 
-                py: 1.5,
-                mb: 2,
-                borderRadius: '8px',
-                fontWeight: 600,
-                textTransform: 'none',
-                fontSize: '1rem'
+            <Box 
+              component="form" 
+              onSubmit={handleSubmit}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 2,
               }}
             >
-              {isLoading ? <CircularProgress size={24} /> : t('auth.signIn')}
-            </Button>
-          </form>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
-            <Button
-              color="primary"
-              variant="outlined"
-              onClick={handleCredentialsOpen}
+              <TextField
+                fullWidth
+                label={t('auth.email')}
+                variant="outlined"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                required
+                autoFocus
+              />
+              
+              <TextField
+                fullWidth
+                label={t('auth.password')}
+                variant="outlined"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+              
+              <Button
+                type="submit"
+                fullWidth
+                variant="contained"
+                color="primary"
+                disabled={isLoading}
+                sx={{ 
+                  py: 1.5,
+                  mt: 1,
+                  bgcolor: '#8A1538',
+                  '&:hover': {
+                    bgcolor: '#6e0020',
+                  }
+                }}
+              >
+                {isLoading ? <CircularProgress size={24} color="inherit" /> : t('auth.login')}
+              </Button>
+              
+              <Button
+                fullWidth
+                variant="outlined"
+                onClick={handleCredentialsOpen}
+                sx={{ 
+                  mt: 1,
+                  py: 1.5,
+                  color: '#8A1538',
+                  borderColor: '#8A1538',
+                  '&:hover': {
+                    borderColor: '#6e0020',
+                    bgcolor: 'rgba(138, 21, 56, 0.04)'
+                  }
+                }}
+              >
+                <Typography sx={{fontWeight: 'bold'}}>
+                  {t('auth.testAccounts')}
+                </Typography>
+              </Button>
+            </Box>
+            
+            <Typography 
+              variant="body2" 
               sx={{ 
-                textTransform: 'none',
-                fontWeight: 500,
-                px: 3,
-                py: 1
+                mt: 3, 
+                textAlign: 'center',
+                color: 'text.secondary'
               }}
             >
-              {t('auth.testAccounts')}
-            </Button>
-          </Box>
+              {t('auth.forgotPassword')}
+            </Typography>
+          </Paper>
           
           <Dialog 
             open={credentialsOpen} 
@@ -386,25 +378,57 @@ const LoginPage: React.FC = () => {
             maxWidth="sm"
             fullWidth
           >
-            <DialogTitle>{t('auth.testAccounts')}</DialogTitle>
-            <DialogContent>
-              <List>
+            <DialogTitle sx={{ 
+              bgcolor: '#8A1538', 
+              color: 'white',
+              pb: 2 
+            }}>
+              <Typography variant="h6" fontWeight="bold">
+                {t('auth.testAccounts')}
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1, opacity: 0.9 }}>
+                {t('auth.clickToLogin')}
+              </Typography>
+            </DialogTitle>
+            <DialogContent sx={{ p: 0 }}>
+              <List sx={{ pt: 0 }}>
                 {testAccounts.map((account, index) => (
                   <React.Fragment key={account.email}>
-                    <ListItemButton onClick={() => handleAccountSelect(account.email)}>
-                      <ListItemText 
-                        primary={`${account.role} (${account.email})`} 
-                        secondary={account.department} 
+                    <ListItemButton 
+                      onClick={() => handleAccountSelect(account.email)}
+                      sx={{ 
+                        p: 2,
+                        '&:hover': {
+                          bgcolor: 'rgba(138, 21, 56, 0.08)'
+                        }
+                      }}
+                    >
+                      <ListItemText
+                        primary={
+                          <Typography fontWeight="medium" color="primary">
+                            {account.role}
+                          </Typography>
+                        }
+                        secondary={
+                          <Box component="span">
+                            <Typography variant="body2" component="span" color="text.primary">
+                              {account.email}
+                            </Typography>
+                            <Typography variant="body2" component="span" color="text.secondary" sx={{ display: 'block' }}>
+                              {account.department}
+                            </Typography>
+                          </Box>
+                        }
                       />
                     </ListItemButton>
-                    {index < testAccounts.length - 1 && <Divider />}
+                    {index < testAccounts.length - 1 && <Divider component="li" />}
                   </React.Fragment>
                 ))}
               </List>
             </DialogContent>
-            <DialogActions>
-              <Button onClick={handleCredentialsClose}>
-                {t('common.close')}
+            <DialogActions sx={{ p: 2 }}>
+              <Button onClick={handleCredentialsClose} color="primary">
+                {t('common.cancel')}
               </Button>
             </DialogActions>
           </Dialog>

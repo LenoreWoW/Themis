@@ -147,6 +147,7 @@ export interface Project {
   department: Department;
   status: ProjectStatus;
   priority: ProjectPriority;
+  dependencySeverity?: 'high' | 'medium' | 'low';
   startDate: string;
   endDate: string;
   projectManager: User;
@@ -229,7 +230,8 @@ export enum RiskStatus {
   IDENTIFIED = 'IDENTIFIED',
   ASSESSED = 'ASSESSED',
   MITIGATED = 'MITIGATED',
-  CLOSED = 'CLOSED'
+  CLOSED = 'CLOSED',
+  OPEN = 'OPEN'
 }
 
 export enum RiskImpact {
@@ -458,18 +460,18 @@ export interface Assignment {
   status: AssignmentStatus;
   priority: TaskPriority;
   assignedBy: User;
-  assignee: User;
+  assignedTo: User;
   dueDate: string;
+  progress?: number;
   createdAt: string;
   updatedAt: string;
 }
 
 // API Response type
 export interface ApiResponse<T> {
+  data: T;
   success: boolean;
-  data?: T;
   error?: string;
-  message?: string;
 }
 
 export enum TaskRequestStatus {
@@ -566,3 +568,42 @@ export * from './change-request';
 // Define the possible change request types
 // The line below is removed because it conflicts with the enum declaration above
 // export type ChangeRequestType = 'SCHEDULE' | 'BUDGET' | 'SCOPE' | 'RESOURCE' | 'STATUS' | 'CLOSURE' | 'OTHER'; 
+
+// Risk Probability enum
+export enum RiskProbability {
+  Low = 'LOW',
+  Medium = 'MEDIUM',
+  High = 'HIGH'
+}
+
+// Checkpoint for task breakdown
+export interface Checkpoint {
+  id: string;
+  taskId: string;
+  text: string;
+  completed: boolean;
+  order: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Focus session for Pomodoro timer
+export interface FocusSession {
+  id: string;
+  userId: string;
+  taskId: string;
+  startTime: string;
+  endTime: string;
+  breakCount: number;
+  totalFocusTime: number;
+  totalBreakTime: number;
+  checkpointsCompleted?: string[]; // IDs of checkpoints completed during session
+}
+
+// Focus timer state
+export enum FocusTimerState {
+  IDLE = 'IDLE',
+  FOCUSING = 'FOCUSING',
+  BREAK = 'BREAK',
+  PAUSED = 'PAUSED'
+} 

@@ -23,6 +23,8 @@ export const clearAllTestData = (): void => {
   localStorage.removeItem('themis_issues');
   localStorage.removeItem('themis_independent_tasks');
   localStorage.removeItem('themis_departments');
+  localStorage.removeItem('themis_chat_channels');
+  localStorage.removeItem('themis_chat_messages');
   
   // Clear any session-specific data as well
   sessionStorage.clear();
@@ -74,6 +76,10 @@ export const cleanupMockData = () => {
     localStorage.removeItem('themis_meetings');
     localStorage.removeItem('themis_risks');
     localStorage.removeItem('themis_issues');
+    
+    // Remove chat mock data
+    localStorage.removeItem('themis_chat_channels');
+    localStorage.removeItem('themis_chat_messages');
     
     console.log('All mock data except users and departments has been removed');
   } catch (error) {

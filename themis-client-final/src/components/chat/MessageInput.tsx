@@ -1,5 +1,5 @@
 import React, { useState, useRef, ChangeEvent } from 'react';
-import { Box, TextField, IconButton, Paper, Tooltip, CircularProgress, Button } from '@mui/material';
+import { Box, TextField, IconButton, Paper, Tooltip, CircularProgress, Button, Dialog, DialogTitle, DialogContent, DialogActions, List, ListItem, ListItemText, ListItemIcon, Typography } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { 
   Send as SendIcon,
@@ -7,7 +7,9 @@ import {
   EmojiEmotions as EmojiIcon,
   FormatBold as BoldIcon,
   FormatItalic as ItalicIcon,
-  Code as CodeIcon
+  Code as CodeIcon,
+  InsertDriveFile as FileIcon,
+  Share as ShareIcon
 } from '@mui/icons-material';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 import { ChatChannel } from '../../types/ChatTypes';
@@ -23,6 +25,7 @@ const classes = {
   emojiPickerContainer: `${PREFIX}-emojiPickerContainer`,
   filePreview: `${PREFIX}-filePreview`,
   disabledMessage: `${PREFIX}-disabledMessage`,
+  documentList: `${PREFIX}-documentList`,
 };
 
 const Root = styled('div')(({ theme }) => ({
@@ -72,6 +75,9 @@ const Root = styled('div')(({ theme }) => ({
     textAlign: 'center',
     fontStyle: 'italic',
   },
+  [`& .${classes.documentList}`]: {
+    maxHeight: 300,
+  },
 }));
 
 interface MessageInputProps {
@@ -92,6 +98,9 @@ const MessageInput: React.FC<MessageInputProps> = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSending, setIsSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [shareDocumentOpen, setShareDocumentOpen] = useState(false);
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loadingDocuments, setLoadingDocuments] = useState(false);
 
   const handleSendMessage = async () => {
     if (!message.trim() && !selectedFile) return;
@@ -176,6 +185,58 @@ const MessageInput: React.FC<MessageInputProps> = ({
     }, 0);
   };
 
+  const handleOpenShareDocument = async () => {
+    try {
+      setLoadingDocuments(true);
+      // Fetch documents from API
+      const response = await fetch('/api/documents');
+      const data = await response.json();
+      
+      if (data.success) {
+        setDocuments(data.documents || []);
+      } else {
+        console.error('Failed to fetch documents');
+      }
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    } finally {
+      setLoadingDocuments(false);
+      setShareDocumentOpen(true);
+    }
+  };
+
+  const handleCloseShareDocument = () => {
+    setShareDocumentOpen(false);
+  };
+
+  const handleShareDocument = async (documentId: string) => {
+    try {
+      const response = await fetch('/api/documents/share', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          documentId,
+          channelId: channel.id
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        // Add a message with the shared document reference
+        const documentMessage = `Shared document: ${documents.find(doc => doc.id === documentId)?.name || 'Document'}`;
+        await onSendMessage(documentMessage);
+        handleCloseShareDocument();
+      } else {
+        console.error('Failed to share document');
+      }
+    } catch (error) {
+      console.error('Error sharing document:', error);
+    }
+  };
+
   if (!canPost) {
     return (
       <Root className={classes.root}>
@@ -221,6 +282,16 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </Tooltip>
         
         <Box flexGrow={1} />
+        
+        <Tooltip title="Share Document">
+          <IconButton
+            className={classes.formatButton}
+            size="small"
+            onClick={handleOpenShareDocument}
+          >
+            <ShareIcon fontSize="small" />
+          </IconButton>
+        </Tooltip>
         
         <Tooltip title="Attach File">
           <IconButton
@@ -287,6 +358,45 @@ const MessageInput: React.FC<MessageInputProps> = ({
         </Box>
       )}
       
+      {/* Share Document Dialog */}
+      <Dialog open={shareDocumentOpen} onClose={handleCloseShareDocument} maxWidth="sm" fullWidth>
+        <DialogTitle>Share Document</DialogTitle>
+        <DialogContent>
+          {loadingDocuments ? (
+            <Box display="flex" justifyContent="center" p={2}>
+              <CircularProgress size={24} />
+            </Box>
+          ) : documents.length === 0 ? (
+            <Box p={2}>
+              <Typography>No documents available to share</Typography>
+            </Box>
+          ) : (
+            <List className={classes.documentList}>
+              {documents.map((doc) => (
+                <ListItem 
+                  button 
+                  key={doc.id} 
+                  onClick={() => handleShareDocument(doc.id)}
+                >
+                  <ListItemIcon>
+                    <FileIcon />
+                  </ListItemIcon>
+                  <ListItemText 
+                    primary={doc.name} 
+                    secondary={doc.updatedAt ? `Last updated: ${new Date(doc.updatedAt).toLocaleString()}` : ''} 
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseShareDocument}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       <input
         type="file"
         ref={fileInputRef}

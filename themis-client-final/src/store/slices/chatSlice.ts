@@ -5,7 +5,7 @@ import {
   ChannelType, 
   ChatMessageStatus 
 } from '../../types/ChatTypes';
-import { api } from '../../services/api';
+import api from '../../services/api';
 
 // Define the state interface
 interface ChatState {
@@ -32,7 +32,7 @@ export const fetchChannels = createAsyncThunk(
   'chat/fetchChannels',
   async (_, { rejectWithValue }) => {
     try {
-      const response = await api.getChannels();
+      const response = await api.chat.getChannels('fake-token');
       if (response.success) {
         return response.data;
       }
@@ -47,7 +47,7 @@ export const fetchMessages = createAsyncThunk(
   'chat/fetchMessages',
   async (channelId: string, { rejectWithValue }) => {
     try {
-      const response = await api.getMessages(channelId);
+      const response = await api.chat.getMessages(channelId, 50, 0, 'fake-token');
       if (response.success) {
         return { channelId, messages: response.data };
       }
@@ -62,7 +62,7 @@ export const sendMessage = createAsyncThunk(
   'chat/sendMessage',
   async (params: { channelId: string, content: string }, { rejectWithValue }) => {
     try {
-      const response = await api.createMessage(params.channelId, params.content);
+      const response = await api.chat.createMessage(params.channelId, { body: params.content }, 'fake-token');
       if (response.success) {
         return response.data;
       }
@@ -77,7 +77,11 @@ export const createChannel = createAsyncThunk(
   'chat/createChannel',
   async (params: { name: string, type: ChannelType, participants?: string[] }, { rejectWithValue }) => {
     try {
-      const response = await api.createChannel(params.name, params.type, params.participants);
+      const response = await api.chat.createChannel({ 
+        name: params.name, 
+        type: params.type,
+        // Handle other properties if needed
+      }, 'fake-token');
       if (response.success) {
         return response.data;
       }

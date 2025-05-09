@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { 
@@ -89,6 +89,31 @@ const Canvas: React.FC = () => {
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   
+  const [isShiftKeyPressed, setIsShiftKeyPressed] = useState(false);
+  
+  // Add key event listeners
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        setIsShiftKeyPressed(true);
+      }
+    };
+    
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === 'Shift') {
+        setIsShiftKeyPressed(false);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keyup', handleKeyUp);
+    };
+  }, []);
+  
   // Handle card creation
   const handleCreateCard = useCallback((position: Position) => {
     const id = uuidv4();
@@ -119,12 +144,12 @@ const Canvas: React.FC = () => {
     dispatch({ type: 'canvas/selectConnection', payload: id });
   }, [dispatch]);
   
-  const handleSelectGroup = useCallback((id: string, multi: boolean) => {
-    if (!multi) {
+  const handleGroupClick = useCallback((id: string) => {
+    if (!isShiftKeyPressed) {
       dispatch(clearSelection());
     }
-    dispatch(selectGroup(id));
-  }, [dispatch]);
+    dispatch(selectGroup({ id, addToSelection: isShiftKeyPressed }));
+  }, [dispatch, isShiftKeyPressed]);
   
   // Handle context menu
   const handleContextMenu = useCallback((e: React.MouseEvent, worldPosition: Position) => {
@@ -248,10 +273,10 @@ const Canvas: React.FC = () => {
         group={group}
         selected={selectedGroupIds.includes(group.id)}
         zoom={viewport.zoom}
-        onSelect={handleSelectGroup}
+        onSelect={handleGroupClick}
       />
     ));
-  }, [groups, handleSelectGroup, selectedGroupIds, viewport.zoom]);
+  }, [groups, handleGroupClick, selectedGroupIds, viewport.zoom]);
   
   // Render cards
   const renderCards = useCallback(() => {

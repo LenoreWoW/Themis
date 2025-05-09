@@ -136,6 +136,7 @@ export interface DashboardAccess {
   canViewClientData: boolean;
   canViewDepartmentData: boolean;
   canExportReports: boolean;
+  analytics: boolean; // Added analytics permission
 }
 
 /**
@@ -151,7 +152,8 @@ export const getDashboardAccess = (role?: UserRole): DashboardAccess => {
     canViewFinancials: false,
     canViewClientData: false,
     canViewDepartmentData: false,
-    canExportReports: false
+    canExportReports: false,
+    analytics: true // Enable analytics for all users by default
   };
   
   if (!role) return defaultAccess;
@@ -166,7 +168,8 @@ export const getDashboardAccess = (role?: UserRole): DashboardAccess => {
         canViewFinancials: true,
         canViewClientData: true,
         canViewDepartmentData: true,
-        canExportReports: true
+        canExportReports: true,
+        analytics: true
       };
     
     case UserRole.MAIN_PMO:
@@ -177,7 +180,8 @@ export const getDashboardAccess = (role?: UserRole): DashboardAccess => {
         canViewFinancials: false,
         canViewClientData: true,
         canViewDepartmentData: true,
-        canExportReports: true
+        canExportReports: true,
+        analytics: true
       };
       
     case UserRole.DEPARTMENT_DIRECTOR:
@@ -188,7 +192,8 @@ export const getDashboardAccess = (role?: UserRole): DashboardAccess => {
         canViewFinancials: true,
         canViewClientData: false,
         canViewDepartmentData: true,
-        canExportReports: true
+        canExportReports: true,
+        analytics: true
       };
       
     case UserRole.SUB_PMO:
@@ -199,7 +204,8 @@ export const getDashboardAccess = (role?: UserRole): DashboardAccess => {
         canViewFinancials: false,
         canViewClientData: false,
         canViewDepartmentData: true,
-        canExportReports: false
+        canExportReports: false,
+        analytics: true
       };
       
     case UserRole.PROJECT_MANAGER:
@@ -210,7 +216,8 @@ export const getDashboardAccess = (role?: UserRole): DashboardAccess => {
         canViewFinancials: false,
         canViewClientData: false,
         canViewDepartmentData: false,
-        canExportReports: false
+        canExportReports: false,
+        analytics: true
       };
       
     default:

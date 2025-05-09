@@ -64,7 +64,12 @@ export const enTranslations = {
     editInBothLanguages: "Edit in Both Languages",
     automaticTranslation: "Automatic Translation",
     manual: "Manual",
-    automatic: "Automatic"
+    automatic: "Automatic",
+    archive: "Archive",
+    status: "Status",
+    switchLanguage: "Switch Language",
+    notifications: "Notifications",
+    markAsRead: "Mark as Read"
   },
   auth: {
     login: 'Login',
@@ -93,18 +98,25 @@ export const enTranslations = {
   },
   navigation: {
     dashboard: "Dashboard",
+    workspace: "My Work",
+    workspaceMain: "Workspace",
+    myWork: "My Work",
+    calendar: "Calendar",
     projects: "Projects",
     tasks: "Tasks",
     assignments: "Assignments",
+    chat: "Chat & Announcements",
     risksIssues: "Risks & Issues",
     meetings: "Meetings",
-    users: "System Settings",
     goals: "Goals",
-    departments: "Departments",
+    faculty: "Faculty",
     approvals: "Approvals",
-    auditLogs: "Audit Logs",
+    systemSettings: "System Settings",
     userManagement: "User Management",
+    departments: "Departments",
+    auditLogs: "Audit Logs",
     complianceAudit: "Compliance Audit",
+    ideation: "Ideation",
     changeRequests: "Change Requests"
   },
   dashboard: {
@@ -388,5 +400,12 @@ export const enTranslations = {
     clearFilters: "Clear Filters",
     noLogs: "No audit logs found",
     downloadReport: "Download Report"
+  },
+  notifications: {
+    title: "Notifications",
+    noNotifications: "No notifications yet",
+    markAllAsRead: "Mark All as Read",
+    clearAll: "Clear All",
+    newNotification: "New Notification",
   }
 }; 

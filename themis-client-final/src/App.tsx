@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
-import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction, Stack } from '@mui/material';
-import theme, { createAppTheme } from './theme';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction, Stack, CircularProgress, Box } from '@mui/material';
+import createAppTheme from './theme';
+import { useAuth } from './hooks/useAuth';
 import { AuthProvider } from './context/AuthContext';
 import { ProjectProvider } from './context/ProjectContext';
 import { TaskProvider } from './context/TaskContext';
@@ -15,13 +16,6 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectDetailPage from './pages/ProjectDetailPage';
-// We no longer need these specialized project detail pages
-// import ERPProjectDetailPage from './pages/projects/ERPProjectDetailPage';
-// import MarketingProjectDetailPage from './pages/projects/MarketingProjectDetailPage';
-// import FinanceProjectDetailPage from './pages/projects/FinanceProjectDetailPage';
-// import SupplyChainProjectDetailPage from './pages/projects/SupplyChainProjectDetailPage';
-// import WebsiteProjectDetailPage from './pages/projects/WebsiteProjectDetailPage';
-// import InfrastructureProjectDetailPage from './pages/projects/InfrastructureProjectDetailPage';
 import TasksPage from './pages/TasksPage';
 import ProfilePage from './pages/ProfilePage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -50,6 +44,12 @@ import ProjectRelationshipMapPage from './pages/ProjectRelationshipMapPage';
 import IdeationPage from './pages/IdeationPage';
 import Auth0CallbackPage from './pages/Auth0CallbackPage';
 import CalendarPage from './pages/CalendarPage';
+import ChatPage from './pages/ChatPage';
+import NotificationsPage from './pages/notifications';
+import ActionItemsPage from './pages/ActionItemsPage';
+import DependenciesPage from './pages/DependenciesPage';
+import CentralRepositoryPage from './pages/CentralRepositoryPage';
+import HelpPage from './pages/HelpPage';
 
 // Import i18n configuration
 import './i18n/index';
@@ -78,17 +78,27 @@ const ltrCache = createCache({
   stylisPlugins: [prefixer],
 });
 
+// FullScreenSpinner component for loading states
+const FullScreenSpinner = () => (
+  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+    <CircularProgress />
+  </Box>
+);
+
 // AppContent component separated to use theme context
 const AppContent: React.FC = () => {
   const { i18n, t } = useTranslation();
-  const { themeMode: mode } = useTheme();
+  const { themeMode, isDarkMode } = useTheme();
+  const selectedTheme = useMemo(() => (isDarkMode ? createAppTheme('rtl', 'dark') : createAppTheme('rtl', 'light')), [isDarkMode]);
+  const location = useLocation();
+  const navigate = useNavigate();
   
   // Get saved language from localStorage
   const savedLanguage = localStorage.getItem('pmsLanguage') || 'en';
   const initialDirection = savedLanguage === 'ar' ? 'rtl' : 'ltr';
   
   const [direction, setDirection] = useState<Direction>(initialDirection);
-  const [currentTheme, setCurrentTheme] = useState(createAppTheme(initialDirection, mode));
+  const [currentTheme, setCurrentTheme] = useState(selectedTheme);
   const [isAppReady, setIsAppReady] = useState(false);
 
   // Ensure app is cleaned before rendering
@@ -113,7 +123,7 @@ const AppContent: React.FC = () => {
   const handleDirectionChange = (newDirection: Direction) => {
     console.log('Direction changed to:', newDirection);
     setDirection(newDirection);
-    setCurrentTheme(createAppTheme(newDirection, mode));
+    setCurrentTheme(selectedTheme);
     
     // Set document dir attribute
     document.documentElement.dir = newDirection;
@@ -131,13 +141,22 @@ const AppContent: React.FC = () => {
 
   // Update theme when mode changes
   useEffect(() => {
-    setCurrentTheme(createAppTheme(direction, mode));
-  }, [mode, direction]);
+    setCurrentTheme(selectedTheme);
+  }, [selectedTheme]);
 
   // Clean up mock data on application startup
   useEffect(() => {
     // Remove mock data from localStorage
     cleanupMockData();
+    
+    // Try to initialize scheduler service (will only work when authenticated)
+    try {
+      const SchedulerService = require('./services/SchedulerService').default;
+      const schedulerService = SchedulerService.getInstance();
+      schedulerService.initialize();
+    } catch (error) {
+      console.log('Scheduler service not initialized yet, will retry after auth');
+    }
   }, []);
 
   if (!isAppReady) {
@@ -180,23 +199,24 @@ const AppContent: React.FC = () => {
                       <Route path="users" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE']}><UserManagementPage /></PrivateRoute>} />
                       <Route path="faculty" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE']}><FacultyPage /></PrivateRoute>} />
                       <Route path="projects/new" element={<PrivateRoute roleRequired={['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO']}><ProjectApprovalPage /></PrivateRoute>} />
-                      <Route path="approvals" element={<PrivateRoute><ApprovalsPage /></PrivateRoute>} />
+                      <Route path="approvals" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']}><ApprovalsPage /></PrivateRoute>} />
                       <Route path="project-approvals" element={<Navigate to="/approvals" replace />} />
-                      <Route path="change-requests" element={<Navigate to="/approvals?tab=2" replace />} />
-                      <Route path="legacy-projects" element={<PrivateRoute roleRequired={['ADMIN']}><LegacyProjectPage /></PrivateRoute>} />
-                      <Route path="audit" element={<PrivateRoute roleRequired={['ADMIN']}><AuditPage /></PrivateRoute>} />
-                      <Route path="audit-logs" element={<PrivateRoute roleRequired={['ADMIN']}><AuditLogPage /></PrivateRoute>} />
-                      <Route path="supabase-test" element={<SupabaseConnectionTest />} />
-                      <Route path="change-requests/:id/review" element={
-                        <PrivateRoute>
-                          <ChangeRequestApproval />
-                        </PrivateRoute>
-                      } />
-                      <Route path="project-relationships" element={<ProjectRelationshipMapPage />} />
-                      <Route path="project-relationships/:projectId" element={<ProjectRelationshipMapPage />} />
-                      <Route path="ideation" element={<IdeationPage />} />
+                      <Route path="change-requests" element={<PrivateRoute><ChangeRequestsPage /></PrivateRoute>} />
+                      <Route path="ideation" element={<PrivateRoute><IdeationPage /></PrivateRoute>} />
+                      <Route path="project-relationships" element={<PrivateRoute><ProjectRelationshipMapPage /></PrivateRoute>} />
+                      <Route path="audit" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'EXECUTIVE']}><AuditPage /></PrivateRoute>} />
+                      <Route path="audit-log" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'EXECUTIVE']}><AuditLogPage /></PrivateRoute>} />
+                      <Route path="legacy" element={<PrivateRoute><LegacyProjectPage /></PrivateRoute>} />
+                      <Route path="test-connection" element={<PrivateRoute><SupabaseConnectionTest /></PrivateRoute>} />
+                      <Route path="approve-change-request/:requestId" element={<PrivateRoute><ChangeRequestApproval /></PrivateRoute>} />
+                      <Route path="notifications" element={<PrivateRoute><NotificationsPage /></PrivateRoute>} />
+                      <Route path="chat" element={<PrivateRoute><ChatPage /></PrivateRoute>} />
+                      <Route path="action-items" element={<PrivateRoute><ActionItemsPage /></PrivateRoute>} />
+                      <Route path="dependencies" element={<PrivateRoute><DependenciesPage /></PrivateRoute>} />
+                      <Route path="repository" element={<PrivateRoute><CentralRepositoryPage /></PrivateRoute>} />
+                      <Route path="help" element={<PrivateRoute><HelpPage /></PrivateRoute>} />
+                      <Route path="*" element={<NotFoundPage />} />
                     </Route>
-                    <Route path="*" element={<NotFoundPage />} />
                   </Routes>
                 </TaskRequestProvider>
               </TaskProvider>
@@ -206,6 +226,21 @@ const AppContent: React.FC = () => {
       </MuiThemeProvider>
     </CacheProvider>
   );
+};
+
+const ProtectedRoutes = () => {
+  const { token, isLoading } = useAuth();
+  const location = useLocation();
+
+  if (isLoading) {
+    return <FullScreenSpinner />;
+  }
+
+  if (!token) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  return <React.Fragment>{React.createElement('outlet')}</React.Fragment>;
 };
 
 const App: React.FC = () => {

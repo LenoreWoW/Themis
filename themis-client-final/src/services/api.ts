@@ -15,6 +15,108 @@ import auth from './auth';
 import changeRequests from './changeRequests';
 import { ChatChannel, ChatMessage, ChatChannelMember, ChannelType, CreateChannelRequest, CreateMessageRequest, UpdateMessageRequest, CreateDMRequest } from '../types/ChatTypes';
 
+// HTTP utility functions
+const get = async <T>(url: string, token: string): Promise<ApiResponse<T>> => {
+  try {
+    // For all endpoints, use the regular API call
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await axios.get<T>(`${API_BASE_URL}${url}`, { headers });
+    
+    return {
+      data: response.data,
+      success: true
+    };
+  } catch (error) {
+    console.error('GET request failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+};
+
+const post = async <T>(url: string, data: any, token: string): Promise<ApiResponse<T>> => {
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await axios.post<T>(`${API_BASE_URL}${url}`, data, { headers });
+    
+    return {
+      data: response.data,
+      success: true
+    };
+  } catch (error) {
+    console.error('POST request failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+};
+
+const put = async <T>(url: string, data: any, token: string): Promise<ApiResponse<T>> => {
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await axios.put<T>(`${API_BASE_URL}${url}`, data, { headers });
+    
+    return {
+      data: response.data,
+      success: true
+    };
+  } catch (error) {
+    console.error('PUT request failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+};
+
+const del = async <T>(url: string, token: string): Promise<ApiResponse<T>> => {
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await axios.delete<T>(`${API_BASE_URL}${url}`, { headers });
+    
+    return {
+      data: response.data,
+      success: true
+    };
+  } catch (error) {
+    console.error('DELETE request failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
+};
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -51,7 +153,6 @@ const mockITDepartment: Department = {
 
 // Empty arrays for all mock data
 const defaultProjectId = '';
-const mockTasks: Task[] = [];
 const defaultProjects: Project[] = [];
 const defaultMeetings: Meeting[] = [];
 
@@ -307,77 +408,10 @@ export const apiRequest = async (endpoint: string, method: string = 'GET', data?
 };
 
 // Default mock risks
-const createDefaultRisks = (projectId: string) => [
-  {
-    id: '1',
-    projectId,
-    title: 'Data Migration Risk',
-    description: 'Risk of data loss during migration process',
-    status: RiskStatus.IDENTIFIED,
-    impact: RiskImpact.HIGH,
-    probability: 70,
-    mitigation: 'Create multiple backups before migration and perform test migrations on sample data',
-    owner: testUsers.admin,
-    createdBy: testUsers.admin,
-    createdAt: '2023-01-10T00:00:00Z',
-    updatedAt: '2023-01-10T00:00:00Z'
-  },
-  {
-    id: '2',
-    projectId,
-    title: 'Resource Availability Risk',
-    description: 'Risk of key team members being unavailable during critical project phases',
-    status: RiskStatus.ASSESSED,
-    impact: RiskImpact.MEDIUM,
-    probability: 50,
-    mitigation: 'Develop contingency plans and cross-train team members',
-    owner: testUsers.admin,
-    createdBy: testUsers.admin,
-    createdAt: '2023-01-15T00:00:00Z',
-    updatedAt: '2023-01-15T00:00:00Z'
-  }
-];
+const createDefaultRisks = (projectId: string) => [];
 
 // Default mock issues
-const createDefaultIssues = (projectId: string) => [
-  {
-    id: '1',
-    projectId,
-    title: 'Integration Failure with Legacy System',
-    description: 'The new system cannot properly integrate with the existing legacy system',
-    status: IssueStatus.OPEN,
-    impact: RiskImpact.HIGH,
-    owner: testUsers.admin,
-    createdBy: testUsers.admin,
-    createdAt: '2023-02-10T00:00:00Z',
-    updatedAt: '2023-02-10T00:00:00Z'
-  },
-  {
-    id: '2',
-    projectId,
-    title: 'Performance Bottleneck in Module A',
-    description: 'Module A performance is not meeting expected throughput requirements',
-    status: IssueStatus.IN_PROGRESS,
-    impact: RiskImpact.MEDIUM,
-    owner: testUsers.admin,
-    createdBy: testUsers.admin,
-    createdAt: '2023-02-15T00:00:00Z',
-    updatedAt: '2023-02-20T00:00:00Z'
-  },
-  {
-    id: '3',
-    projectId,
-    title: 'Security Vulnerability in Authentication',
-    description: 'Security audit identified a potential vulnerability in the authentication process',
-    status: IssueStatus.RESOLVED,
-    impact: RiskImpact.CRITICAL,
-    resolutionSummary: 'Implemented updated security protocols and fixed the vulnerability with patch 1.2.3',
-    owner: testUsers.admin,
-    createdBy: testUsers.admin,
-    createdAt: '2023-01-25T00:00:00Z',
-    updatedAt: '2023-02-05T00:00:00Z'
-  }
-];
+const createDefaultIssues = (projectId: string) => [];
 
 // Helper function to simulate login
 export const login = async (email: string, password: string) => {
@@ -507,13 +541,13 @@ const assignments = {
       description: data.description || '',
       status: AssignmentStatus.IN_PROGRESS,
       priority: data.priority || TaskPriority.MEDIUM,
+      startDate: data.startDate || new Date().toISOString(), // Add startDate
       dueDate: data.dueDate || new Date().toISOString(),
       assignedBy: data.assignedBy || {} as User,
       assignedTo: data.assignedTo || {} as User,
-      progress: 0,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-    } as Assignment;
+    };
     
     // Store in localStorage
     try {
@@ -630,6 +664,39 @@ const apiRoutes = {
     
     logout: (token: string) => 
       apiRequest('/api/auth/logout', 'POST', {}),
+    
+    getCurrentUser: async (token: string) => {
+      await delay();
+      return {
+        data: {
+          id: 'current-user',
+          username: 'current.user',
+          firstName: 'Current',
+          lastName: 'User',
+          email: 'current.user@example.com',
+          role: UserRole.ADMIN,
+          department: {
+            id: 'dept-1',
+            name: 'IT Department',
+            description: 'Information Technology Department',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          isActive: true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        success: true
+      };
+    },
+    
+    getProfile: (token: string) => {
+      return axios.get<ApiResponse<User>>(`${API_BASE_URL}/users/profile`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      .then(response => response.data)
+      .catch(handleApiError);
+    }
   },
 
   // User endpoints
@@ -712,32 +779,14 @@ const apiRoutes = {
     getAllProjects: async (token: string) => {
       await simulateDelay();
       
-      // Get projects from localStorage
-      const storedProjects = localStorage.getItem('themis_projects');
-      const projects = storedProjects ? JSON.parse(storedProjects) : [];
-      
       return {
-        data: projects,
+        data: [],
         success: true
       };
     },
     
     getProjectById: async (id: string, token: string) => {
       await simulateDelay();
-      
-      // Get projects from localStorage
-      const storedProjects = localStorage.getItem('themis_projects');
-      const projects = storedProjects ? JSON.parse(storedProjects) : [];
-      
-      // Find the project by ID
-      const project = projects.find((p: Project) => p.id === id);
-      
-      if (project) {
-        return {
-          data: project,
-          success: true
-        };
-      }
       
       return {
         data: null,
@@ -754,16 +803,6 @@ const apiRoutes = {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
-      
-      // Get existing projects from localStorage
-      const storedProjects = localStorage.getItem('themis_projects');
-      const projects = storedProjects ? JSON.parse(storedProjects) : [];
-      
-      // Add the new project
-      projects.push(newProject);
-      
-      // Save back to localStorage
-      localStorage.setItem('themis_projects', JSON.stringify(projects));
       
       return {
         data: newProject,
@@ -884,43 +923,8 @@ const apiRoutes = {
       await delay();
       
       try {
-        // Get projects from localStorage
-        const projectsJson = localStorage.getItem('projects') || '[]';
-        let projects = [];
-        
-        try {
-          projects = JSON.parse(projectsJson);
-          if (!Array.isArray(projects)) {
-            console.warn('API: projects was not an array, resetting to empty array');
-            projects = [];
-          }
-          
-          // Filter projects by manager ID
-          projects = projects.filter(project => {
-            // Check if the project has a projectManager object
-            if (project.projectManager && project.projectManager.id === managerId) {
-              return true;
-            }
-            
-            // Also check if the project has a managerId field
-            if (project.managerId === managerId) {
-              return true;
-            }
-            
-            // Also check if the project has a projectManagerId field
-            if (project.projectManagerId === managerId) {
-              return true;
-            }
-            
-            return false;
-          });
-        } catch (parseError) {
-          console.error('API: Error parsing projects from localStorage:', parseError);
-          projects = [];
-        }
-        
         return {
-          data: projects,
+          data: [],
           success: true
         };
       } catch (err) {
@@ -937,38 +941,8 @@ const apiRoutes = {
       await delay();
       
       try {
-        // Get projects from localStorage
-        const projectsJson = localStorage.getItem('projects') || '[]';
-        let projects = [];
-        
-        try {
-          projects = JSON.parse(projectsJson);
-          if (!Array.isArray(projects)) {
-            console.warn('API: projects was not an array, resetting to empty array');
-            projects = [];
-          }
-          
-          // Filter projects by department ID
-          projects = projects.filter(project => {
-            // Check if the project has a department field
-            if (project.department === departmentId) {
-              return true;
-            }
-            
-            // Also check if the project has a departmentId field
-            if (project.departmentId === departmentId) {
-              return true;
-            }
-            
-            return false;
-          });
-        } catch (parseError) {
-          console.error('API: Error parsing projects from localStorage:', parseError);
-          projects = [];
-        }
-        
         return {
-          data: projects,
+          data: [],
           success: true
         };
       } catch (err) {
@@ -989,39 +963,9 @@ const apiRoutes = {
       console.log('API: Getting all tasks for project:', projectId);
       
       try {
-        // Get tasks from sessionStorage and localStorage for persistence
-        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
-        let allTasks = [];
-        
-        try {
-          allTasks = JSON.parse(tasksJson);
-          // Ensure tasks is an array
-          if (!Array.isArray(allTasks)) {
-            console.warn('API: mockTasks was not an array, resetting to empty array');
-            allTasks = [];
-          }
-        } catch (parseError) {
-          console.error('API: Error parsing mockTasks from storage:', parseError);
-          allTasks = [];
-        }
-
-        // Ensure all tasks have string projectId for consistent comparison
-        allTasks = allTasks.map((task: any) => ({
-          ...task,
-          projectId: String(task.projectId || '')
-        }));
-        
-        // Filter tasks for this project - if projectId is truthy
-        let projectTasks = allTasks;
-        if (projectId && projectId !== 'default') {
-          projectTasks = allTasks.filter((task: any) => String(task.projectId) === String(projectId));
-          console.log(`API: Filtered tasks for project ${projectId}: found ${projectTasks.length} tasks out of ${allTasks.length} total`);
-        }
-        
-        console.log('API: Retrieved tasks from storage:', projectTasks.length, 'tasks for project:', projectId);
-        
+        // Return empty array since we don't have mock data anymore
         return {
-          data: projectTasks,
+          data: [],
           success: true
         };
       } catch (err) {
@@ -1036,31 +980,7 @@ const apiRoutes = {
     getTaskById: async (projectId: string, taskId: string, token: string) => {
       await delay();
       try {
-        // Get tasks from sessionStorage
-        const tasksJson = sessionStorage.getItem('mockTasks') || '[]';
-        let allTasks = [];
-        
-        try {
-          allTasks = JSON.parse(tasksJson);
-        } catch (parseError) {
-          console.error('API: Error parsing mockTasks from sessionStorage:', parseError);
-          return {
-            data: null,
-            success: false,
-            error: 'Task not found'
-          };
-        }
-        
-        // Find the specific task
-        const task = allTasks.find((t: any) => t.id === taskId);
-        
-        if (task) {
-          return {
-            data: task,
-            success: true
-          };
-        }
-        
+        // Return null - no mock tasks
         return {
           data: null,
           success: false,
@@ -1080,234 +1000,71 @@ const apiRoutes = {
       await delay();
       console.log('API: Creating task for project:', projectId, taskData);
       
-      // Create a unique ID for the task if not provided
+      // Create a unique ID for the task
       const taskId = taskData.id || `task-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       
-      // Store the task in sessionStorage AND localStorage to persist it during the session and between sessions
-      try {
-        // Get existing tasks or initialize empty array
-        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
-        let tasks = [];
-        try {
-          tasks = JSON.parse(tasksJson);
-          // Ensure tasks is an array
-          if (!Array.isArray(tasks)) {
-            console.warn('API: mockTasks was not an array, resetting to empty array');
-            tasks = [];
-          }
-        } catch (parseError) {
-          console.error('API: Error parsing mockTasks from storage, resetting to empty array:', parseError);
-          tasks = [];
-        }
-        
-        // Check if task already exists (by ID)
-        const existingTaskIndex = tasks.findIndex((t: any) => t.id === taskId);
-        
-        // Ensure projectId is stored as a string for consistent comparison
-        const stringProjectId = String(projectId || 'default');
-        
-        // Prepare the complete task object with all required fields
-        const newTask = {
-          ...taskData,
-          id: taskId,
-          title: taskData.title || 'Untitled Task',
-          description: taskData.description || '',
-          status: taskData.status || 'TODO',
-          priority: taskData.priority || 'MEDIUM',
-          startDate: taskData.startDate || new Date().toISOString(),
-          dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          projectId: stringProjectId,
-          assignee: taskData.assignee || null,
-          createdAt: taskData.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isMilestone: !!taskData.isMilestone
-        };
-        
-        // Add or update the task
-        if (existingTaskIndex >= 0) {
-          console.log('API: Updating existing task:', taskId);
-          tasks[existingTaskIndex] = newTask;
-        } else {
-          console.log('API: Adding new task:', taskId);
-          tasks.push(newTask);
-        }
-        
-        // Save back to both sessionStorage and localStorage for persistence
-        const tasksString = JSON.stringify(tasks);
-        sessionStorage.setItem('mockTasks', tasksString);
-        localStorage.setItem('mockTasks', tasksString);
-        
-        console.log('API: Task created/updated successfully and saved to storage:', newTask);
-        
-        return {
-          data: newTask,
-          success: true
-        };
-      } catch (err) {
-        console.error('API: Error storing task:', err);
-        // Even if there's an error storing in storage, return a success
-        // so the UI can still show the task (but it won't persist on page refresh)
-        const newTask = {
-          ...taskData, 
-          id: taskId, 
-          title: taskData.title || 'Untitled Task',
-          description: taskData.description || '',
-          status: taskData.status || 'TODO',
-          priority: taskData.priority || 'MEDIUM',
-          startDate: taskData.startDate || new Date().toISOString(),
-          dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          projectId: String(projectId || 'default'),
-          assignee: taskData.assignee || null,
-          createdAt: taskData.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isMilestone: !!taskData.isMilestone
-        };
-        return {
-          data: newTask,
-          success: true
-        };
-      }
+      // Prepare the complete task object with all required fields
+      const newTask = {
+        ...taskData,
+        id: taskId,
+        title: taskData.title || 'Untitled Task',
+        description: taskData.description || '',
+        status: taskData.status || 'TODO',
+        priority: taskData.priority || 'MEDIUM',
+        startDate: taskData.startDate || new Date().toISOString(),
+        dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        projectId: String(projectId || 'default'),
+        assignee: taskData.assignee || null,
+        createdAt: taskData.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isMilestone: !!taskData.isMilestone
+      };
+      
+      return {
+        data: newTask,
+        success: true
+      };
     },
     
     createIndependentTask: async (taskData: any, token: string) => {
       await delay();
       console.log('API: Creating independent task:', taskData);
       
-      // Create a unique ID for the task if not provided
+      // Create a unique ID for the task
       const taskId = taskData.id || `task-${Date.now()}`;
       
-      // Store the task in sessionStorage AND localStorage to persist it during the session and between sessions
-      try {
-        // Get existing tasks or initialize empty array
-        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
-        let tasks = [];
-        try {
-          tasks = JSON.parse(tasksJson);
-          // Ensure tasks is an array
-          if (!Array.isArray(tasks)) {
-            console.warn('API: mockTasks was not an array, resetting to empty array');
-            tasks = [];
-          }
-        } catch (parseError) {
-          console.error('API: Error parsing mockTasks from storage, resetting to empty array:', parseError);
-          tasks = [];
-        }
-        
-        // Check if task already exists (by ID)
-        const existingTaskIndex = tasks.findIndex((t: any) => t.id === taskId);
-        
-        // Prepare the complete task object with all required fields
-        const newTask = {
-          ...taskData,
-          id: taskId,
-          title: taskData.title || 'Untitled Task',
-          description: taskData.description || '',
-          status: taskData.status || 'TODO',
-          priority: taskData.priority || 'MEDIUM',
-          startDate: taskData.startDate || new Date().toISOString(),
-          dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          projectId: taskData.projectId || 'independent',
-          assignee: taskData.assignee || null,
-          createdAt: taskData.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isMilestone: !!taskData.isMilestone
-        };
-        
-        // Add or update the task
-        if (existingTaskIndex >= 0) {
-          console.log('API: Updating existing independent task:', taskId);
-          tasks[existingTaskIndex] = newTask;
-        } else {
-          console.log('API: Adding new independent task:', taskId);
-          tasks.push(newTask);
-        }
-        
-        // Save back to both sessionStorage and localStorage for persistence
-        const tasksString = JSON.stringify(tasks);
-        sessionStorage.setItem('mockTasks', tasksString);
-        localStorage.setItem('mockTasks', tasksString);
-        
-        console.log('API: Independent task created/updated successfully and saved to storage:', newTask);
-        
-        return {
-          data: newTask,
-          success: true
-        };
-      } catch (err) {
-        console.error('API: Error storing independent task:', err);
-        // Even if there's an error storing in storage, return a success
-        // so the UI can still show the task (but it won't persist on page refresh)
-        const newTask = {
-          ...taskData, 
-          id: taskId, 
-          title: taskData.title || 'Untitled Task',
-          description: taskData.description || '',
-          status: taskData.status || 'TODO',
-          priority: taskData.priority || 'MEDIUM',
-          startDate: taskData.startDate || new Date().toISOString(),
-          dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-          projectId: taskData.projectId || 'independent',
-          assignee: taskData.assignee || null,
-          createdAt: taskData.createdAt || new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-          isMilestone: !!taskData.isMilestone
-        };
-        return {
-          data: newTask,
-          success: true
-        };
-      }
+      // Prepare the complete task object with all required fields
+      const newTask = {
+        ...taskData,
+        id: taskId,
+        title: taskData.title || 'Untitled Task',
+        description: taskData.description || '',
+        status: taskData.status || 'TODO',
+        priority: taskData.priority || 'MEDIUM',
+        startDate: taskData.startDate || new Date().toISOString(),
+        dueDate: taskData.dueDate || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        projectId: taskData.projectId || 'independent',
+        assignee: taskData.assignee || null,
+        createdAt: taskData.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isMilestone: !!taskData.isMilestone
+      };
+      
+      return {
+        data: newTask,
+        success: true
+      };
     },
     
     updateTask: async (projectId: string, taskId: string, taskData: any, token: string) => {
       await delay();
       try {
-        // Get existing tasks
-        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
-        let tasks = [];
-        
-        try {
-          tasks = JSON.parse(tasksJson);
-          // Ensure tasks is an array
-          if (!Array.isArray(tasks)) {
-            console.warn('API: mockTasks was not an array, resetting to empty array');
-            tasks = [];
-          }
-        } catch (parseError) {
-          console.error('API: Error parsing mockTasks from storage:', parseError);
-          return {
-            data: null,
-            success: false,
-            error: 'Error parsing tasks data'
-          };
-        }
-        
-        // Find the task
-        const taskIndex = tasks.findIndex((t: any) => t.id === taskId);
-        
-        if (taskIndex === -1) {
-          return {
-            data: null,
-            success: false,
-            error: 'Task not found'
-          };
-        }
-        
-        // Update the task
+        // Return the updated task data but don't store it
         const updatedTask = {
-          ...tasks[taskIndex],
           ...taskData,
+          id: taskId,
           updatedAt: new Date().toISOString()
         };
-        
-        tasks[taskIndex] = updatedTask;
-        
-        // Save back to storage
-        const tasksString = JSON.stringify(tasks);
-        sessionStorage.setItem('mockTasks', tasksString);
-        localStorage.setItem('mockTasks', tasksString);
-        
-        console.log('API: Task updated successfully:', updatedTask);
         
         return {
           data: updatedTask,
@@ -1326,45 +1083,6 @@ const apiRoutes = {
     deleteTask: async (projectId: string, taskId: string, token: string) => {
       await delay();
       try {
-        // Get existing tasks
-        const tasksJson = sessionStorage.getItem('mockTasks') || localStorage.getItem('mockTasks') || '[]';
-        let tasks = [];
-        
-        try {
-          tasks = JSON.parse(tasksJson);
-          // Ensure tasks is an array
-          if (!Array.isArray(tasks)) {
-            console.warn('API: mockTasks was not an array, resetting to empty array');
-            tasks = [];
-          }
-        } catch (parseError) {
-          console.error('API: Error parsing mockTasks from storage:', parseError);
-          return {
-            success: false,
-            error: 'Error parsing tasks data'
-          };
-        }
-        
-        // Find the task
-        const taskIndex = tasks.findIndex((t: any) => t.id === taskId);
-        
-        if (taskIndex === -1) {
-          return {
-            success: false,
-            error: 'Task not found'
-          };
-        }
-        
-        // Remove the task
-        tasks.splice(taskIndex, 1);
-        
-        // Save back to storage
-        const tasksString = JSON.stringify(tasks);
-        sessionStorage.setItem('mockTasks', tasksString);
-        localStorage.setItem('mockTasks', tasksString);
-        
-        console.log('API: Task deleted successfully:', taskId);
-        
         return {
           success: true
         };
@@ -1383,45 +1101,25 @@ const apiRoutes = {
         // In offline mode, simulate API response
         await simulateDelay();
         
-        // Get existing tasks from localStorage
-        const allTasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-        
-        // Find the specific task to add the comment to
-        const taskIndex = allTasks.findIndex((t: any) => t.id === taskId && t.projectId === projectId);
-        
-        if (taskIndex !== -1) {
-          // Create a new comment
-          const newComment = {
-            id: `comment-${Date.now()}`,
-            taskId,
-            text: commentData.text,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString(),
-            author: {
-              id: commentData.authorId,
-              firstName: commentData.authorFirstName || 'User',
-              lastName: commentData.authorLastName || commentData.authorId,
-            }
-          };
-          
-          // Add comment to the task
-          if (!allTasks[taskIndex].comments) {
-            allTasks[taskIndex].comments = [];
+        // Create a new comment
+        const newComment = {
+          id: `comment-${Date.now()}`,
+          taskId,
+          text: commentData.text,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          author: {
+            id: commentData.authorId,
+            firstName: commentData.authorFirstName || 'User',
+            lastName: commentData.authorLastName || commentData.authorId,
           }
-          
-          allTasks[taskIndex].comments.push(newComment);
-          
-          // Save back to localStorage
-          localStorage.setItem('tasks', JSON.stringify(allTasks));
-          
-          return {
-            success: true,
-            data: newComment,
-            message: 'Comment added successfully'
-          };
-        } else {
-          throw new Error('Task not found');
-        }
+        };
+        
+        return {
+          success: true,
+          data: newComment,
+          message: 'Comment added successfully'
+        };
       } else {
         // In online mode, make actual API call
         const response = await axios.post(
@@ -1607,38 +1305,8 @@ const apiRoutes = {
       await delay();
       
       try {
-        // Get audit logs from localStorage
-        const logsJson = localStorage.getItem('auditLogs') || '[]';
-        let logs = [];
-        
-        try {
-          logs = JSON.parse(logsJson);
-          if (!Array.isArray(logs)) {
-            console.warn('API: auditLogs was not an array, resetting to empty array');
-            logs = [];
-          }
-          
-          // Ensure all logs have the necessary fields for filtering
-          logs = logs.map(log => ({
-            id: log.id || `log-${Date.now()}`,
-            action: log.action,
-            details: log.details || log.description || '',
-            entityType: log.entityType || '',
-            entityId: log.entityId || '',
-            projectId: log.projectId || '',
-            department: log.department || '',
-            timestamp: log.timestamp || new Date().toISOString(),
-            userId: log.userId || (log.user && log.user.id) || '',
-            username: log.username || (log.user && `${log.user.firstName} ${log.user.lastName}`.trim()) || '',
-            metadata: log.metadata || {}
-          }));
-        } catch (parseError) {
-          console.error('API: Error parsing auditLogs from localStorage:', parseError);
-          logs = [];
-        }
-        
         return {
-          data: logs,
+          data: [],
           success: true
         };
       } catch (err) {
@@ -1655,26 +1323,8 @@ const apiRoutes = {
       await delay();
       
       try {
-        // Get audit logs from localStorage
-        const logsJson = localStorage.getItem('auditLogs') || '[]';
-        let logs = [];
-        
-        try {
-          logs = JSON.parse(logsJson);
-          if (!Array.isArray(logs)) {
-            console.warn('API: auditLogs was not an array, resetting to empty array');
-            logs = [];
-          }
-        } catch (parseError) {
-          console.error('API: Error parsing auditLogs from localStorage:', parseError);
-          logs = [];
-        }
-        
-        // Filter logs for this project
-        const projectLogs = logs.filter(log => log.projectId === projectId);
-        
         return {
-          data: projectLogs,
+          data: [],
           success: true
         };
       } catch (err) {
@@ -1691,31 +1341,6 @@ const apiRoutes = {
       await delay();
       
       try {
-        // Get audit logs from localStorage
-        const logsJson = localStorage.getItem('auditLogs') || '[]';
-        let logs = [];
-        
-        try {
-          logs = JSON.parse(logsJson);
-        } catch (parseError) {
-          console.error('API: Error parsing auditLogs from localStorage:', parseError);
-          return {
-            data: null,
-            success: false,
-            error: 'Audit log not found'
-          };
-        }
-        
-        // Find the specific log
-        const log = logs.find(l => l.id === logId);
-        
-        if (log) {
-          return {
-            data: log,
-            success: true
-          };
-        }
-        
         return {
           data: null,
           success: false,
@@ -1758,28 +1383,8 @@ const apiRoutes = {
             lastName: 'User'
           },
           timestamp: logData.timestamp || new Date().toISOString(),
-          // Store additional metadata for filtering
           metadata: logData.metadata || {}
         };
-        
-        // Get existing logs or initialize empty array
-        const logsJson = localStorage.getItem('auditLogs') || '[]';
-        let logs = [];
-        
-        try {
-          logs = JSON.parse(logsJson);
-          if (!Array.isArray(logs)) {
-            logs = [];
-          }
-        } catch (parseError) {
-          logs = [];
-        }
-        
-        // Add the new log
-        logs.push(newLog);
-        
-        // Save back to localStorage
-        localStorage.setItem('auditLogs', JSON.stringify(logs));
         
         return {
           data: newLog,
@@ -2038,41 +1643,7 @@ const apiRoutes = {
         attachments: formattedRequestData.attachments || []
       };
       
-      // Store in localStorage for persistence
-      try {
-        // Get existing change requests or initialize empty array
-        const requestsJson = localStorage.getItem('changeRequests') || '[]';
-        let requests = [];
-        try {
-          requests = JSON.parse(requestsJson);
-          if (!Array.isArray(requests)) {
-            console.warn('API: changeRequests was not an array, resetting to empty array');
-            requests = [];
-          }
-        } catch (parseError) {
-          console.error('API: Error parsing changeRequests from localStorage, resetting to empty array:', parseError);
-          requests = [];
-        }
-        
-        // Check if change request already exists (by ID)
-        const existingIndex = requests.findIndex((r: any) => r.id === changeRequestId);
-        
-        // Add or update the change request
-        if (existingIndex >= 0) {
-          console.log('API: Updating existing change request:', changeRequestId);
-          requests[existingIndex] = newChangeRequest;
-        } else {
-          console.log('API: Adding new change request:', changeRequestId);
-          requests.push(newChangeRequest);
-        }
-        
-        // Save back to localStorage
-        localStorage.setItem('changeRequests', JSON.stringify(requests));
-        
-        console.log('Change request created successfully:', newChangeRequest);
-      } catch (err) {
-        console.error('Error storing change request in localStorage:', err);
-      }
+      console.log('Change request created successfully:', newChangeRequest);
       
       return {
         data: newChangeRequest,
@@ -2177,141 +1748,9 @@ const apiRoutes = {
     getEvents: async (token: string) => {
       await delay();
       // This endpoint will be replaced by real backend implementation
-      // For now, create mock events based on tasks, meetings, and projects
-      
-      // Get user info for role-based filtering
-      const userInfo = await apiRoutes.auth.getCurrentUser(token);
-      const user = userInfo.data;
-      
-      if (!user) {
-        return {
-          data: [],
-          success: false,
-          error: 'User not authenticated'
-        };
-      }
-      
-      // Get projects based on user role
-      let projects: Project[] = [];
-      if (['ADMIN', 'MAIN_PMO', 'EXECUTIVE'].includes(user.role)) {
-        // Get all projects
-        const projectsResponse = await apiRoutes.projects.getAllProjects(token);
-        projects = projectsResponse.data || [];
-      } else if (['SUB_PMO', 'DEPARTMENT_DIRECTOR'].includes(user.role) && user.department?.id) {
-        // Get department projects
-        const projectsResponse = await apiRoutes.projects.getProjectsByDepartment(user.department.id, token);
-        projects = projectsResponse.data || [];
-      } else if (user.role === 'PROJECT_MANAGER') {
-        // Get projects managed by user
-        const allProjectsResponse = await apiRoutes.projects.getAllProjects(token);
-        const allProjects = allProjectsResponse.data || [];
-        projects = allProjects.filter(project => project.projectManager?.id === user.id);
-      }
-      
-      // Get project IDs user has access to
-      const accessibleProjectIds = projects.map(project => project.id);
-      
-      // Get tasks, meetings, and assignments
-      let tasks: Task[] = [];
-      let meetings: Meeting[] = [];
-      let assignments: Assignment[] = [];
-      
-      // Get tasks for accessible projects
-      const tasksResponse = await apiRoutes.tasks.getAllTasks(null, token);
-      if (tasksResponse.data) {
-        tasks = tasksResponse.data.filter(task => 
-          accessibleProjectIds.includes(task.projectId)
-        );
-      }
-      
-      // Get meetings
-      const meetingsResponse = await apiRoutes.meetings.getAllMeetings(token);
-      if (meetingsResponse.data) {
-        meetings = meetingsResponse.data.filter(meeting => 
-          !meeting.projectId || accessibleProjectIds.includes(meeting.projectId)
-        );
-      }
-      
-      // Get assignments
-      const assignmentsResponse = await apiRoutes.assignments.getAllAssignments(token);
-      if (assignmentsResponse.data) {
-        assignments = assignmentsResponse.data;
-      }
-      
-      // Create calendar events
-      const events = [
-        // Tasks events
-        ...tasks.map(task => ({
-          id: task.id,
-          title: task.title,
-          type: 'task',
-          projectId: task.projectId,
-          start: task.startDate,
-          end: task.dueDate,
-          allDay: false,
-          color: '#3788d8', // Blue
-          editable: true,
-          description: task.description,
-          status: task.status,
-          priority: task.priority,
-          assignee: task.assignee,
-          projectName: task.project?.name
-        })),
-        
-        // Assignment events
-        ...assignments.map(assignment => ({
-          id: assignment.id,
-          title: assignment.title,
-          type: 'assignment',
-          start: assignment.startDate || assignment.createdAt,
-          end: assignment.dueDate,
-          allDay: false,
-          color: '#2e7d32', // Green
-          editable: true,
-          description: assignment.description,
-          status: assignment.status,
-          priority: assignment.priority,
-          assignee: {
-            id: assignment.assignedTo?.id,
-            firstName: assignment.assignedTo?.firstName,
-            lastName: assignment.assignedTo?.lastName
-          }
-        })),
-        
-        // Meeting events
-        ...meetings.map(meeting => ({
-          id: meeting.id,
-          title: meeting.title,
-          type: 'meeting',
-          projectId: meeting.projectId,
-          start: meeting.startTime,
-          end: meeting.endTime,
-          allDay: false,
-          color: '#9c27b0', // Violet
-          editable: true,
-          description: meeting.description,
-          status: meeting.status,
-          projectName: meeting.projectId ? 'Project Meeting' : 'General Meeting'
-        })),
-        
-        // Project deadline events
-        ...projects.map(project => ({
-          id: `deadline-${project.id}`,
-          title: `${project.name} deadline`,
-          type: 'deadline',
-          projectId: project.id,
-          start: project.endDate,
-          end: project.endDate,
-          allDay: true,
-          color: '#f44336', // Red
-          editable: false, // Deadlines are not editable
-          projectName: project.name,
-          status: project.status
-        }))
-      ];
       
       return {
-        data: events,
+        data: [],
         success: true
       };
     },
@@ -2343,61 +1782,432 @@ const apiRoutes = {
 
   // Chat API functions
   chat: {
-    getChannels: async (token: string): Promise<ApiResponse<ChatChannel[]>> => 
-      get<ChatChannel[]>('/chat/channels', token),
-      
-    getChannel: async (channelId: string, token: string): Promise<ApiResponse<ChatChannel>> => 
-      get<ChatChannel>(`/chat/channels/${channelId}`, token),
-      
-    getMessages: async (channelId: string, limit = 50, offset = 0, token: string): Promise<ApiResponse<ChatMessage[]>> => 
-      get<ChatMessage[]>(`/chat/channels/${channelId}/messages?limit=${limit}&offset=${offset}`, token),
-      
-    getMembers: async (channelId: string, token: string): Promise<ApiResponse<ChatChannelMember[]>> => 
-      get<ChatChannelMember[]>(`/chat/channels/${channelId}/members`, token),
-      
-    createChannel: async (data: { name: string, type: ChannelType, departmentId?: string, projectId?: string }, token: string): Promise<ApiResponse<ChatChannel>> => 
-      post<ChatChannel>('/chat/channels', data, token),
-      
-    archiveChannel: async (channelId: string, token: string): Promise<ApiResponse<void>> => 
-      put<void>(`/chat/channels/${channelId}/archive`, {}, token),
-      
-    createMessage: async (channelId: string, data: { body: string, fileUrl?: string, fileType?: string, fileSize?: number }, token: string): Promise<ApiResponse<ChatMessage>> => 
-      post<ChatMessage>(`/chat/channels/${channelId}/messages`, data, token),
-      
-    updateMessage: async (messageId: string, data: { body: string }, token: string): Promise<ApiResponse<ChatMessage>> => 
-      put<ChatMessage>(`/chat/messages/${messageId}`, data, token),
-      
-    deleteMessage: async (messageId: string, token: string): Promise<ApiResponse<void>> => 
-      del<void>(`/chat/messages/${messageId}`, token),
-      
-    searchMessages: async (query: string, channelId: string | null, token: string): Promise<ApiResponse<ChatMessage[]>> => {
-      const url = channelId 
-        ? `/chat/search?query=${encodeURIComponent(query)}&channelId=${channelId}`
-        : `/chat/search?query=${encodeURIComponent(query)}`;
-      return get<ChatMessage[]>(url, token);
+    getChannels: async (token: string): Promise<ApiResponse<ChatChannel[]>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: [],
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
     },
       
-    createDM: async (recipientId: string, token: string): Promise<ApiResponse<ChatChannel>> => 
-      post<ChatChannel>('/chat/dm', { recipientId }, token),
+    getChannel: async (channelId: string, token: string): Promise<ApiResponse<ChatChannel>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: null,
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
       
-    addMember: async (channelId: string, userId: string, token: string): Promise<ApiResponse<void>> => 
-      post<void>(`/chat/channels/${channelId}/members`, { userId }, token),
+    getMessages: async (channelId: string, limit = 50, offset = 0, token: string): Promise<ApiResponse<ChatMessage[]>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: [],
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
       
-    removeMember: async (channelId: string, userId: string, token: string): Promise<ApiResponse<void>> => 
-      del<void>(`/chat/channels/${channelId}/members/${userId}`, token),
+    getMembers: async (channelId: string, token: string): Promise<ApiResponse<ChatChannelMember[]>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: [],
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
       
-    getGeneralAnnouncements: async (token: string): Promise<ApiResponse<ChatChannel>> => 
-      get<ChatChannel>('/chat/announcements/general', token),
+    createChannel: async (data: { name: string, type: ChannelType, departmentId?: string, projectId?: string }, token: string): Promise<ApiResponse<ChatChannel>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: null,
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
       
-    getDepartmentAnnouncements: async (departmentId: string, token: string): Promise<ApiResponse<ChatChannel>> => 
-      get<ChatChannel>(`/chat/announcements/department/${departmentId}`, token),
+    archiveChannel: async (channelId: string, token: string): Promise<ApiResponse<void>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
       
-    createProjectChannel: async (projectId: string, token: string): Promise<ApiResponse<ChatChannel>> => 
-      post<ChatChannel>(`/chat/projects/${projectId}/channel`, {}, token),
+    createMessage: async (channelId: string, data: { body: string, fileUrl?: string, fileType?: string, fileSize?: number }, token: string): Promise<ApiResponse<ChatMessage>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: null,
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
       
-    handleProjectCompletion: async (projectId: string, token: string): Promise<ApiResponse<void>> => 
-      post<void>(`/chat/projects/${projectId}/completion`, {}, token)
+    updateMessage: async (messageId: string, data: { body: string }, token: string): Promise<ApiResponse<ChatMessage>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: null,
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    deleteMessage: async (messageId: string, token: string): Promise<ApiResponse<void>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    searchMessages: async (query: string, channelId: string | null, token: string): Promise<ApiResponse<ChatMessage[]>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: [],
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    createDM: async (recipientId: string, token: string): Promise<ApiResponse<ChatChannel>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: null,
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    addMember: async (channelId: string, userId: string, token: string): Promise<ApiResponse<void>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    removeMember: async (channelId: string, userId: string, token: string): Promise<ApiResponse<void>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    getGeneralAnnouncements: async (token: string): Promise<ApiResponse<ChatChannel>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: null,
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    getDepartmentAnnouncements: async (departmentId: string, token: string): Promise<ApiResponse<ChatChannel>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: null,
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    createProjectChannel: async (projectId: string, token: string): Promise<ApiResponse<ChatChannel>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        data: null,
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    },
+      
+    handleProjectCompletion: async (projectId: string, token: string): Promise<ApiResponse<void>> => {
+      console.log('Chat API endpoints require backend implementation');
+      return {
+        success: false,
+        error: 'Chat API not implemented - requires backend integration'
+      };
+    }
+  },
+
+  // Add goals object to apiRoutes
+  goals: {
+    getAllGoals: async (token: string) => {
+      await delay();
+      return {
+        data: [], // Return empty array for now
+        success: true
+      };
+    },
+    getGoalById: async (goalId: string, token: string) => {
+      await delay();
+      return {
+        data: null,
+        success: false,
+        error: 'Goal not found'
+      };
+    },
+    createGoal: async (goalData: any, token: string) => {
+      await delay();
+      const newGoal = {
+        id: uuidv4(),
+        title: goalData.title || '',
+        description: goalData.description || '',
+        name: goalData.name || goalData.title || '', // Support both name and title
+        status: goalData.status || 'pending',
+        startDate: goalData.startDate || new Date().toISOString(),
+        dueDate: goalData.dueDate || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      return {
+        data: newGoal,
+        success: true
+      };
+    }
   },
 };
 
 export default apiRoutes;
+
+// Error handling utility
+const handleApiError = (error: any) => {
+  console.error('API Error:', error);
+  const response = error.response?.data;
+  
+  if (response) {
+    return {
+      success: false,
+      error: response.message || 'An error occurred',
+      data: null
+    };
+  }
+  
+  return {
+    success: false,
+    error: 'Network error or server is unavailable',
+    data: null
+  };
+};
+
+// Checkpoints API functions
+export const checkpoints = {
+  getCheckpoints: async (taskId: string, token: string) => {
+    try {
+      // In the future, this would be an actual API call
+      const checkpoints = localStorage.getItem(`checkpoints-${taskId}`);
+      return {
+        data: checkpoints ? JSON.parse(checkpoints) : [],
+        success: true
+      };
+    } catch (error) {
+      console.error('Error fetching checkpoints:', error);
+      return {
+        data: [],
+        success: false,
+        error: 'Failed to fetch checkpoints'
+      };
+    }
+  },
+
+  createCheckpoint: async (taskId: string, checkpointData: { text: string }, token: string) => {
+    try {
+      // In the future, this would be an actual API call
+      const checkpoints = localStorage.getItem(`checkpoints-${taskId}`);
+      const existingCheckpoints = checkpoints ? JSON.parse(checkpoints) : [];
+      
+      const newCheckpoint = {
+        id: `checkpoint-${Date.now()}`,
+        taskId,
+        text: checkpointData.text,
+        completed: false,
+        order: existingCheckpoints.length,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      const updatedCheckpoints = [...existingCheckpoints, newCheckpoint];
+      localStorage.setItem(`checkpoints-${taskId}`, JSON.stringify(updatedCheckpoints));
+      
+      return {
+        data: newCheckpoint,
+        success: true
+      };
+    } catch (error) {
+      console.error('Error creating checkpoint:', error);
+      return {
+        data: null,
+        success: false,
+        error: 'Failed to create checkpoint'
+      };
+    }
+  },
+
+  updateCheckpoint: async (taskId: string, checkpointId: string, data: { completed?: boolean, text?: string }, token: string) => {
+    try {
+      // In the future, this would be an actual API call
+      const checkpoints = localStorage.getItem(`checkpoints-${taskId}`);
+      if (!checkpoints) {
+        return {
+          data: null,
+          success: false,
+          error: 'Checkpoint not found'
+        };
+      }
+      
+      const existingCheckpoints = JSON.parse(checkpoints);
+      const checkpointIndex = existingCheckpoints.findIndex((cp: any) => cp.id === checkpointId);
+      
+      if (checkpointIndex === -1) {
+        return {
+          data: null,
+          success: false,
+          error: 'Checkpoint not found'
+        };
+      }
+      
+      const updatedCheckpoint = {
+        ...existingCheckpoints[checkpointIndex],
+        ...data,
+        updatedAt: new Date().toISOString()
+      };
+      
+      existingCheckpoints[checkpointIndex] = updatedCheckpoint;
+      localStorage.setItem(`checkpoints-${taskId}`, JSON.stringify(existingCheckpoints));
+      
+      return {
+        data: updatedCheckpoint,
+        success: true
+      };
+    } catch (error) {
+      console.error('Error updating checkpoint:', error);
+      return {
+        data: null,
+        success: false,
+        error: 'Failed to update checkpoint'
+      };
+    }
+  },
+
+  deleteCheckpoint: async (taskId: string, checkpointId: string, token: string) => {
+    try {
+      // In the future, this would be an actual API call
+      const checkpoints = localStorage.getItem(`checkpoints-${taskId}`);
+      if (!checkpoints) {
+        return {
+          success: false,
+          error: 'Checkpoint not found'
+        };
+      }
+      
+      const existingCheckpoints = JSON.parse(checkpoints);
+      const updatedCheckpoints = existingCheckpoints.filter((cp: any) => cp.id !== checkpointId);
+      
+      // Re-order the remaining checkpoints
+      updatedCheckpoints.forEach((cp: any, index: number) => {
+        cp.order = index;
+      });
+      
+      localStorage.setItem(`checkpoints-${taskId}`, JSON.stringify(updatedCheckpoints));
+      
+      return {
+        success: true
+      };
+    } catch (error) {
+      console.error('Error deleting checkpoint:', error);
+      return {
+        success: false,
+        error: 'Failed to delete checkpoint'
+      };
+    }
+  }
+};
+
+// Focus sessions API functions
+export const focusSessions = {
+  createFocusSession: async (sessionData: any, token: string) => {
+    try {
+      // In the future, this would be an actual API call
+      const sessions = localStorage.getItem(`focus-sessions-${sessionData.userId}`);
+      const existingSessions = sessions ? JSON.parse(sessions) : [];
+      
+      const newSession = {
+        id: `session-${Date.now()}`,
+        ...sessionData,
+        createdAt: new Date().toISOString()
+      };
+      
+      const updatedSessions = [...existingSessions, newSession];
+      localStorage.setItem(`focus-sessions-${sessionData.userId}`, JSON.stringify(updatedSessions));
+      
+      return {
+        data: newSession,
+        success: true
+      };
+    } catch (error) {
+      console.error('Error creating focus session:', error);
+      return {
+        data: null,
+        success: false,
+        error: 'Failed to create focus session'
+      };
+    }
+  },
+
+  getUserSessions: async (userId: string, token: string) => {
+    try {
+      // In the future, this would be an actual API call
+      const sessions = localStorage.getItem(`focus-sessions-${userId}`);
+      return {
+        data: sessions ? JSON.parse(sessions) : [],
+        success: true
+      };
+    } catch (error) {
+      console.error('Error fetching focus sessions:', error);
+      return {
+        data: [],
+        success: false,
+        error: 'Failed to fetch focus sessions'
+      };
+    }
+  },
+
+  getTaskSessions: async (taskId: string, token: string) => {
+    try {
+      // In the future, this would be an actual API call
+      // This is a simplified implementation - in a real scenario, we'd query by taskId
+      const userIdFromStorage = localStorage.getItem('userId');
+      if (!userIdFromStorage) {
+        return {
+          data: [],
+          success: true
+        };
+      }
+      
+      const sessions = localStorage.getItem(`focus-sessions-${userIdFromStorage}`);
+      if (!sessions) {
+        return {
+          data: [],
+          success: true
+        };
+      }
+      
+      const allSessions = JSON.parse(sessions);
+      const taskSessions = allSessions.filter((session: any) => session.taskId === taskId);
+      
+      return {
+        data: taskSessions,
+        success: true
+      };
+    } catch (error) {
+      console.error('Error fetching task focus sessions:', error);
+      return {
+        data: [],
+        success: false,
+        error: 'Failed to fetch task focus sessions'
+      };
+    }
+  }
+};

@@ -38,50 +38,6 @@ import AssignedByMeTasks from '../components/Dashboard/AssignedByMeTasks';
 // Define custom project status types that might be used in the UI
 type CustomProjectStatus = ProjectStatus | 'DRAFT' | 'SubPMOReview' | 'MainPMOApproval';
 
-// Mock data
-const mockProjects = [
-  { 
-    id: '1', 
-    name: 'Digital Transformation', 
-    status: 'InProgress', 
-    completion: 65, 
-    department: 'IT', 
-    manager: 'John Doe',
-    riskCount: 3,
-    issueCount: 1
-  },
-  { 
-    id: '2', 
-    name: 'Infrastructure Upgrade', 
-    status: 'InProgress', 
-    completion: 30, 
-    department: 'Operations', 
-    manager: 'Jane Smith',
-    riskCount: 2,
-    issueCount: 0
-  },
-  { 
-    id: '3', 
-    name: 'Mobile App Development', 
-    status: 'MainPMOApproval', 
-    completion: 0, 
-    department: 'Product', 
-    manager: 'Mike Johnson',
-    riskCount: 1,
-    issueCount: 0
-  },
-  { 
-    id: '4', 
-    name: 'Security Enhancement', 
-    status: 'Completed', 
-    completion: 100, 
-    department: 'IT', 
-    manager: 'Sarah Williams',
-    riskCount: 0,
-    issueCount: 0
-  },
-];
-
 // Helper function to get status color
 const getStatusColor = (status: string) => {
   switch(status) {
@@ -292,8 +248,8 @@ const DashboardPage: React.FC = () => {
   const navigateToProjectDetail = (projectId: string) => navigate(`/projects/${projectId}`);
 
   return (
-    <Box sx={{ p: 2 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+    <Box sx={{ p: 0 }}>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, px: 2, pt: 2 }}>
         <Typography variant="h4" component="h1">
           {isDirector && user?.department 
             ? `${user.department.name} ${t('dashboard.title')}`
@@ -328,7 +284,7 @@ const DashboardPage: React.FC = () => {
         </Box>
       </Box>
 
-      <Stack spacing={3}>
+      <Stack spacing={2}>
         {/* Welcome Card */}
         <Paper sx={{ p: 3, background: 'linear-gradient(45deg, #2196F3 30%, #21CBF3 90%)', color: 'white' }}>
           <Typography variant="h5" sx={{ mb: 1 }}>
@@ -350,7 +306,7 @@ const DashboardPage: React.FC = () => {
         
         {/* KPI Section */}
         <Box>
-          <Typography variant="h6" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Typography variant="h6" sx={{ mb: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
             {t('dashboard.kpi')}
             {kpiData.averageCompletion > 70 ? (
               <TrendingUpIcon color="success" />
@@ -371,8 +327,8 @@ const DashboardPage: React.FC = () => {
         
         {/* Projects Section */}
         <Box>
-          <Divider sx={{ my: 2 }} />
-          <Typography variant="h6" sx={{ mb: 2 }}>{t('dashboard.recentProjects', 'Recent Projects')}</Typography>
+          <Divider sx={{ my: 1 }} />
+          <Typography variant="h6" sx={{ mb: 1 }}>{t('dashboard.recentProjects', 'Recent Projects')}</Typography>
           
           {/* Projects content... */}
         </Box>

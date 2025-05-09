@@ -29,37 +29,11 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BilingualContentDisplay from '../components/BilingualContentDisplay';
 
-// Mock data for the dashboard
-const mockTasks = [
-  { id: 1, title: 'Research API integration', status: 'todo', priority: 'high', dueDate: '2023-12-15', assignee: 'John Doe' },
-  { id: 2, title: 'Design user dashboard', status: 'todo', priority: 'medium', dueDate: '2023-12-18', assignee: 'Sarah Kim' },
-  { id: 3, title: 'Implement authentication', status: 'in-progress', priority: 'high', dueDate: '2023-12-10', assignee: 'John Doe' },
-  { id: 4, title: 'Fix navigation bug', status: 'in-progress', priority: 'medium', dueDate: '2023-12-08', assignee: 'Jane Smith' },
-  { id: 5, title: 'Update user documentation', status: 'review', priority: 'low', dueDate: '2023-12-20', assignee: 'Mike Johnson' },
-  { id: 6, title: 'Optimize database queries', status: 'done', priority: 'high', dueDate: '2023-12-05', assignee: 'Jane Smith' },
-  { id: 7, title: 'Implement dark mode', status: 'done', priority: 'medium', dueDate: '2023-12-03', assignee: 'Sarah Kim' },
-];
-
-const mockProjects = [
-  { id: 1, name: 'Website Redesign', progress: 65, tasks: 12, completedTasks: 8 },
-  { id: 2, name: 'Mobile App Development', progress: 30, tasks: 20, completedTasks: 6 },
-  { id: 3, name: 'Database Migration', progress: 90, tasks: 8, completedTasks: 7 },
-];
-
-const mockTeamMembers = [
-  { id: 1, name: 'John Doe', role: 'Developer', avatar: 'JD', tasks: 8, completedTasks: 5 },
-  { id: 2, name: 'Sarah Kim', role: 'Designer', avatar: 'SK', tasks: 6, completedTasks: 4 },
-  { id: 3, name: 'Jane Smith', role: 'Project Manager', avatar: 'JS', tasks: 10, completedTasks: 7 },
-  { id: 4, name: 'Mike Johnson', role: 'Content Writer', avatar: 'MJ', tasks: 5, completedTasks: 3 },
-];
-
-const mockTimelineEvents = [
-  { id: 1, title: 'Project kickoff meeting', date: '2023-12-01', type: 'meeting' },
-  { id: 2, title: 'Design phase completion', date: '2023-12-10', type: 'milestone' },
-  { id: 3, title: 'Development sprint 1', date: '2023-12-15', type: 'sprint' },
-  { id: 4, title: 'User testing', date: '2023-12-25', type: 'testing' },
-  { id: 5, title: 'Version 1.0 release', date: '2023-12-31', type: 'milestone' },
-];
+// Initialize empty arrays for data that will be fetched from backend
+const tasks = [];
+const projects = [];
+const teamMembers = [];
+const timelineEvents = [];
 
 function Dashboard() {
   const { t } = useTranslation();
@@ -81,16 +55,16 @@ function Dashboard() {
   const [selectedView, setSelectedView] = useState('overview');
   
   // Calculate task statistics
-  const totalTasks = mockTasks.length;
-  const todoTasks = mockTasks.filter(task => task.status === 'todo').length;
-  const inProgressTasks = mockTasks.filter(task => task.status === 'in-progress').length;
-  const reviewTasks = mockTasks.filter(task => task.status === 'review').length;
-  const completedTasks = mockTasks.filter(task => task.status === 'done').length;
+  const totalTasks = tasks.length;
+  const todoTasks = tasks.filter(task => task.status === 'todo').length;
+  const inProgressTasks = tasks.filter(task => task.status === 'in-progress').length;
+  const reviewTasks = tasks.filter(task => task.status === 'review').length;
+  const completedTasks = tasks.filter(task => task.status === 'done').length;
   
   // Priority breakdown
-  const highPriorityTasks = mockTasks.filter(task => task.priority === 'high').length;
-  const mediumPriorityTasks = mockTasks.filter(task => task.priority === 'medium').length;
-  const lowPriorityTasks = mockTasks.filter(task => task.priority === 'low').length;
+  const highPriorityTasks = tasks.filter(task => task.priority === 'high').length;
+  const mediumPriorityTasks = tasks.filter(task => task.priority === 'medium').length;
+  const lowPriorityTasks = tasks.filter(task => task.priority === 'low').length;
   
   const getPriorityClass = (priority) => {
     switch (priority) {

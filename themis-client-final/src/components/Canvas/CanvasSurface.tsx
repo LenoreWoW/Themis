@@ -1,11 +1,12 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
+import { updateCard, updateGroup } from '../../store/slices/canvasSlice';
 import useCanvasViewport from '../../hooks/canvas/useCanvasViewport';
 import useCanvasSelection from '../../hooks/canvas/useCanvasSelection';
 import useCanvasHistory from '../../hooks/canvas/useCanvasHistory';
 import useCanvasSnap from '../../hooks/canvas/useCanvasSnap';
-import { BBox } from '../../utils/canvas/bboxUtils';
+import { BBox } from '../../types/Canvas';
 import { Box, Paper } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { Position } from '../../store/slices/canvasSlice';

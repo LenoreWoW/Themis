@@ -9,7 +9,8 @@ import {
   selectMultipleCards,
   Position
 } from '../../store/slices/canvasSlice';
-import { BBox, createBBoxFromPositionAndSize, isPointInBBox } from '../../utils/canvas/bboxUtils';
+import { createBBoxFromPositionAndSize, isPointInBBox } from '../../utils/canvas/bboxUtils';
+import { Card, Size, BBox } from '../../types/Canvas';
 
 /**
  * Custom hook for managing canvas selection
@@ -22,10 +23,15 @@ import { BBox, createBBoxFromPositionAndSize, isPointInBBox } from '../../utils/
  */
 export const useCanvasSelection = () => {
   const dispatch = useDispatch();
-  const { cards, connections, groups } = useSelector((state: RootState) => state.canvas);
+  const { cards: cardsObj, connections: connectionsObj, groups: groupsObj } = useSelector((state: RootState) => state.canvas);
   const { cardIds, connectionIds, groupIds } = useSelector(
     (state: RootState) => state.canvas.selection
   );
+  
+  // Convert objects to arrays for easier processing
+  const cards = Object.values(cardsObj);
+  const connections = Object.values(connectionsObj);
+  const groups = Object.values(groupsObj);
   
   // Selection box state
   const [selectionBox, setSelectionBox] = useState<BBox | null>(null);
@@ -140,8 +146,8 @@ export const useCanvasSelection = () => {
     // Check if clicked near a connection
     // This is just a simple distance check, could be improved
     const clickedConnection = connections.find(connection => {
-      const sourceCard = cards.find(card => card.id === connection.sourceId);
-      const targetCard = cards.find(card => card.id === connection.targetId);
+      const sourceCard = cards.find(card => card.id === connection.fromId);
+      const targetCard = cards.find(card => card.id === connection.toId);
       
       if (!sourceCard || !targetCard) return false;
       

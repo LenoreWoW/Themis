@@ -167,8 +167,8 @@ const AssignedByMeTasks: React.FC<AssignedByMeTasksProps> = ({ maxItems = 5 }) =
   }
   
   return (
-    <Paper sx={{ p: 0, mb: 3 }}>
-      <Box sx={{ p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <Paper sx={{ p: 0, mb: 2 }}>
+      <Box sx={{ p: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6">What I've Assigned</Typography>
         <Badge badgeContent={assignedTasks.length} color="primary">
           <Typography 

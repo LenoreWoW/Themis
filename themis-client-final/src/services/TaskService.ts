@@ -5,8 +5,13 @@ import { v4 as uuidv4 } from 'uuid';
 
 const STORAGE_KEY = 'app_tasks';
 
+// Create an extended Task interface that includes assignedBy
+interface TaskWithAssignedBy extends Task {
+  assignedBy?: User;
+}
+
 // Sample task data for initial state
-const demoTasks: Task[] = [
+const demoTasks: TaskWithAssignedBy[] = [
   {
     id: '1',
     title: 'Design new dashboard layout',
@@ -16,6 +21,23 @@ const demoTasks: Task[] = [
     startDate: '2023-09-01',
     dueDate: '2023-09-15',
     projectId: '1',
+    project: {
+      id: '1',
+      name: 'Website Redesign',
+      description: 'Redesign of the company website',
+      department: { id: '1', name: 'Design', description: '', createdAt: '', updatedAt: '' },
+      status: 'IN_PROGRESS' as any,
+      priority: 'HIGH' as any,
+      startDate: '2023-08-15',
+      endDate: '2023-10-30',
+      projectManager: { id: '1', firstName: 'John', lastName: 'Doe' } as any,
+      budget: 50000,
+      actualCost: 25000,
+      progress: 40,
+      createdAt: '2023-08-15T00:00:00Z',
+      updatedAt: '2023-09-01T00:00:00Z',
+      templateType: 'DEFAULT' as any
+    },
     assignee: {
       id: '2',
       firstName: 'Jane',
@@ -43,6 +65,7 @@ const demoTasks: Task[] = [
     createdAt: '2023-09-01T10:00:00Z',
     updatedAt: '2023-09-05T15:30:00Z'
   },
+  
   {
     id: '2',
     title: 'Implement API integration',
@@ -52,6 +75,23 @@ const demoTasks: Task[] = [
     startDate: '2023-09-10',
     dueDate: '2023-09-25',
     projectId: '1',
+    project: {
+      id: '1',
+      name: 'Website Redesign',
+      description: 'Redesign of the company website',
+      department: { id: '1', name: 'Design', description: '', createdAt: '', updatedAt: '' },
+      status: 'IN_PROGRESS' as any,
+      priority: 'HIGH' as any,
+      startDate: '2023-08-15',
+      endDate: '2023-10-30',
+      projectManager: { id: '1', firstName: 'John', lastName: 'Doe' } as any,
+      budget: 50000,
+      actualCost: 25000,
+      progress: 40,
+      createdAt: '2023-08-15T00:00:00Z',
+      updatedAt: '2023-09-01T00:00:00Z',
+      templateType: 'DEFAULT' as any
+    },
     assignee: {
       id: '3',
       firstName: 'Mark',
@@ -79,6 +119,7 @@ const demoTasks: Task[] = [
     createdAt: '2023-09-03T11:20:00Z',
     updatedAt: '2023-09-03T11:20:00Z'
   },
+  
   {
     id: '3',
     title: 'Unit testing for login module',
@@ -88,6 +129,23 @@ const demoTasks: Task[] = [
     startDate: '2023-09-05',
     dueDate: '2023-09-12',
     projectId: '2',
+    project: {
+      id: '2',
+      name: 'Authentication System',
+      description: 'New authentication system for the app',
+      department: { id: '2', name: 'Engineering', description: '', createdAt: '', updatedAt: '' },
+      status: 'IN_PROGRESS' as any,
+      priority: 'CRITICAL' as any,
+      startDate: '2023-08-01',
+      endDate: '2023-10-15',
+      projectManager: { id: '1', firstName: 'John', lastName: 'Doe' } as any,
+      budget: 75000,
+      actualCost: 40000,
+      progress: 60,
+      createdAt: '2023-08-01T00:00:00Z',
+      updatedAt: '2023-09-01T00:00:00Z',
+      templateType: 'DEFAULT' as any
+    },
     assignee: {
       id: '4',
       firstName: 'Sarah',

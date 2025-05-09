@@ -35,6 +35,9 @@ import { useAuth } from '../../context/AuthContext';
 import { Draggable } from 'react-beautiful-dnd';
 import TaskContextMenu from './TaskContextMenu';
 import { formatEnumValue } from '../../utils/helpers';
+import PomodoroTimer from './PomodoroTimer';
+import TaskCheckpoints from './TaskCheckpoints';
+import FocusAnalytics from './FocusAnalytics';
 
 interface TaskCardProps {
   task: Task;
@@ -65,6 +68,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
   const [submitting, setSubmitting] = useState(false);
   const [localComments, setLocalComments] = useState<TaskComment[]>(task.comments || []);
   const [contextMenuAnchor, setContextMenuAnchor] = useState<HTMLElement | null>(null);
+  const [checkpointProgress, setCheckpointProgress] = useState<number>(0);
+  const [nextCheckpoint, setNextCheckpoint] = useState<string | null>(null);
 
   const handleExpandClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -250,6 +255,22 @@ const TaskCard: React.FC<TaskCardProps> = ({
     }
   };
 
+  // Handle checkpoint progress change
+  const handleCheckpointProgressChange = (progress: number) => {
+    setCheckpointProgress(progress);
+  };
+
+  // Handle checkpoint data for timer
+  const handleCheckpointData = (nextCheckpointText: string | null) => {
+    setNextCheckpoint(nextCheckpointText);
+  };
+
+  // Handle focus session completion
+  const handleFocusSessionComplete = (sessionData: any) => {
+    console.log('Focus session completed:', sessionData);
+    // You could update UI or show notification here
+  };
+
   return (
     <>
       <Draggable draggableId={task.id} index={index}>
@@ -258,6 +279,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
             ref={provided.innerRef}
             {...provided.draggableProps}
             {...provided.dragHandleProps}
+            id={`task-${task.id}`}
             sx={{ 
               borderLeft: 5, 
               borderColor: getBorderColor(),
@@ -386,6 +408,32 @@ const TaskCard: React.FC<TaskCardProps> = ({
                 )}
               </Box>
               
+              {/* Display checkpoint progress at the top if checkpoints exist */}
+              {checkpointProgress > 0 && (
+                <Box sx={{ mt: 1, mb: 2 }}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.5 }}>
+                    <Typography variant="caption" color="text.secondary">
+                      Checkpoint progress
+                    </Typography>
+                    <Typography variant="caption" color="text.secondary">
+                      {checkpointProgress}%
+                    </Typography>
+                  </Box>
+                  <LinearProgress 
+                    variant="determinate" 
+                    value={checkpointProgress} 
+                    color={checkpointProgress === 100 ? 'success' : 'primary'}
+                    sx={{ 
+                      height: 4, 
+                      borderRadius: 2,
+                      '& .MuiLinearProgress-bar': {
+                        transition: 'transform 0.5s ease'
+                      }
+                    }} 
+                  />
+                </Box>
+              )}
+              
               <Box 
                 sx={{ 
                   display: 'flex', 
@@ -410,7 +458,24 @@ const TaskCard: React.FC<TaskCardProps> = ({
             
             <Collapse in={expanded} timeout="auto" unmountOnExit>
               <Divider />
-              <Box sx={{ p: 2 }}>
+              <CardContent>
+                {/* Add Checkpoints component */}
+                <TaskCheckpoints 
+                  taskId={task.id} 
+                  onProgressChange={handleCheckpointProgressChange} 
+                  onNextCheckpointChange={handleCheckpointData}
+                />
+                
+                {/* Add Pomodoro Timer component */}
+                <PomodoroTimer 
+                  taskId={task.id}
+                  nextCheckpoint={nextCheckpoint}
+                  onSessionComplete={handleFocusSessionComplete}
+                />
+                
+                {/* Add Focus Analytics component */}
+                <FocusAnalytics taskId={task.id} />
+                
                 <Typography variant="subtitle1" display="flex" alignItems="center" gutterBottom>
                   <CommentIcon sx={{ mr: 1, fontSize: 'small' }} />
                   Comments ({localComments.length})
@@ -497,7 +562,7 @@ const TaskCard: React.FC<TaskCardProps> = ({
                     }}
                   />
                 </Box>
-              </Box>
+              </CardContent>
             </Collapse>
           </Card>
         )}

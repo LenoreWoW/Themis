@@ -1,5 +1,5 @@
 import { HubConnection, HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
-import { ChatChannel, ChatMessage, ChatChannelMember, User } from '../types/ChatTypes';
+import { ChatChannel, ChatMessage, ChatChannelMember, User, ApiResponse, ChannelType, SystemMessagePayload } from '../types/ChatTypes';
 import api from './api';
 
 class ChatService {
@@ -78,33 +78,74 @@ class ChatService {
   /**
    * Get all channels for the current user
    */
-  public async getUserChannels(): Promise<ChatChannel[]> {
-    const response = await api.get('/chat/channels', this.token!);
-    return response.data;
+  public async getUserChannels(): Promise<ApiResponse<ChatChannel[]>> {
+    const response = await api.chat.getChannels(this.token!);
+    // Ensure the response matches the ChatTypes.ApiResponse structure
+    return {
+      success: response.success,
+      data: response.data || [],
+      error: response.error
+    };
   }
   
   /**
-   * Get channel details by ID
+   * Get a single channel by ID
    */
-  public async getChannel(channelId: string): Promise<ChatChannel> {
-    const response = await api.get(`/chat/channels/${channelId}`, this.token!);
-    return response.data;
+  public async getChannel(channelId: string): Promise<ApiResponse<ChatChannel>> {
+    const response = await api.chat.getChannel(channelId, this.token!);
+    return {
+      success: response.success,
+      data: response.data,
+      error: response.error
+    };
   }
   
   /**
-   * Get messages from a channel
+   * Get messages for a channel
    */
-  public async getChannelMessages(channelId: string, limit = 50, offset = 0): Promise<ChatMessage[]> {
-    const response = await api.get(`/chat/channels/${channelId}/messages?limit=${limit}&offset=${offset}`, this.token!);
-    return response.data;
+  public async getChannelMessages(channelId: string, limit = 50, offset = 0): Promise<ApiResponse<ChatMessage[]>> {
+    const response = await api.chat.getMessages(channelId, limit, offset, this.token!);
+    return {
+      success: response.success,
+      data: response.data || [],
+      error: response.error
+    };
   }
   
   /**
    * Get members of a channel
    */
-  public async getChannelMembers(channelId: string): Promise<ChatChannelMember[]> {
-    const response = await api.get(`/chat/channels/${channelId}/members`, this.token!);
-    return response.data;
+  public async getChannelMembers(channelId: string): Promise<ApiResponse<ChatChannelMember[]>> {
+    const response = await api.chat.getMembers(channelId, this.token!);
+    return {
+      success: response.success,
+      data: response.data || [],
+      error: response.error
+    };
+  }
+  
+  /**
+   * Check if the current user can post to a channel
+   * For most channels, users can post unless the channel is archived
+   */
+  public async canUserPostToChannel(channelId: string): Promise<boolean> {
+    try {
+      const channelResponse = await this.getChannel(channelId);
+      if (channelResponse.success && channelResponse.data) {
+        // Users can't post to archived channels
+        if (channelResponse.data.isArchived) {
+          return false;
+        }
+        
+        // For department and project channels, check permissions based on user role
+        // This is a simplified implementation - in a real app, we'd check against the backend
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking posting permissions:', error);
+      return false;
+    }
   }
   
   /**
@@ -126,7 +167,58 @@ class ChatService {
         fileSize
       };
       
-      await api.post(`/chat/channels/${channelId}/messages`, payload, this.token!);
+      await api.chat.createMessage(channelId, payload, this.token!);
+    }
+  }
+
+  /**
+   * Send a system message to a channel with structured data
+   * @param channelId The channel to send the message to
+   * @param message The message text body
+   * @param payload The structured system message payload
+   */
+  public async sendSystemMessage(channelId: string, message: string, payload: SystemMessagePayload): Promise<void> {
+    if (!this.connection) {
+      await this.init();
+    }
+    
+    try {
+      // For system messages, we always use the API for now since SignalR might not support it yet
+      const messagePayload = {
+        body: message,
+        isSystemMessage: true,
+        systemPayload: payload
+      };
+      
+      await api.chat.createMessage(channelId, messagePayload, this.token!);
+      
+      // Simulate the message being created for local UI updates
+      // In a real implementation, this would be handled by the server
+      const simulatedMessage: ChatMessage = {
+        id: `system-${Date.now()}`,
+        channelId,
+        senderId: 'system',
+        body: message,
+        isEdited: false,
+        isDeleted: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        status: 'SENT' as any, // Type assertion to match enum
+        sender: {
+          id: 'system',
+          firstName: 'System',
+          lastName: 'Bot',
+          role: 'SYSTEM'
+        },
+        isSystemMessage: true,
+        systemPayload: payload
+      };
+      
+      // Notify any listeners about this message
+      this.notifyMessageListeners(simulatedMessage);
+    } catch (error) {
+      console.error('Error sending system message:', error);
+      throw error;
     }
   }
   
@@ -165,14 +257,14 @@ class ChatService {
    * Create a direct message channel with another user
    */
   public async createDirectMessageChannel(recipientId: string): Promise<ChatChannel> {
-    const response = await api.post('/chat/dm', { recipientId }, this.token!);
+    const response = await api.chat.createDM(recipientId, this.token!);
     return response.data;
   }
   
   /**
    * Create a new channel
    */
-  public async createChannel(name: string, type: string, departmentId?: string, projectId?: string): Promise<ChatChannel> {
+  public async createChannel(name: string, type: ChannelType, departmentId?: string, projectId?: string): Promise<ChatChannel> {
     const payload = {
       name,
       type,
@@ -180,7 +272,7 @@ class ChatService {
       projectId
     };
     
-    const response = await api.post('/chat/channels', payload, this.token!);
+    const response = await api.chat.createChannel(payload, this.token!);
     return response.data;
   }
   
@@ -188,18 +280,14 @@ class ChatService {
    * Archive a channel
    */
   public async archiveChannel(channelId: string): Promise<void> {
-    await api.put(`/chat/channels/${channelId}/archive`, {}, this.token!);
+    await api.chat.archiveChannel(channelId, this.token!);
   }
   
   /**
    * Search for messages
    */
   public async searchMessages(query: string, channelId?: string): Promise<ChatMessage[]> {
-    const url = channelId 
-      ? `/chat/search?query=${encodeURIComponent(query)}&channelId=${channelId}`
-      : `/chat/search?query=${encodeURIComponent(query)}`;
-      
-    const response = await api.get(url, this.token!);
+    const response = await api.chat.searchMessages(query, channelId || null, this.token!);
     return response.data;
   }
   
@@ -207,7 +295,7 @@ class ChatService {
    * Update a message
    */
   public async updateMessage(messageId: string, body: string): Promise<ChatMessage> {
-    const response = await api.put(`/chat/messages/${messageId}`, { body }, this.token!);
+    const response = await api.chat.updateMessage(messageId, { body }, this.token!);
     return response.data;
   }
   
@@ -215,21 +303,21 @@ class ChatService {
    * Delete a message
    */
   public async deleteMessage(messageId: string): Promise<void> {
-    await api.delete(`/chat/messages/${messageId}`, this.token!);
+    await api.chat.deleteMessage(messageId, this.token!);
   }
   
   /**
    * Add a user to a channel
    */
   public async addUserToChannel(channelId: string, userId: string): Promise<void> {
-    await api.post(`/chat/channels/${channelId}/members`, { userId }, this.token!);
+    await api.chat.addMember(channelId, userId, this.token!);
   }
   
   /**
    * Remove a user from a channel
    */
   public async removeUserFromChannel(channelId: string, userId: string): Promise<void> {
-    await api.delete(`/chat/channels/${channelId}/members/${userId}`, this.token!);
+    await api.chat.removeMember(channelId, userId, this.token!);
   }
   
   /**
@@ -299,14 +387,12 @@ class ChatService {
     
     // Handle new message events
     this.connection.on('NewMessage', (message: ChatMessage) => {
-      const listeners = this.messageListeners.get(message.channelId) || [];
-      listeners.forEach(callback => callback(message));
+      this.notifyMessageListeners(message);
     });
     
     // Handle message update events
     this.connection.on('MessageUpdated', (message: ChatMessage) => {
-      const listeners = this.messageListeners.get(message.channelId) || [];
-      listeners.forEach(callback => callback(message));
+      this.notifyMessageListeners(message);
     });
     
     // Handle message deletion events
@@ -334,6 +420,15 @@ class ChatService {
     this.connection.on('Error', (error: string) => {
       console.error('Chat hub error:', error);
     });
+  }
+  
+  /**
+   * Notify message listeners about a new/updated message
+   * Extracted to a helper method to avoid code duplication
+   */
+  private notifyMessageListeners(message: ChatMessage): void {
+    const listeners = this.messageListeners.get(message.channelId) || [];
+    listeners.forEach(callback => callback(message));
   }
 }
 

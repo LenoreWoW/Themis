@@ -6,7 +6,11 @@ import {
   Link as MuiLink, 
   IconButton,
   Tooltip,
-  useTheme
+  useTheme,
+  Paper,
+  Button,
+  Divider,
+  alpha
 } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
@@ -22,11 +26,13 @@ interface PageHeaderProps {
   actionButtons?: React.ReactNode;
   backTo?: string;
   backLabel?: string;
+  elevated?: boolean;
 }
 
 /**
  * Responsive page header with proper RTL/LTR support
  * Includes optional breadcrumbs, subtitle, and action buttons
+ * Consistent styling across all pages for UI harmonization
  */
 const PageHeader: React.FC<PageHeaderProps> = ({
   title,
@@ -34,7 +40,8 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   subtitle,
   actionButtons,
   backTo,
-  backLabel = 'common.back'
+  backLabel = 'common.back',
+  elevated = false
 }) => {
   const { translate, isRTL, getTextClass } = useLocalizedText();
   const theme = useTheme();
@@ -42,8 +49,8 @@ const PageHeader: React.FC<PageHeaderProps> = ({
   // Direction-aware back arrow icon
   const BackIcon = isRTL ? KeyboardArrowRightIcon : KeyboardArrowLeftIcon;
   
-  return (
-    <Box sx={{ mb: 4 }}>
+  const headerContent = (
+    <>
       {/* Top section with breadcrumbs or back button */}
       {(breadcrumbs || backTo) && (
         <Box sx={{ mb: 1 }}>
@@ -57,100 +64,130 @@ const PageHeader: React.FC<PageHeaderProps> = ({
                   color: 'text.secondary',
                   '&:hover': {
                     backgroundColor: 'action.hover',
-                  }
+                  },
+                  mr: isRTL ? 0 : 1,
+                  ml: isRTL ? 1 : 0
                 }}
+                aria-label={String(translate(backLabel))}
               >
                 <BackIcon fontSize="small" />
               </IconButton>
             </Tooltip>
-          ) : breadcrumbs && breadcrumbs.length > 0 ? (
-            <Breadcrumbs 
-              separator={<NavigateNextIcon fontSize="small" />} 
-              aria-label="breadcrumbs"
-              sx={{
-                '& .MuiBreadcrumbs-separator': {
-                  transform: isRTL ? 'rotate(180deg)' : 'none'
-                }
-              }}
-            >
-              {breadcrumbs.map((crumb, index) => {
-                const isLast = index === breadcrumbs.length - 1;
-                
-                return crumb.to ? (
-                  <MuiLink
-                    key={index}
-                    component={RouterLink}
-                    to={crumb.to}
-                    color={isLast ? 'text.primary' : 'inherit'}
-                    sx={{ 
-                      textDecoration: 'none',
-                      fontWeight: isLast ? 600 : 400,
-                      '&:hover': {
-                        textDecoration: isLast ? 'none' : 'underline'
-                      },
-                      direction: isRTL ? 'rtl' : 'ltr' 
-                    }}
-                    className={getTextClass()}
-                  >
-                    {crumb.label}
-                  </MuiLink>
-                ) : (
-                  <Typography 
-                    key={index} 
-                    color="text.primary" 
-                    className={getTextClass()}
-                  >
-                    {crumb.label}
-                  </Typography>
-                );
-              })}
-            </Breadcrumbs>
-          ) : null}
+          ) : (
+            breadcrumbs && (
+              <Breadcrumbs 
+                separator={<NavigateNextIcon fontSize="small" />} 
+                aria-label="breadcrumb"
+                sx={{ 
+                  '& .MuiBreadcrumbs-separator': {
+                    mx: 0.5,
+                    color: 'text.secondary',
+                  }
+                }}
+              >
+                {breadcrumbs.map((crumb, index) => {
+                  const isLast = index === breadcrumbs.length - 1;
+                  return isLast || !crumb.to ? (
+                    <Typography 
+                      key={index} 
+                      color="text.primary" 
+                      variant="body2"
+                      sx={{ 
+                        fontWeight: isLast ? 600 : 400,
+                        fontSize: '0.875rem',
+                      }}
+                    >
+                      {String(translate(crumb.label))}
+                    </Typography>
+                  ) : (
+                    <MuiLink
+                      key={index}
+                      component={RouterLink}
+                      to={crumb.to}
+                      color="inherit"
+                      sx={{ 
+                        fontSize: '0.875rem',
+                        fontWeight: 400,
+                        '&:hover': {
+                          textDecoration: 'none',
+                          color: 'primary.main'
+                        }
+                      }}
+                    >
+                      {String(translate(crumb.label))}
+                    </MuiLink>
+                  );
+                })}
+              </Breadcrumbs>
+            )
+          )}
         </Box>
       )}
       
       {/* Main header with title and action buttons */}
-      <BiDiFlexBox
-        ltrDirection="row"
-        sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
+      <BiDiFlexBox 
+        sx={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
           alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 2
+          mb: subtitle ? 0.5 : 0
         }}
       >
-        <Box>
-          <Typography 
-            variant="h4" 
-            component="h1" 
-            sx={{ 
-              fontWeight: 700,
-              color: theme.palette.primary.main,
-              mb: subtitle ? 0.5 : 0
-            }}
-            className={getTextClass()}
-          >
-            {title}
-          </Typography>
-          
-          {subtitle && (
-            <Typography 
-              variant="subtitle1" 
-              color="text.secondary"
-              className={getTextClass()}
-            >
-              {subtitle}
-            </Typography>
-          )}
-        </Box>
+        <Typography 
+          variant="h4" 
+          component="h1" 
+          sx={{ 
+            fontWeight: 600,
+            fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+            lineHeight: 1.2,
+            color: 'text.primary'
+          }}
+        >
+          {String(translate(title))}
+        </Typography>
         
         {actionButtons && (
-          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
             {actionButtons}
           </Box>
         )}
       </BiDiFlexBox>
+      
+      {/* Subtitle text */}
+      {subtitle && (
+        <Typography 
+          variant="body1" 
+          color="text.secondary"
+          sx={{ 
+            mb: 2,
+            maxWidth: '80ch',
+            lineHeight: 1.6
+          }}
+        >
+          {String(translate(subtitle))}
+        </Typography>
+      )}
+      
+      <Divider sx={{ mt: 2, mb: 3, opacity: 0.8 }} />
+    </>
+  );
+  
+  // Return either elevated or regular header
+  return elevated ? (
+    <Paper 
+      elevation={1} 
+      sx={{ 
+        p: 3, 
+        mb: 3,
+        borderRadius: 2,
+        backgroundColor: alpha(theme.palette.background.paper, 0.7)
+      }}
+    >
+      {headerContent}
+    </Paper>
+  ) : (
+    <Box sx={{ mb: 3 }}>
+      {headerContent}
     </Box>
   );
 };

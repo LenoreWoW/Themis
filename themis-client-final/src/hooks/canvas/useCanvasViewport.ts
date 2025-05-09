@@ -148,40 +148,54 @@ export const useCanvasViewport = ({
   }, [dispatch]);
   
   // Fit content to viewport
-  const fitToContent = useCallback((bbox: { minX: number; minY: number; maxX: number; maxY: number }, padding = 50) => {
-    if (!canvasRef.current) return;
+  const fitToContent = useCallback((
+    bounds: { 
+      minX: number; 
+      minY: number; 
+      maxX: number; 
+      maxY: number; 
+    } | { 
+      x: number; 
+      y: number; 
+      width: number; 
+      height: number; 
+    },
+    padding = 20
+  ) => {
+    // Convert x, y, width, height format to minX, minY, maxX, maxY if needed
+    const bbox = 'x' in bounds ? {
+      minX: bounds.x,
+      minY: bounds.y,
+      maxX: bounds.x + bounds.width,
+      maxY: bounds.y + bounds.height
+    } : bounds;
+
+    // Get the current viewport state
+    const { width, height } = canvasRef.current?.getBoundingClientRect() || { width: 0, height: 0 };
     
-    const rect = canvasRef.current.getBoundingClientRect();
-    const containerWidth = rect.width;
-    const containerHeight = rect.height;
+    // Calculate the content dimensions with padding
+    const contentWidth = bbox.maxX - bbox.minX + (padding * 2);
+    const contentHeight = bbox.maxY - bbox.minY + (padding * 2);
     
-    const contentWidth = bbox.maxX - bbox.minX + padding * 2;
-    const contentHeight = bbox.maxY - bbox.minY + padding * 2;
+    // Calculate the center of the content
+    const contentCenterX = bbox.minX + (contentWidth / 2) - padding;
+    const contentCenterY = bbox.minY + (contentHeight / 2) - padding;
     
-    // Calculate zoom to fit content
-    const zoomX = containerWidth / contentWidth;
-    const zoomY = containerHeight / contentHeight;
-    const newZoom = Math.min(
-      Math.min(zoomX, zoomY), // Take the smallest zoom that fits
-      maxZoom // Don't exceed max zoom
-    );
+    // Calculate the zoom level to fit the content
+    const zoomX = width / contentWidth;
+    const zoomY = height / contentHeight;
+    const zoom = Math.min(zoomX, zoomY, 1); // Limit zoom to 1x (no zooming in)
     
-    // Calculate center of content
-    const contentCenterX = (bbox.minX + bbox.maxX) / 2;
-    const contentCenterY = (bbox.minY + bbox.maxY) / 2;
-    
-    // Calculate new pan to center content
-    const newPan = {
-      x: containerWidth / 2 - contentCenterX * newZoom,
-      y: containerHeight / 2 - contentCenterY * newZoom
-    };
-    
-    // Update viewport
-    dispatch(updateViewport({
-      pan: newPan,
-      zoom: newZoom
-    }));
-  }, [dispatch, maxZoom]);
+    // Set the new viewport
+    dispatch({
+      type: 'canvas/setViewport',
+      payload: {
+        x: contentCenterX,
+        y: contentCenterY,
+        zoom
+      }
+    });
+  }, [canvasRef, dispatch]);
   
   // Current viewport state
   const viewport: ViewportState = {

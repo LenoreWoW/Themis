@@ -2,6 +2,7 @@ import React, { useState, useCallback, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { RootState } from '../../redux/store';
 import { clearSelection, selectCard, selectGroup } from '../../store/slices/canvasSlice';
+import { Card, CardGroup } from '../../types/Canvas';
 import useCanvasViewport from '../../hooks/canvas/useCanvasViewport';
 import { Box, TextField, Popover, List, ListItem, ListItemText, Typography, InputAdornment, IconButton } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
@@ -64,16 +65,17 @@ const CanvasSearch: React.FC = () => {
     }[] = [];
     
     // Search in cards
-    Object.values(cards).forEach(card => {
-      const title = card.data?.title?.toLowerCase() || '';
-      const content = card.data?.content?.toLowerCase() || '';
+    Object.values(cards).forEach((card: Card) => {
+      // Check both data.title and direct title properties
+      const title = (card.data?.title || card.title || '').toLowerCase();
+      const content = (card.data?.content || card.content || '').toLowerCase();
       
       if (title.includes(term) || content.includes(term)) {
         results.push({
           id: card.id,
           type: 'card',
-          title: card.data?.title || 'Untitled Card',
-          content: card.data?.content
+          title: card.data?.title || card.title || 'Untitled Card',
+          content: card.data?.content || card.content
         });
       }
     });
@@ -105,42 +107,45 @@ const CanvasSearch: React.FC = () => {
   };
   
   // Handle clicking on a search result
-  const handleResultClick = useCallback((result: {
+  const handleResultClick = (result: {
     id: string;
     type: 'card' | 'group';
   }) => {
     dispatch(clearSelection());
     
     if (result.type === 'card') {
-      dispatch(selectCard(result.id));
-      
-      // Find the card and fit to it
-      const card = cards[result.id];
+      const card = Object.values(cards).find(c => c.id === result.id);
       if (card) {
-        fitToContent({
-          minX: card.position.x,
-          minY: card.position.y,
-          maxX: card.position.x + card.size.width,
-          maxY: card.position.y + card.size.height
-        }, 50);
+        dispatch(selectCard({ id: card.id, addToSelection: false }));
+        
+        // Find the card's group and fit to it
+        const group = Object.values(groups).find(g => g.id === card.groupId);
+        if (group) {
+          fitToContent({
+            minX: group.position.x,
+            minY: group.position.y,
+            maxX: group.position.x + group.size.width,
+            maxY: group.position.y + group.size.height
+          });
+        }
       }
     } else if (result.type === 'group') {
-      dispatch(selectGroup(result.id));
+      dispatch(selectGroup({ id: result.id, addToSelection: false }));
       
       // Find the group and fit to it
-      const group = groups[result.id];
+      const group = Object.values(groups).find(g => g.id === result.id);
       if (group) {
         fitToContent({
           minX: group.position.x,
           minY: group.position.y,
           maxX: group.position.x + group.size.width,
           maxY: group.position.y + group.size.height
-        }, 50);
+        });
       }
     }
     
     handleClose();
-  }, [dispatch, cards, groups, fitToContent]);
+  };
   
   // Clear search
   const handleClearSearch = () => {

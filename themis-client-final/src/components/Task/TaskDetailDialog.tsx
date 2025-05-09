@@ -16,7 +16,8 @@ import {
   Avatar,
   Paper,
   TextField,
-  IconButton
+  IconButton,
+  Tooltip
 } from '@mui/material';
 import {
   CalendarToday,
@@ -24,7 +25,8 @@ import {
   Comment as CommentIcon,
   Edit as EditIcon,
   Delete as DeleteIcon,
-  Send as SendIcon
+  Send as SendIcon,
+  Videocam as VideocamIcon
 } from '@mui/icons-material';
 import { Task, TaskStatus, TaskPriority, TaskComment } from '../../types';
 import { format } from 'date-fns';
@@ -54,6 +56,7 @@ const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
   const [localComments, setLocalComments] = useState<TaskComment[]>(
     task && task.comments ? task.comments : []
   );
+  const [callLoading, setCallLoading] = useState(false);
 
   // Guard against null task
   if (!task) {
@@ -176,11 +179,54 @@ const TaskDetailDialog: React.FC<TaskDetailDialogProps> = ({
     return `${daysLeft} days left`;
   };
 
+  const handleStartCall = async () => {
+    if (!task) return;
+    
+    try {
+      setCallLoading(true);
+      
+      // Call the API to create a new call room
+      const response = await fetch('/api/calls/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          taskId: task.id,
+          initiatedBy: user?.id
+        }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success && data.roomId) {
+        // Open the call in a new window/tab
+        window.open(`/call/${data.roomId}`, '_blank');
+      } else {
+        console.error('Failed to create call room');
+      }
+    } catch (error) {
+      console.error('Error starting call:', error);
+    } finally {
+      setCallLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Typography variant="h6">Task Details</Typography>
         <Box>
+          <Tooltip title="Start a Video Call">
+            <IconButton 
+              onClick={handleStartCall} 
+              color="primary" 
+              sx={{ mr: 1 }}
+              disabled={callLoading}
+            >
+              <VideocamIcon />
+            </IconButton>
+          </Tooltip>
           {onEdit && (
             <IconButton onClick={() => onEdit(task.id)} color="primary" sx={{ mr: 1 }}>
               <EditIcon />

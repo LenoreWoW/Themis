@@ -65,7 +65,12 @@ export const arTranslations = {
     editInBothLanguages: "تحرير بكلتا اللغتين",
     automaticTranslation: "ترجمة تلقائية",
     manual: "يدوي",
-    automatic: "تلقائي"
+    automatic: "تلقائي",
+    archive: "أرشفة",
+    status: "الحالة",
+    switchLanguage: "تغيير اللغة",
+    notifications: "الإشعارات",
+    markAsRead: "تعيين كمقروء"
   },
   auth: {
     login: 'تسجيل الدخول',
@@ -93,20 +98,26 @@ export const arTranslations = {
     activeDirectoryId: "معرف الدليل النشط"
   },
   navigation: {
-    dashboard: "لوحة التحكم",
+    dashboard: "لوحة المعلومات",
+    workspace: "عملي",
+    workspaceMain: "مساحة العمل",
+    myWork: "عملي",
+    calendar: "التقويم",
     projects: "المشاريع",
     tasks: "المهام",
-    assignments: "التكليفات",
+    assignments: "المهام المسندة",
+    chat: "الدردشة والإعلانات",
     risksIssues: "المخاطر والمشكلات",
     meetings: "الاجتماعات",
-    users: "إعدادات النظام",
     goals: "الأهداف",
-    departments: "الأقسام",
+    faculty: "أعضاء هيئة التدريس",
     approvals: "الموافقات",
-    auditLogs: "سجلات التدقيق",
+    systemSettings: "إعدادات النظام",
     userManagement: "إدارة المستخدمين",
+    departments: "الإدارات",
+    auditLogs: "سجلات التدقيق",
     complianceAudit: "تدقيق الامتثال",
-    changeRequests: "طلبات التغيير"
+    ideation: "توليد الأفكار"
   },
   dashboard: {
     title: 'لوحة التحكم',
@@ -304,8 +315,8 @@ export const arTranslations = {
     arabic: "العربية"
   },
   theme: {
-    darkMode: "التبديل إلى الوضع الداكن",
-    lightMode: "التبديل إلى الوضع الفاتح"
+    darkMode: "الوضع الداكن",
+    lightMode: "الوضع الفاتح"
   },
   changeRequest: {
     title: "طلبات التغيير",
@@ -621,5 +632,12 @@ export const arTranslations = {
     view: "عرض",
     login: "تسجيل الدخول",
     logout: "تسجيل الخروج"
+  },
+  notifications: {
+    title: "الإشعارات",
+    noNotifications: "لا توجد إشعارات بعد",
+    markAllAsRead: "تعيين الكل كمقروء",
+    clearAll: "مسح الكل",
+    newNotification: "إشعار جديد"
   }
 }; 

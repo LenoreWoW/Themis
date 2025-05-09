@@ -1,18 +1,62 @@
-import { User } from '../types';
+import { User as AppUser } from './index';
+
+// Re-export User to avoid circular dependencies
+export type User = AppUser;
 
 export enum ChannelType {
-  General = 'General',
-  Department = 'Department',
-  Project = 'Project',
-  DirectMessage = 'DirectMessage'
+  General = 'GENERAL',
+  Department = 'DEPARTMENT',
+  Project = 'PROJECT',
+  DirectMessage = 'DIRECT_MESSAGE',
+  System = 'SYSTEM'
 }
 
 export enum ChatMessageStatus {
-  Sending = 'Sending',
-  Sent = 'Sent',
-  Delivered = 'Delivered',
-  Read = 'Read',
-  Failed = 'Failed'
+  Sent = 'SENT',
+  Delivered = 'DELIVERED',
+  Read = 'READ'
+}
+
+// Message type for specialized system messages
+export enum SystemMessageType {
+  DailyBrief = 'DAILY_BRIEF',
+  Alert = 'ALERT',
+  Notification = 'NOTIFICATION'
+}
+
+// Interactive actions for system messages
+export enum SystemMessageAction {
+  MarkDone = 'MARK_DONE',
+  ReportIssue = 'REPORT_ISSUE',
+  ViewTask = 'VIEW_TASK',
+  Dismiss = 'DISMISS'
+}
+
+// Payload structure for Daily Brief items
+export interface DailyBriefItem {
+  id: string;
+  title: string;
+  type: 'task' | 'alert';
+  dueTime?: string;
+  projectId?: string;
+  projectName?: string;
+  assigneeId?: string;
+  assigneeName?: string;
+  priority?: string;
+  status?: string;
+  isCompleted?: boolean;
+  completedBy?: string;
+  completedAt?: string;
+}
+
+// Payload for system messages with structured data
+export interface SystemMessagePayload {
+  type: SystemMessageType;
+  title: string;
+  summary?: string;
+  items?: DailyBriefItem[];
+  availableActions?: SystemMessageAction[];
+  metadata?: Record<string, any>;
 }
 
 export interface ChatChannel {
@@ -39,30 +83,36 @@ export interface ChatMessage {
   channelId: string;
   senderId: string;
   body: string;
-  isEdited: boolean;
-  isDeleted: boolean;
   fileUrl?: string;
   fileType?: string;
   fileSize?: number;
+  isEdited: boolean;
+  isDeleted: boolean;
   createdAt: string;
   updatedAt: string;
+  status: ChatMessageStatus;
   tempId?: string;
-  status?: ChatMessageStatus;
   sender: {
     id: string;
     firstName: string;
     lastName: string;
     role: string;
   };
+  isSystemMessage?: boolean;
+  systemPayload?: SystemMessagePayload;
 }
 
 export interface ChatChannelMember {
-  id: string;
-  channelId: string;
   userId: string;
-  lastReadAt?: string;
+  channelId: string;
+  role: string;
   joinedAt: string;
-  user: User;
+  user: {
+    id: string;
+    firstName: string;
+    lastName: string;
+    role: string;
+  };
 }
 
 export interface UnreadCount {
@@ -101,4 +151,10 @@ export interface ChatNotification {
   preview: string;
   isRead: boolean;
   createdAt: string;
+}
+
+export interface ApiResponse<T> {
+  data: T;
+  success: boolean;
+  error?: string;
 } 

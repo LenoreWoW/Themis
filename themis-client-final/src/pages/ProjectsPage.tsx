@@ -36,7 +36,8 @@ import {
   CardHeader,
   CardContent,
   Avatar,
-  LinearProgress
+  LinearProgress,
+  Container
 } from '@mui/material';
 import {
   FilterList as FilterIcon,
@@ -337,11 +338,12 @@ const ProjectsPage: React.FC = () => {
                 display: 'flex', 
                 flexDirection: 'column',
                 cursor: 'pointer',
-                transition: 'all 0.3s ease',
+                transition: 'all 0.2s ease',
                 '&:hover': {
                   transform: 'translateY(-4px)',
-                  boxShadow: 3
-                }
+                  boxShadow: 2
+                },
+                borderRadius: 1
               }}
               onClick={() => handleProjectClick(project.id)}
             >
@@ -352,16 +354,12 @@ const ProjectsPage: React.FC = () => {
                   </Avatar>
                 }
                 action={
-                  <Chip 
+                  <StatusBadge 
+                    status={statusType}
                     label={getStatusLabel(
                       typeof project.status === 'string' ? project.status : ProjectStatus[project.status]
-                    )} 
+                    )}
                     size="small"
-                    sx={{
-                      bgcolor: getStatusWithDeadlineColor(project),
-                      color: '#ffffff',
-                      fontWeight: 'medium'
-                    }}
                   />
                 }
                 title={project.name}
@@ -382,10 +380,7 @@ const ProjectsPage: React.FC = () => {
                     <LinearProgress 
                       variant="determinate" 
                       value={project.progress || 0} 
-                      sx={{
-                        height: 8,
-                        borderRadius: 5
-                      }}
+                      sx={{ height: 6, borderRadius: 3 }}
                     />
                   </Box>
                   <Box sx={{ minWidth: 35 }}>
@@ -393,7 +388,7 @@ const ProjectsPage: React.FC = () => {
                       {`${Math.round(project.progress || 0)}%`}
                     </Typography>
                   </Box>
-              </Box>
+                </Box>
             
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 'auto' }}>
                   <Typography variant="body2" color="text.secondary">
@@ -402,7 +397,7 @@ const ProjectsPage: React.FC = () => {
                   {project.projectManager && (
                     <Typography variant="body2" color="text.secondary">
                       {`${project.projectManager.firstName} ${project.projectManager.lastName}`}
-                </Typography>
+                    </Typography>
                   )}
                 </Box>
               </CardContent>
@@ -443,16 +438,12 @@ const ProjectsPage: React.FC = () => {
                 <TableCell>{project.name}</TableCell>
                 <TableCell>{project.department?.name || t('common.noDepartment')}</TableCell>
                 <TableCell>
-                  <Chip 
+                  <StatusBadge 
+                    status={statusType}
                     label={getStatusLabel(
                       typeof project.status === 'string' ? project.status : ProjectStatus[project.status]
-                    )} 
+                    )}
                     size="small"
-                    sx={{
-                      bgcolor: getStatusWithDeadlineColor(project),
-                      color: '#ffffff',
-                      fontWeight: 'medium'
-                    }}
                   />
                 </TableCell>
                 <TableCell>
@@ -469,10 +460,7 @@ const ProjectsPage: React.FC = () => {
                       <LinearProgress 
                         variant="determinate" 
                         value={project.progress || 0} 
-                        sx={{
-                          height: 8,
-                          borderRadius: 5
-                        }}
+                        sx={{ height: 6, borderRadius: 3 }}
                       />
                     </Box>
                     <Box sx={{ minWidth: 35 }}>
@@ -496,243 +484,182 @@ const ProjectsPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Paper 
-        elevation={0} 
-        sx={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center', 
-          mb: 4,
-          p: 3,
-          borderRadius: 2,
-          background: `linear-gradient(135deg, ${theme.palette.primary.main} 0%, ${theme.palette.primary.dark} 100%)`,
-          color: 'white',
-          position: 'relative',
-          overflow: 'hidden'
-        }}
-      >
-        <Box sx={{ 
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          opacity: 0.1,
-          background: 'url(https://www.transparenttextures.com/patterns/cubes.png)',
-          zIndex: 0
-        }} />
-        
-        <Box sx={{ zIndex: 1 }}>
-          <Typography variant="h4" component="h1" fontWeight="bold" gutterBottom>{t('navigation.projects')}</Typography>
-          <Typography variant="subtitle1">{t('project.subtitle', 'Manage and monitor all your organizational projects')}</Typography>
-        </Box>
-        
-        <Box sx={{ display: 'flex', gap: 2, zIndex: 1 }}>
-          {(isAdmin || isProjectManager) && (
-            <Button
-              variant="contained"
-              color="secondary"
-              startIcon={<AddIcon />}
-              onClick={handleCreateProject}
-              sx={{
-                borderRadius: 8,
-                px: 3,
-                py: 1.2,
-                boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-                fontWeight: 'bold',
-                transition: 'all 0.3s',
-                '&:hover': {
-                  transform: 'translateY(-3px)',
-                  boxShadow: '0 6px 15px rgba(0,0,0,0.2)'
-                }
-              }}
-            >
-              {t('project.add')}
-            </Button>
-          )}
-        </Box>
-      </Paper>
-      
-      <Paper sx={{ width: '100%', mb: 4, borderRadius: 2, overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.05)' }}>
-        <Toolbar 
-          sx={{ 
-            p: 2, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            flexWrap: 'wrap',
-            gap: 2,
-            borderBottom: '1px solid',
-            borderColor: 'divider'
-          }}
-        >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-            <TextField
-              size="small"
-              variant="outlined"
-              placeholder={t('common.search')}
-              value={searchQuery}
-              onChange={handleSearchChange}
-              InputProps={{
-                startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} />,
-              }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  borderRadius: 8,
-                  transition: 'all 0.2s',
-                  '&.Mui-focused': {
-                    boxShadow: '0 0 0 3px rgba(0,0,0,0.05)'
-                  }
-                }
-              }}
-            />
-            
-            <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
-              <InputLabel>{t('project.status')}</InputLabel>
-              <Select
-                label={t('project.status')}
-                value={statusFilter}
-                onChange={handleStatusFilterChange}
-                input={<OutlinedInput label={t('project.status')} />}
-                sx={{ borderRadius: 8 }}
-              >
-                {statusOptions.map((status) => (
-                  <MenuItem key={status} value={status}>
-                    {status === 'All' ? t('common.all') : getTranslatedStatusLabel(status)}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-            
-            <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
-              <InputLabel>{t('project.department')}</InputLabel>
-              <Select
-                label={t('project.department')}
-                value={departmentFilter}
-                onChange={handleDepartmentFilterChange}
-                input={<OutlinedInput label={t('project.department')} />}
-                sx={{ borderRadius: 8 }}
-              >
-                {departmentOptions.map((department) => (
-                  <MenuItem key={department} value={department}>
-                    {department === 'All' ? t('common.all') : department}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Box>
+    <Container maxWidth="xl">
+      <Box sx={{ py: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+          <Typography variant="h4" component="h1">
+            {t('project.title', 'Projects')}
+          </Typography>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {(isAdmin || isProjectManager) && (
+              <Tooltip title={t('project.addProjectHint', 'Create a new project')} arrow>
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleCreateProject}
+                >
+                  {t('project.add')}
+                </Button>
+              </Tooltip>
+            )}
+            
             <Button
               variant="outlined"
               startIcon={<RelationshipMapIcon />}
               onClick={() => navigate('/project-relationships')}
-              size="small"
-              sx={{ 
-                borderRadius: 8, 
-                mr: 1,
-                display: { xs: 'none', sm: 'flex' }
-              }}
+              sx={{ borderRadius: 1 }}
             >
               {t('project.viewRelationships')}
             </Button>
-            <Tooltip title={viewMode === 'grid' ? t('common.listView') : t('common.gridView')}>
+            
+            <Tooltip title={viewMode === 'grid' ? t('common.listView') : t('common.gridView')} arrow>
               <IconButton 
                 onClick={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
                 color="primary"
-                sx={{
-                  bgcolor: theme.palette.action.hover,
-                  '&:hover': {
-                    bgcolor: alpha(theme.palette.primary.main, 0.1)
-                  }
-                }}
               >
                 {viewMode === 'grid' ? <ListViewIcon /> : <ViewModuleIcon />}
               </IconButton>
             </Tooltip>
           </Box>
-        </Toolbar>
+        </Box>
         
-        {loading ? (
-          <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
-            <CircularProgress />
-          </Box>
-        ) : error ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Alert 
-              severity="error" 
-              sx={{ 
-                maxWidth: 500, 
-                mx: 'auto',
-                borderRadius: 2,
-                boxShadow: '0 4px 12px rgba(211,47,47,0.1)'
-              }}
-            >
-              {error}
-            </Alert>
-          </Box>
-        ) : paginatedProjects.length === 0 ? (
-          <Box sx={{ p: 8, textAlign: 'center' }}>
-            <Box sx={{ mb: 3, opacity: 0.7 }}>
-              <svg width="100" height="100" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M8 5V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M16 5V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                <path d="M3 9H21" stroke="currentColor" strokeWidth="2"/>
-                <path d="M9 13H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </Box>
-            <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>
-              {t('common.noData')}
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
-              {searchQuery || statusFilter !== 'All' || departmentFilter !== 'All'
-                ? t('common.adjustSearchCriteria')
-                : t('project.createNewToStart')}
-            </Typography>
-            
-            {(isAdmin || isProjectManager) && (searchQuery === '' && statusFilter === 'All' && departmentFilter === 'All') && (
-              <Button
-                variant="contained"
-                startIcon={<AddIcon />}
-                onClick={handleCreateProject}
-                sx={{ 
-                  borderRadius: 8,
-                  px: 3,
-                  py: 1
-                }}
-              >
-                {t('project.add')}
-              </Button>
-            )}
-          </Box>
-        ) : (
-          <Box sx={{ p: 3 }}>
-            {viewMode === 'grid' ? renderGridView() : renderListView()}
-          </Box>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
         )}
         
-        <TablePagination
-          rowsPerPageOptions={[6, 12, 24]}
-          component="div"
-          count={filteredProjects.length}
-          rowsPerPage={rowsPerPage}
-          page={page}
-          onPageChange={handleChangePage}
-          onRowsPerPageChange={handleChangeRowsPerPage}
-          labelRowsPerPage={t('common.rowsPerPage')}
-          labelDisplayedRows={({ from, to, count }) =>
-            `${from}-${to} ${t('common.of')} ${count}`
-          }
-          sx={{
-            borderTop: '1px solid',
-            borderColor: 'divider',
-            '& .MuiTablePagination-selectIcon': {
-              color: theme.palette.action.active
+        <Paper sx={{ width: '100%', mb: 4, borderRadius: 1, overflow: 'hidden' }}>
+          <Toolbar 
+            sx={{ 
+              p: 2, 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              flexWrap: 'wrap',
+              gap: 2,
+              borderBottom: '1px solid',
+              borderColor: 'divider'
+            }}
+          >
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+              <TextField
+                size="small"
+                variant="outlined"
+                placeholder={t('common.search')}
+                value={searchQuery}
+                onChange={handleSearchChange}
+                InputProps={{
+                  startAdornment: <SearchIcon fontSize="small" sx={{ mr: 1, color: 'action.active' }} />,
+                }}
+              />
+              
+              <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+                <InputLabel>{t('project.status')}</InputLabel>
+                <Select
+                  label={t('project.status')}
+                  value={statusFilter}
+                  onChange={handleStatusFilterChange}
+                  input={<OutlinedInput label={t('project.status')} />}
+                >
+                  {statusOptions.map((status) => (
+                    <MenuItem key={status} value={status}>
+                      {status === 'All' ? t('common.all') : getTranslatedStatusLabel(status)}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              
+              <FormControl variant="outlined" size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>{t('project.department')}</InputLabel>
+                <Select
+                  label={t('project.department')}
+                  value={departmentFilter}
+                  onChange={handleDepartmentFilterChange}
+                  input={<OutlinedInput label={t('project.department')} />}
+                >
+                  {departmentOptions.map((department) => (
+                    <MenuItem key={department} value={department}>
+                      {department === 'All' ? t('common.all') : department}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+          </Toolbar>
+          
+          {loading ? (
+            <Box sx={{ p: 4, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+              <CircularProgress />
+            </Box>
+          ) : error ? (
+            <Box sx={{ p: 4, textAlign: 'center' }}>
+              <Alert 
+                severity="error" 
+                sx={{ 
+                  maxWidth: 500, 
+                  mx: 'auto',
+                  borderRadius: 1
+                }}
+              >
+                {error}
+              </Alert>
+            </Box>
+          ) : paginatedProjects.length === 0 ? (
+            <Box sx={{ p: 8, textAlign: 'center' }}>
+              <Box sx={{ mb: 3, opacity: 0.7 }}>
+                <svg width="100" height="100" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 7V17C3 18.1046 3.89543 19 5 19H19C20.1046 19 21 18.1046 21 17V7C21 5.89543 20.1046 5 19 5H5C3.89543 5 3 5.89543 3 7Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M8 5V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M16 5V3" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M3 9H21" stroke="currentColor" strokeWidth="2"/>
+                  <path d="M9 13H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </Box>
+              <Typography variant="h6" sx={{ fontWeight: 'medium', mb: 1 }}>
+                {t('common.noData')}
+              </Typography>
+              <Typography variant="body2" color="text.secondary" sx={{ mb: 3, maxWidth: 400, mx: 'auto' }}>
+                {searchQuery || statusFilter !== 'All' || departmentFilter !== 'All'
+                  ? t('common.adjustSearchCriteria')
+                  : t('project.createNewToStart')}
+              </Typography>
+              
+              {(isAdmin || isProjectManager) && (searchQuery === '' && statusFilter === 'All' && departmentFilter === 'All') && (
+                <Button
+                  variant="contained"
+                  startIcon={<AddIcon />}
+                  onClick={handleCreateProject}
+                >
+                  {t('project.add')}
+                </Button>
+              )}
+            </Box>
+          ) : (
+            <Box sx={{ p: 3 }}>
+              {viewMode === 'grid' ? renderGridView() : renderListView()}
+            </Box>
+          )}
+          
+          <TablePagination
+            rowsPerPageOptions={[6, 12, 24]}
+            component="div"
+            count={filteredProjects.length}
+            rowsPerPage={rowsPerPage}
+            page={page}
+            onPageChange={handleChangePage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+            labelRowsPerPage={t('common.rowsPerPage')}
+            labelDisplayedRows={({ from, to, count }) =>
+              `${from}-${to} ${t('common.of')} ${count}`
             }
-          }}
-        />
-      </Paper>
+            sx={{
+              borderTop: '1px solid',
+              borderColor: 'divider'
+            }}
+          />
+        </Paper>
+      </Box>
       
       {/* Add Project Dialog */}
       <AddProjectDialog
@@ -742,7 +669,7 @@ const ProjectsPage: React.FC = () => {
         departments={departments}
         users={users}
       />
-    </Box>
+    </Container>
   );
 };
 

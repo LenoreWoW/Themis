@@ -12,7 +12,11 @@ import {
   Divider,
   Typography,
   alpha,
-  Collapse
+  Collapse,
+  Avatar,
+  Badge,
+  Slide,
+  Paper
 } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -33,13 +37,27 @@ import ExpandMore from '@mui/icons-material/ExpandMore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BuildIcon from '@mui/icons-material/Build';
 import SchoolIcon from '@mui/icons-material/School';
-import { useLocation, NavLink } from 'react-router-dom';
+import ChatIcon from '@mui/icons-material/Chat';
+import LanguageIcon from '@mui/icons-material/Language';
+import NotificationsIcon from '@mui/icons-material/Notifications';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
+import LogoutIcon from '@mui/icons-material/Logout';
+import CloseIcon from '@mui/icons-material/Close';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import StorageIcon from '@mui/icons-material/Storage';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
+import HelpIcon from '@mui/icons-material/Help';
+import { useLocation, NavLink, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import LightbulbIcon from '@mui/icons-material/Lightbulb';
+import { useTheme as useThemeContext } from '../context/ThemeContext';
 import {
   CalendarToday as CalendarTodayIcon
 } from '@mui/icons-material';
+import useNotifications from '../hooks/useNotifications';
 
 const DRAWER_WIDTH = 240;
 const COLLAPSED_WIDTH = 72;
@@ -59,6 +77,39 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   ...theme.mixins.toolbar,
 }));
 
+const UserProfileSection = styled('div')(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'column',
+  padding: theme.spacing(1),
+  marginTop: 'auto',
+  borderTop: `1px solid ${alpha(theme.palette.common.white, 0.1)}`,
+  backgroundColor: qatarMaroon.dark,
+}));
+
+// Create a styled settings icon that matches Discord's design
+const DiscordSettingsIcon = styled(SettingsIcon)(({ theme }) => ({
+  strokeWidth: 1.5,
+  transform: 'scale(1)', // for animation
+  transition: 'transform 150ms ease-out, opacity 150ms ease-out, background-color 150ms ease-out',
+  '&:hover': {
+    opacity: 1,
+    filter: 'drop-shadow(0 0 2px rgba(255,255,255,0.3))'
+  },
+  '&:active': {
+    transform: 'scale(0.96)',
+  }
+}));
+
+// Interface for menu items
+interface MenuItem {
+  text: string;
+  icon: React.ReactElement;
+  path: string;
+  role?: string[];
+  submenu?: boolean;
+  children?: MenuItem[];
+}
+
 interface CollapsibleSidebarProps {
   isMobile?: boolean;
   onMobileClose?: () => void;
@@ -72,13 +123,18 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
 }) => {
   const [isOpen, setIsOpen] = useState(true);
   const [openSettings, setOpenSettings] = useState(false);
-  const [openApprovals, setOpenApprovals] = useState(false);
+  const [openWorkspace, setOpenWorkspace] = useState(false);
+  const [openMyWork, setOpenMyWork] = useState(false);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   const theme = useTheme();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const { themeMode, toggleThemeMode } = useThemeContext();
   const isDark = theme.palette.mode === 'dark';
   const isRtl = theme.direction === 'rtl';
+  const navigate = useNavigate();
+  const { unreadCount } = useNotifications(user?.id);
 
   const handleDrawerToggle = () => {
     setIsOpen(!isOpen);
@@ -88,25 +144,114 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     setOpenSettings(!openSettings);
   };
 
-  const handleApprovalsClick = () => {
-    setOpenApprovals(!openApprovals);
+  const handleWorkspaceClick = () => {
+    setOpenWorkspace(!openWorkspace);
+  };
+  
+  const handleMyWorkClick = () => {
+    setOpenMyWork(!openMyWork);
+  };
+  
+  const handleSettingsPanelOpen = () => {
+    setSettingsPanelOpen(true);
+  };
+  
+  const handleSettingsPanelClose = () => {
+    setSettingsPanelOpen(false);
+  };
+  
+  const handleNavigateToSettings = (path: string) => {
+    navigate(path);
+    setSettingsPanelOpen(false);
+  };
+  
+  const handleLanguageChange = () => {
+    const newLang = i18n.language === 'ar' ? 'en' : 'ar';
+    i18n.changeLanguage(newLang);
+    document.documentElement.dir = newLang === 'ar' ? 'rtl' : 'ltr';
+    localStorage.setItem('pmsLanguage', newLang);
+    
+    // Dispatch event for layout to catch
+    const event = new Event('i18n-updated');
+    document.dispatchEvent(event);
+  };
+  
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
-  const menuItems = [
+  const menuItems: MenuItem[] = [
     { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard', role: ['ADMIN', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR'] },
-    { text: t('navigation.calendar'), icon: <CalendarTodayIcon />, path: '/calendar' },
-    { text: t('navigation.projects'), icon: <FolderIcon />, path: '/projects' },
     { 
-      text: t('navigation.approvals'), 
-      icon: <CheckCircleIcon />, 
-      path: '/approvals',
+      text: t('navigation.workspaceMain'), 
+      icon: <FolderIcon />, 
+      path: '/workspace-main',
+      submenu: true,
+      children: [
+        { text: t('navigation.projects'), icon: <FolderIcon />, path: '/projects' },
+        { 
+          text: t('navigation.approvals'), 
+          icon: <CheckCircleIcon />, 
+          path: '/approvals',
           role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']
+        },
+        { 
+          text: t('navigation.actionItems'), 
+          icon: <PlaylistAddCheckIcon />, 
+          path: '/action-items',
+          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']
+        },
+        { 
+          text: t('navigation.dependencies'), 
+          icon: <AccountTreeIcon />, 
+          path: '/dependencies',
+          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']
+        },
+        { 
+          text: t('navigation.repository'), 
+          icon: <StorageIcon />, 
+          path: '/repository',
+          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR']
+        },
+        { 
+          text: t('navigation.chat'), 
+          icon: <ChatIcon />, 
+          path: '/chat',
+          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR', 'TEAM_MEMBER']
+        },
+        { 
+          text: t('navigation.myWork'), 
+          icon: <WorkIcon />, 
+          path: '/workspace',
+          submenu: true,
+          children: [
+            { text: t('navigation.ideation'), icon: <LightbulbIcon />, path: '/ideation' },
+            { text: t('navigation.assignments'), icon: <WorkIcon />, path: '/assignments' },
+            { text: t('navigation.tasks'), icon: <AssignmentIcon />, path: '/tasks' },
+            { text: t('navigation.meetings'), icon: <GroupsIcon />, path: '/meetings' },
+            { text: t('navigation.risksIssues'), icon: <WarningIcon />, path: '/risks-issues' },
+          ]
+        },
+      ]
     },
-    { text: t('navigation.tasks'), icon: <AssignmentIcon />, path: '/tasks' },
-    { text: t('navigation.assignments'), icon: <WorkIcon />, path: '/assignments' },
-    { text: t('navigation.goals'), icon: <FlagIcon />, path: '/goals' },
-    { text: t('navigation.risksIssues'), icon: <WarningIcon />, path: '/risks-issues' },
-    { text: t('navigation.meetings'), icon: <GroupsIcon />, path: '/meetings' },
+    { text: t('navigation.help'), icon: <HelpIcon />, path: '/help' },
+  ];
+
+  // Settings menu items - for the slide-in panel
+  const settingsMenuItems: MenuItem[] = [
+    { 
+      text: t('navigation.userManagement', 'User Management'), 
+      icon: <PeopleIcon />, 
+      path: '/users',
+      role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE'] 
+    },
+    { 
+      text: t('navigation.departments'), 
+      icon: <BusinessIcon />, 
+      path: '/departments',
+      role: ['ADMIN', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR'] 
+    },
     { 
       text: t('navigation.faculty'), 
       icon: <SchoolIcon />, 
@@ -120,80 +265,225 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO'] 
     },
     { 
-      text: t('navigation.users'), 
-      icon: <SettingsIcon />, 
-      path: '/system-settings',
-      role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE', 'MAIN_PMO'],
-      submenu: true,
-      children: [
-        { 
-          text: t('navigation.userManagement', 'User Management'), 
-          icon: <PeopleIcon />, 
-          path: '/users',
-          role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE'] 
-        },
-        { 
-          text: t('navigation.departments'), 
-          icon: <BusinessIcon />, 
-          path: '/departments',
-          role: ['ADMIN', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR'] 
-        },
-        { 
-          text: t('navigation.complianceAudit', 'Compliance Audit'), 
-          icon: <VerifiedUserIcon />, 
-          path: '/audit',
-          role: ['ADMIN', 'MAIN_PMO'] 
-        }
-      ]
-    },
-    { 
-      text: t('navigation.ideation'), 
-      icon: <LightbulbIcon />,
-      path: '/ideation',
-      role: ['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR', 'TEAM_MEMBER']
+      text: t('navigation.complianceAudit', 'Compliance Audit'), 
+      icon: <VerifiedUserIcon />, 
+      path: '/audit',
+      role: ['ADMIN', 'MAIN_PMO'] 
     }
   ];
 
   const drawer = (
-    <>
-      <DrawerHeader sx={{ justifyContent: isOpen ? 'space-between' : 'center' }}>
-        {isOpen && (
+    <Box 
+      sx={{ 
+        display: 'flex', 
+        flexDirection: 'column', 
+        height: '100%',
+        backgroundColor: qatarMaroon.main,
+        color: 'white'
+      }}
+    >
+      <DrawerHeader 
+        sx={{ 
+          justifyContent: isOpen ? 'space-between' : 'center',
+          backgroundColor: qatarMaroon.dark,
+          color: 'white'
+        }}
+      >
+        {isOpen ? (
           <Box sx={{ display: 'flex', alignItems: 'center', ml: 1 }}>
-            <Box 
-              component="img" 
-              src="/Finallogo.jpg" 
-              alt="نظام ادارة المشاريع"
-              sx={{ 
-                width: 32,
-                height: 32,
-                mr: 1,
-                borderRadius: '4px'
-              }} 
-            />
             <Typography 
               variant="h6" 
               component="div" 
               sx={{ 
                 fontWeight: 600,
-                background: theme.palette.mode === 'dark' 
-                  ? `linear-gradient(45deg, ${qatarMaroon.light}, #FFFFFF)`
-                  : `linear-gradient(45deg, ${qatarMaroon.main}, ${qatarMaroon.dark})`,
-                WebkitBackgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
+                color: 'white',
               }}
             >
               {t('app.title')}
             </Typography>
           </Box>
+        ) : (
+          <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <Avatar 
+              src="/Finallogo.jpg" 
+              alt="نظام ادارة المشاريع"
+              sx={{ width: 32, height: 32 }} 
+            />
+          </Box>
         )}
-        <IconButton onClick={handleDrawerToggle}>
-          {!isOpen ? (isRtl ? <ChevronLeftIcon /> : <ChevronRightIcon />) : 
-            (isRtl ? <ChevronRightIcon /> : <ChevronLeftIcon />)}
-        </IconButton>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          {/* Discord-style Settings Icon */}
+          <Tooltip 
+            title={t('navigation.systemSettings', 'System Settings')} 
+            placement={isRtl ? "bottom-end" : "bottom-start"}
+            enterDelay={250}
+          >
+            <IconButton 
+              onClick={handleSettingsPanelOpen} 
+              sx={{ 
+                color: alpha('#fff', 0.7), 
+                '&:hover': { 
+                  color: 'white',
+                },
+                '&:focus': {
+                  outline: `2px solid ${theme.palette.primary.main}`,
+                  outlineOffset: '2px'
+                },
+                mr: 0.5,
+                padding: '6px'
+              }}
+              aria-label="Open system settings"
+              tabIndex={0}
+            >
+              <DiscordSettingsIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+          
+          <IconButton onClick={handleDrawerToggle} sx={{ color: 'white' }}>
+            {!isOpen ? (isRtl ? <ChevronLeftIcon /> : <ChevronRightIcon />) : 
+              (isRtl ? <ChevronRightIcon /> : <ChevronLeftIcon />)}
+          </IconButton>
+        </Box>
       </DrawerHeader>
-      <Divider sx={{ borderColor: alpha(qatarMaroon.main, 0.2) }} />
-      <List sx={{ px: 0, py: 1 }}>
+      
+      <List sx={{ px: 0, pt: 1 }}>
+        {/* Notifications button at the top */}
+        {isOpen ? (
+          <>
+            <ListItem 
+              button 
+              component={NavLink} 
+              to="/notifications"
+              sx={{
+                py: 1.5,
+                px: 2,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: alpha('#fff', 0.1),
+                }
+              }}
+            >
+              <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
+                <Badge badgeContent={unreadCount} color="error">
+                  <NotificationsIcon />
+                </Badge>
+              </ListItemIcon>
+              <ListItemText primary={t('common.notifications', 'Notifications')} />
+            </ListItem>
+            
+            {/* Calendar item */}
+            <ListItem 
+              button 
+              component={NavLink} 
+              to="/calendar"
+              sx={{
+                py: 1.5,
+                px: 2,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: alpha('#fff', 0.1),
+                }
+              }}
+            >
+              <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
+                <CalendarTodayIcon />
+              </ListItemIcon>
+              <ListItemText primary={t('navigation.calendar', 'Calendar')} />
+            </ListItem>
+            
+            {/* Goals item */}
+            <ListItem 
+              button 
+              component={NavLink} 
+              to="/goals"
+              sx={{
+                py: 1.5,
+                px: 2,
+                borderBottom: `1px solid ${alpha('#fff', 0.1)}`,
+                mb: 0,
+                color: 'white',
+                '&:hover': {
+                  backgroundColor: alpha('#fff', 0.1),
+                }
+              }}
+            >
+              <ListItemIcon sx={{ color: 'white', minWidth: 40 }}>
+                <FlagIcon />
+              </ListItemIcon>
+              <ListItemText primary={t('navigation.goals', 'Goals')} />
+            </ListItem>
+          </>
+        ) : (
+          <>
+            <Tooltip title={t('common.notifications', 'Notifications')} placement={isRtl ? "left" : "right"}>
+              <ListItem 
+                button 
+                component={NavLink} 
+                to="/notifications"
+                sx={{
+                  justifyContent: 'center',
+                  py: 1.5,
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: alpha('#fff', 0.1),
+                  }
+                }}
+              >
+                <Badge badgeContent={unreadCount} color="error">
+                  <NotificationsIcon />
+                </Badge>
+              </ListItem>
+            </Tooltip>
+            
+            {/* Calendar item (collapsed) */}
+            <Tooltip title={t('navigation.calendar', 'Calendar')} placement={isRtl ? "left" : "right"}>
+              <ListItem 
+                button 
+                component={NavLink} 
+                to="/calendar"
+                sx={{
+                  justifyContent: 'center',
+                  py: 1.5,
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: alpha('#fff', 0.1),
+                  }
+                }}
+              >
+                <CalendarTodayIcon />
+              </ListItem>
+            </Tooltip>
+            
+            {/* Goals item (collapsed) */}
+            <Tooltip title={t('navigation.goals', 'Goals')} placement={isRtl ? "left" : "right"}>
+              <ListItem 
+                button 
+                component={NavLink} 
+                to="/goals"
+                sx={{
+                  justifyContent: 'center',
+                  py: 1.5,
+                  borderBottom: `1px solid ${alpha('#fff', 0.1)}`,
+                  mb: 0,
+                  color: 'white',
+                  '&:hover': {
+                    backgroundColor: alpha('#fff', 0.1),
+                  }
+                }}
+              >
+                <FlagIcon />
+              </ListItem>
+            </Tooltip>
+          </>
+        )}
+        
+        {/* Menu items */}
         {menuItems.map((item) => {
+          // Skip Goals item as it's now placed at the top
+          if (item.text === t('navigation.goals')) {
+            return null;
+          }
+          
           // Check if the route requires a specific role
           if (item.role && user?.role && !item.role.includes(user.role)) {
             return null;
@@ -205,8 +495,13 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
 
           // Handle submenu items differently
           if (item.submenu) {
-            const isSubmenuActive = item.path === '/approvals' ? openApprovals : openSettings;
-            const handleSubmenuClick = item.path === '/approvals' ? handleApprovalsClick : handleSettingsClick;
+            const isSubmenuOpen = item.path === '/workspace-main' 
+              ? openWorkspace 
+              : (item.path === '/workspace' ? openMyWork : openSettings);
+              
+            const handleSubmenuClick = item.path === '/workspace-main'
+              ? handleWorkspaceClick
+              : (item.path === '/workspace' ? handleMyWorkClick : handleSettingsClick);
             
             return isOpen ? (
               <React.Fragment key={item.text}>
@@ -214,43 +509,138 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                   component="div"
                   onClick={handleSubmenuClick}
                   sx={{
-                    borderRadius: 2,
+                    borderRadius: 0,
                     mb: 0.5,
                     px: 1.5,
-                    color: (isSubmenuActive || isActive) ? qatarMaroon.main : 'text.primary',
-                    backgroundColor: (isSubmenuActive || isActive)
-                      ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.08)
+                    color: 'white',
+                    backgroundColor: (isSubmenuOpen || isActive)
+                      ? alpha('#fff', 0.15)
                       : 'transparent',
                     '&:hover': {
-                      backgroundColor: (isSubmenuActive || isActive)
-                        ? alpha(qatarMaroon.main, isDark ? 0.25 : 0.12)
-                        : alpha(theme.palette.action.hover, 0.8),
+                      backgroundColor: alpha('#fff', 0.2),
                     },
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.2s ease',
                     cursor: 'pointer',
                   }}
                 >
                   <ListItemIcon sx={{ 
                     minWidth: 40, 
-                    color: (isSubmenuActive || isActive) ? qatarMaroon.main : 'inherit',
+                    color: 'white',
                   }}>
                     {item.icon}
                   </ListItemIcon>
                   <ListItemText 
                     primary={item.text} 
                     primaryTypographyProps={{ 
-                      fontWeight: (isSubmenuActive || isActive) ? 600 : 400,
+                      fontWeight: (isSubmenuOpen || isActive) ? 600 : 400,
                       fontSize: '0.9rem'
                     }}
                   />
-                  {isSubmenuActive ? <ExpandLess /> : <ExpandMore />}
+                  {isSubmenuOpen ? <ExpandLess /> : <ExpandMore />}
                 </ListItem>
-                <Collapse in={item.path === '/approvals' ? openApprovals : openSettings} timeout="auto" unmountOnExit>
-                  <List component="div" disablePadding>
+                <Collapse in={isSubmenuOpen} timeout="auto" unmountOnExit>
+                  <List component="div" disablePadding sx={{ background: alpha('#000', 0.1) }}>
                     {item.children?.map((child) => {
                       // Check if the child route requires a specific role
                       if (child.role && user?.role && !child.role.includes(user.role)) {
                         return null;
+                      }
+
+                      // If the child has its own submenu (My Work)
+                      if (child.submenu) {
+                        const isChildSubmenuOpen = openMyWork;
+                        const isChildActive = location.pathname === child.path || 
+                          (child.path !== '/' && location.pathname.startsWith(child.path));
+                          
+                        return (
+                          <React.Fragment key={child.text}>
+                            <ListItem
+                              component="div"
+                              onClick={handleMyWorkClick}
+                              sx={{
+                                borderRadius: 0,
+                                mb: 0.5,
+                                ml: 2,
+                                pl: 2,
+                                pr: 1.5,
+                                color: 'white',
+                                backgroundColor: (isChildSubmenuOpen || isChildActive)
+                                  ? alpha('#fff', 0.1)
+                                  : 'transparent',
+                                '&:hover': {
+                                  backgroundColor: alpha('#fff', 0.15),
+                                },
+                                transition: 'all 0.2s ease',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <ListItemIcon sx={{ 
+                                minWidth: 40, 
+                                color: 'white',
+                              }}>
+                                {child.icon}
+                              </ListItemIcon>
+                              <ListItemText 
+                                primary={child.text} 
+                                primaryTypographyProps={{ 
+                                  fontWeight: (isChildSubmenuOpen || isChildActive) ? 600 : 400,
+                                  fontSize: '0.9rem'
+                                }}
+                              />
+                              {isChildSubmenuOpen ? <ExpandLess /> : <ExpandMore />}
+                            </ListItem>
+                            <Collapse in={isChildSubmenuOpen} timeout="auto" unmountOnExit>
+                              <List component="div" disablePadding sx={{ background: alpha('#000', 0.1) }}>
+                                {child.children?.map((grandchild) => {
+                                  // Check if the grandchild route requires a specific role
+                                  if (grandchild.role && user?.role && !grandchild.role.includes(user.role)) {
+                                    return null;
+                                  }
+
+                                  const isGrandchildActive = location.pathname === grandchild.path || 
+                                    (grandchild.path !== '/' && location.pathname.startsWith(grandchild.path));
+
+                                  return (
+                                    <ListItem 
+                                      key={grandchild.text} 
+                                      component={NavLink} 
+                                      to={grandchild.path}
+                                      sx={{
+                                        borderRadius: 0,
+                                        mb: 0.5,
+                                        ml: 4,
+                                        pl: 2,
+                                        pr: 1.5,
+                                        color: 'white',
+                                        backgroundColor: isGrandchildActive 
+                                          ? alpha('#fff', 0.1)
+                                          : 'transparent',
+                                        '&:hover': {
+                                          backgroundColor: alpha('#fff', 0.15),
+                                        },
+                                        transition: 'all 0.2s ease',
+                                      }}
+                                    >
+                                      <ListItemIcon sx={{ 
+                                        minWidth: 40, 
+                                        color: 'white',
+                                      }}>
+                                        {grandchild.icon}
+                                      </ListItemIcon>
+                                      <ListItemText 
+                                        primary={grandchild.text} 
+                                        primaryTypographyProps={{ 
+                                          fontWeight: isGrandchildActive ? 600 : 400,
+                                          fontSize: '0.9rem'
+                                        }}
+                                      />
+                                    </ListItem>
+                                  );
+                                })}
+                              </List>
+                            </Collapse>
+                          </React.Fragment>
+                        );
                       }
 
                       const isChildActive = location.pathname === child.path || 
@@ -262,25 +652,24 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                           component={NavLink} 
                           to={child.path}
                           sx={{
-                            borderRadius: 2,
+                            borderRadius: 0,
                             mb: 0.5,
                             ml: 2,
-                            px: 1.5,
-                            color: isChildActive ? qatarMaroon.main : 'text.primary',
+                            pl: 2,
+                            pr: 1.5,
+                            color: 'white',
                             backgroundColor: isChildActive 
-                              ? alpha(qatarMaroon.main, isDark ? 0.1 : 0.05)
+                              ? alpha('#fff', 0.1)
                               : 'transparent',
                             '&:hover': {
-                              backgroundColor: isChildActive 
-                                ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.075)
-                                : alpha(theme.palette.action.hover, 0.8),
+                              backgroundColor: alpha('#fff', 0.15),
                             },
-                            transition: 'all 0.3s ease',
+                            transition: 'all 0.2s ease',
                           }}
                         >
                           <ListItemIcon sx={{ 
                             minWidth: 40, 
-                            color: isChildActive ? qatarMaroon.main : 'inherit',
+                            color: 'white',
                           }}>
                             {child.icon}
                           </ListItemIcon>
@@ -291,19 +680,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                               fontSize: '0.9rem'
                             }}
                           />
-                          {isChildActive && (
-                            <Box
-                              sx={{
-                                width: 4,
-                                height: 32,
-                                borderRadius: 4,
-                                backgroundColor: qatarMaroon.main,
-                                position: 'absolute',
-                                right: isRtl ? 'auto' : 0,
-                                left: isRtl ? 0 : 'auto',
-                              }}
-                            />
-                          )}
                         </ListItem>
                       );
                     })}
@@ -317,41 +693,26 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                   onClick={handleSubmenuClick}
                   sx={{
                     justifyContent: 'center',
-                    borderRadius: 2,
+                    borderRadius: 0,
                     mb: 0.5,
                     px: 1.5,
-                    color: (isSubmenuActive || isActive) ? qatarMaroon.main : 'text.primary',
-                    backgroundColor: (isSubmenuActive || isActive)
-                      ? alpha(qatarMaroon.main, isDark ? 0.1 : 0.05)
+                    color: 'white',
+                    backgroundColor: (isSubmenuOpen || isActive)
+                      ? alpha('#fff', 0.1)
                       : 'transparent',
                     '&:hover': {
-                      backgroundColor: (isSubmenuActive || isActive)
-                        ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.075)
-                        : alpha(theme.palette.action.hover, 0.8),
+                      backgroundColor: alpha('#fff', 0.15),
                     },
-                    transition: 'all 0.3s ease',
+                    transition: 'all 0.2s ease',
                     cursor: 'pointer',
                   }}
                 >
                   <ListItemIcon sx={{ 
                     minWidth: 'auto', 
-                    color: (isSubmenuActive || isActive) ? qatarMaroon.main : 'inherit',
+                    color: 'white',
                   }}>
                     {item.icon}
                   </ListItemIcon>
-                  {(isSubmenuActive || isActive) && (
-                    <Box
-                      sx={{
-                        width: 4,
-                        height: 32,
-                        borderRadius: 4,
-                        backgroundColor: qatarMaroon.main,
-                        position: 'absolute',
-                        right: isRtl ? 'auto' : 0,
-                        left: isRtl ? 0 : 'auto',
-                      }}
-                    />
-                  )}
                 </ListItem>
               </Tooltip>
             );
@@ -363,24 +724,22 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
               component={NavLink} 
               to={item.path}
               sx={{
-                borderRadius: 2,
+                borderRadius: 0,
                 mb: 0.5,
                 px: 1.5,
-                color: isActive ? qatarMaroon.main : 'text.primary',
+                color: 'white',
                 backgroundColor: isActive 
-                  ? alpha(qatarMaroon.main, isDark ? 0.1 : 0.05)
+                  ? alpha('#fff', 0.1)
                   : 'transparent',
                 '&:hover': {
-                  backgroundColor: isActive 
-                    ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.075)
-                    : alpha(theme.palette.action.hover, 0.8),
+                  backgroundColor: alpha('#fff', 0.15),
                 },
-                transition: 'all 0.3s ease',
+                transition: 'all 0.2s ease',
               }}
             >
               <ListItemIcon sx={{ 
                 minWidth: 40, 
-                color: isActive ? qatarMaroon.main : 'inherit',
+                color: 'white',
               }}>
                 {item.icon}
               </ListItemIcon>
@@ -391,19 +750,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                   fontSize: '0.9rem'
                 }}
               />
-              {isActive && (
-                <Box
-                  sx={{
-                    width: 4,
-                    height: 32,
-                    borderRadius: 4,
-                    backgroundColor: qatarMaroon.main,
-                    position: 'absolute',
-                    right: isRtl ? 'auto' : 0,
-                    left: isRtl ? 0 : 'auto',
-                  }}
-                />
-              )}
             </ListItem>
           ) : (
             <Tooltip title={item.text} placement={isRtl ? "left" : "right"} key={item.text}>
@@ -412,46 +758,226 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                 to={item.path}
                 sx={{
                   justifyContent: 'center',
-                  borderRadius: 2,
+                  borderRadius: 0,
                   mb: 0.5,
                   px: 1.5,
-                  color: isActive ? qatarMaroon.main : 'text.primary',
+                  color: 'white',
                   backgroundColor: isActive 
-                    ? alpha(qatarMaroon.main, isDark ? 0.1 : 0.05)
+                    ? alpha('#fff', 0.1)
                     : 'transparent',
                   '&:hover': {
-                    backgroundColor: isActive 
-                      ? alpha(qatarMaroon.main, isDark ? 0.15 : 0.075)
-                      : alpha(theme.palette.action.hover, 0.8),
+                    backgroundColor: alpha('#fff', 0.15),
                   },
-                  transition: 'all 0.3s ease',
+                  transition: 'all 0.2s ease',
                 }}
               >
                 <ListItemIcon sx={{ 
                   minWidth: 'auto', 
-                  color: isActive ? qatarMaroon.main : 'inherit',
+                  color: 'white',
                 }}>
                   {item.icon}
                 </ListItemIcon>
-                {isActive && (
-                  <Box
-                    sx={{
-                      width: 4,
-                      height: 32,
-                      borderRadius: 4,
-                      backgroundColor: qatarMaroon.main,
-                      position: 'absolute',
-                      right: isRtl ? 'auto' : 0,
-                      left: isRtl ? 0 : 'auto',
-                    }}
-                  />
-                )}
               </ListItem>
             </Tooltip>
           );
         })}
       </List>
-    </>
+      
+      {/* Help Section */}
+      <Divider sx={{ mt: 2 }} />
+      <List>
+        <ListItem 
+          component={NavLink} 
+          to="/help"
+          sx={{
+            borderRadius: 0,
+            mb: 0.5,
+            px: 1.5,
+            color: 'white',
+            backgroundColor: location.pathname === '/help'
+              ? alpha('#fff', 0.1)
+              : 'transparent',
+            '&:hover': {
+              backgroundColor: alpha('#fff', 0.15),
+            },
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <ListItemIcon sx={{ 
+            minWidth: 40, 
+            color: 'white',
+          }}>
+            <HelpIcon />
+          </ListItemIcon>
+          <ListItemText 
+            primary={t('navigation.help', 'Help')} 
+            primaryTypographyProps={{ 
+              fontWeight: location.pathname === '/help' ? 600 : 400,
+              fontSize: '0.9rem'
+            }}
+          />
+        </ListItem>
+      </List>
+      <Divider />
+      
+      {/* User profile section at the bottom - Discord style */}
+      <UserProfileSection>
+        {isOpen ? (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center',
+            px: 0.5,
+            py: 0.5,
+            borderRadius: 1,
+            '&:hover': {
+              backgroundColor: alpha('#fff', 0.1),
+            }
+          }}>
+            <Avatar 
+              sx={{ 
+                bgcolor: 'secondary.main',
+                mr: 1.5,
+                width: 32,
+                height: 32
+              }}
+            >
+              {user?.firstName?.charAt(0) || 'U'}
+            </Avatar>
+            <Box sx={{ flexGrow: 1 }}>
+              <Typography variant="body2" sx={{ color: 'white', lineHeight: 1.1, fontSize: '0.85rem' }}>
+                {`${user?.firstName || ''} ${user?.lastName || ''}`}
+              </Typography>
+              <Typography variant="caption" sx={{ color: alpha('#fff', 0.7), lineHeight: 1, fontSize: '0.7rem' }}>
+                {user?.role}
+              </Typography>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 0.5 }}>
+              <IconButton 
+                size="small" 
+                onClick={toggleThemeMode} 
+                sx={{ color: alpha('#fff', 0.7), '&:hover': { color: 'white' }, padding: 0.5 }}
+              >
+                {themeMode === 'dark' ? <Brightness7Icon fontSize="small" /> : <Brightness4Icon fontSize="small" />}
+              </IconButton>
+              <IconButton 
+                size="small" 
+                onClick={handleLanguageChange} 
+                sx={{ color: alpha('#fff', 0.7), '&:hover': { color: 'white' }, padding: 0.5 }}
+              >
+                <LanguageIcon fontSize="small" />
+              </IconButton>
+              <IconButton 
+                size="small" 
+                onClick={handleLogout} 
+                sx={{ color: alpha('#fff', 0.7), '&:hover': { color: 'white' }, padding: 0.5 }}
+              >
+                <LogoutIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          </Box>
+        ) : (
+          <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5, py: 0.5 }}>
+            <Tooltip title={`${user?.firstName || ''} ${user?.lastName || ''}`} placement={isRtl ? "left" : "right"}>
+              <Avatar 
+                sx={{ 
+                  bgcolor: 'secondary.main',
+                  width: 32,
+                  height: 32
+                }}
+              >
+                {user?.firstName?.charAt(0) || 'U'}
+              </Avatar>
+            </Tooltip>
+            <Divider sx={{ width: '70%', backgroundColor: alpha('#fff', 0.1) }} />
+            <Tooltip title={i18n.language === 'ar' ? 'English' : 'العربية'} placement={isRtl ? "left" : "right"}>
+              <IconButton 
+                size="small" 
+                onClick={handleLanguageChange}
+                sx={{ color: alpha('#fff', 0.7), '&:hover': { color: 'white' }, padding: 0.5 }}
+              >
+                <LanguageIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={themeMode === 'dark' ? t('theme.lightMode') : t('theme.darkMode')} placement={isRtl ? "left" : "right"}>
+              <IconButton 
+                size="small" 
+                onClick={toggleThemeMode}
+                sx={{ color: alpha('#fff', 0.7), '&:hover': { color: 'white' }, padding: 0.5 }}
+              >
+                {themeMode === 'dark' ? <Brightness7Icon fontSize="small" /> : <Brightness4Icon fontSize="small" />}
+              </IconButton>
+            </Tooltip>
+            <Tooltip title={t('auth.signout')} placement={isRtl ? "left" : "right"}>
+              <IconButton 
+                size="small" 
+                onClick={handleLogout}
+                sx={{ color: alpha('#fff', 0.7), '&:hover': { color: 'white' }, padding: 0.5 }}
+              >
+                <LogoutIcon fontSize="small" />
+              </IconButton>
+            </Tooltip>
+          </Box>
+        )}
+      </UserProfileSection>
+      
+      {/* Settings Panel Slide-in */}
+      <Slide direction={isRtl ? "left" : "right"} in={settingsPanelOpen} mountOnEnter unmountOnExit>
+        <Paper
+          sx={{
+            position: 'fixed',
+            top: 0,
+            [isRtl ? 'left' : 'right']: 0,
+            width: { xs: '100%', sm: 360 },
+            height: '100%',
+            backgroundColor: theme.palette.background.paper,
+            zIndex: 1300,
+            boxShadow: '0 0 15px rgba(0,0,0,0.2)',
+            overflow: 'auto'
+          }}
+        >
+          <Box sx={{ 
+            p: 2, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between',
+            borderBottom: `1px solid ${alpha(theme.palette.text.primary, 0.1)}`
+          }}>
+            <Typography variant="h6">{t('navigation.systemSettings', 'System Settings')}</Typography>
+            <IconButton onClick={handleSettingsPanelClose} edge="end">
+              <CloseIcon />
+            </IconButton>
+          </Box>
+          
+          <List sx={{ pt: 1 }}>
+            {settingsMenuItems.map((item) => {
+              // Check if the route requires a specific role
+              if (item.role && user?.role && !item.role.includes(user.role)) {
+                return null;
+              }
+              
+              return (
+                <ListItem 
+                  key={item.text} 
+                  button
+                  onClick={() => handleNavigateToSettings(item.path)}
+                  sx={{
+                    py: 1.5,
+                    '&:hover': {
+                      backgroundColor: theme.palette.action.hover,
+                    }
+                  }}
+                >
+                  <ListItemIcon>
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText primary={item.text} />
+                </ListItem>
+              );
+            })}
+          </List>
+        </Paper>
+      </Slide>
+    </Box>
   );
 
   return (
@@ -481,6 +1007,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
               boxShadow: 'none',
               border: 'none',
               padding: 0,
+              backgroundColor: qatarMaroon.main,
             },
           }}
         >
@@ -497,13 +1024,14 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
             boxSizing: 'border-box',
             width: isOpen ? DRAWER_WIDTH : COLLAPSED_WIDTH,
             overflowX: 'hidden',
-            borderRight: `1px solid ${theme.palette.divider}`,
-            boxShadow: isOpen ? `1px 0 5px 0 ${alpha('#000', 0.05)}` : 'none',
+            borderRight: 'none',
+            boxShadow: isOpen ? `1px 0 10px 0 ${alpha('#000', 0.2)}` : 'none',
             padding: 0,
             transition: theme.transitions.create('width', {
               easing: theme.transitions.easing.sharp,
               duration: theme.transitions.duration.enteringScreen,
             }),
+            backgroundColor: qatarMaroon.main,
           },
         }}
         open

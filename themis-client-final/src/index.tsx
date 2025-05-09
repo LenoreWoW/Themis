@@ -9,6 +9,10 @@ import store, { persistor } from './redux/store';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
 import { EasterEggProvider } from './context/EasterEggContext';
+// Import services that need initialization
+import './services/initServices';
+// Add import for notification styles
+import './styles/notification-highlight.css';
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

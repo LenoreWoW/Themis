@@ -621,199 +621,199 @@ const DashboardPage: React.FC = () => {
     }
   };
 
+  // Helper to find project name by ID
+  const getProjectNameById = (projectId: string): string => {
+    const project = projects.find(p => p.id === projectId);
+    return project?.name || t('common.noData');
+  };
+
   return (
-    <ProjectProvider>
+    <Box sx={{ py: 2 }}>
       <Container maxWidth="xl">
-        <Box sx={{ py: 4 }}>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'center' }}>
-            <Typography variant="h4" component="h1" gutterBottom>
-              {getDashboardTitle()}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {accessPermissions.canExportReports && (
-                <Button 
-                  startIcon={<DownloadIcon />} 
-                  variant="outlined" 
-                  size="small"
-                  onClick={handleExportReport}
-                >
-                  {t('dashboard.export')}
-                </Button>
-              )}
-              <Typography variant="caption" color="text.secondary">
-                {t('dashboard.lastUpdated')}: {lastRefresh.toLocaleTimeString()}
-              </Typography>
-              <Tooltip title={t('dashboard.refresh')}>
-                <IconButton onClick={handleRefresh} disabled={isLoading}>
-                  {isLoading ? <CircularProgress size={24} /> : <RefreshIcon />}
-                </IconButton>
-              </Tooltip>
+        {/* Dashboard Header with Title and Actions */}
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4" component="h1">
+            {getDashboardTitle()}
+          </Typography>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', typography: 'body2', color: 'text.secondary' }}>
+              {t('dashboard.lastUpdated')}: {formatDate(lastRefresh.toISOString())}
             </Box>
-          </Box>
-
-          {/* Tabs for Dashboard and Assignments */}
-          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-            <Tabs
-              value={tabValue}
-              onChange={handleTabChange}
-              aria-label="dashboard tabs"
-            >
-              <Tab 
-                label={t('navigation.dashboard')} 
-                id="tab-0" 
-                aria-controls="tabpanel-0" 
-                icon={<DashboardIcon />}
-                iconPosition="start"
-              />
-              <Tab 
-                label={t('dashboard.analytics', 'Analytics')} 
-                id="tab-1" 
-                aria-controls="tabpanel-1" 
-                icon={<BarChartIcon />}
-                iconPosition="start"
-              />
-            </Tabs>
-          </Box>
-
-          {renderDashboardContent()}
-          
-          {/* Project Dialog */}
-          {selectedMetric && (
-            <ProjectDialog
-              open={dialogOpen}
-              onClose={() => setDialogOpen(false)}
-              title={getDialogTitle(selectedMetric)}
-              projects={getFilteredProjects(selectedMetric)}
-            />
-          )}
-          
-          {/* Risks Dialog */}
-          <Dialog 
-            open={risksDialogOpen} 
-            onClose={() => setRisksDialogOpen(false)} 
-            maxWidth="md" 
-            fullWidth
-          >
-            <DialogTitle>
-              {t('dashboard.highPriorityRisks', 'High Priority Risks')}
-              <IconButton
-                aria-label="close"
-                onClick={() => setRisksDialogOpen(false)}
-                sx={{ position: 'absolute', right: 8, top: 8 }}
-              >
-                <CloseIcon />
+            
+            <Tooltip title={t('dashboard.refresh')}>
+              <IconButton onClick={handleRefresh} disabled={isLoading} size="small">
+                {isLoading ? <CircularProgress size={20} /> : <RefreshIcon />}
               </IconButton>
-            </DialogTitle>
-            <DialogContent>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>{t('risk.title')}</TableCell>
-                      <TableCell>{t('project.name')}</TableCell>
-                      <TableCell>{t('risk.impact')}</TableCell>
-                      <TableCell>{t('risk.status')}</TableCell>
-                      <TableCell>{t('risk.createdAt')}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {risks.filter(risk => risk.status === RiskStatus.IDENTIFIED || 
-                                          risk.status === RiskStatus.ANALYZING || 
-                                          risk.status === RiskStatus.MONITORED)
-                      .map((risk) => {
-                        const project = projects.find(p => p.id === risk.projectId);
-                        return (
-                          <TableRow key={risk.id}>
-                            <TableCell>{risk.title}</TableCell>
-                            <TableCell>{project?.name || t('common.noData')}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={t(`risk.impact.${risk.impact.toLowerCase()}`)}
-                                size="small"
-                                color={risk.impact === RiskImpact.HIGH ? 'error' : 
-                                      risk.impact === RiskImpact.MEDIUM ? 'warning' : 'success'}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={t(`risk.status.${risk.status.toLowerCase()}`)}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>{formatDate(risk.createdAt)}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </DialogContent>
-          </Dialog>
-
-          {/* Issues Dialog */}
-          <Dialog 
-            open={issuesDialogOpen} 
-            onClose={() => setIssuesDialogOpen(false)} 
-            maxWidth="md" 
-            fullWidth
-          >
-            <DialogTitle>
-              {t('dashboard.openIssues', 'Open Issues')}
-              <IconButton
-                aria-label="close"
-                onClick={() => setIssuesDialogOpen(false)}
-                sx={{ position: 'absolute', right: 8, top: 8 }}
-              >
-                <CloseIcon />
+            </Tooltip>
+            
+            <Tooltip title={t('dashboard.export')}>
+              <IconButton onClick={handleExportReport} size="small">
+                <DownloadIcon />
               </IconButton>
-            </DialogTitle>
-            <DialogContent>
-              <TableContainer component={Paper}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>{t('issue.title')}</TableCell>
-                      <TableCell>{t('project.name')}</TableCell>
-                      <TableCell>{t('issue.impact')}</TableCell>
-                      <TableCell>{t('issue.status')}</TableCell>
-                      <TableCell>{t('issue.createdAt')}</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {issues.filter(issue => issue.status === IssueStatus.OPEN || 
-                                            issue.status === IssueStatus.IN_PROGRESS)
-                      .map((issue) => {
-                        const project = projects.find(p => p.id === issue.projectId);
-                        return (
-                          <TableRow key={issue.id}>
-                            <TableCell>{issue.title}</TableCell>
-                            <TableCell>{project?.name || t('common.noData')}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={t(`issue.impact.${issue.impact.toLowerCase()}`)}
-                                size="small"
-                                color={issue.impact === RiskImpact.HIGH ? 'error' : 
-                                      issue.impact === RiskImpact.MEDIUM ? 'warning' : 'success'}
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Chip
-                                label={t(`issue.status.${issue.status.toLowerCase()}`)}
-                                size="small"
-                              />
-                            </TableCell>
-                            <TableCell>{formatDate(issue.createdAt)}</TableCell>
-                          </TableRow>
-                        );
-                      })}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            </DialogContent>
-          </Dialog>
+            </Tooltip>
+          </Box>
         </Box>
+        
+        {/* Dashboard Tabs */}
+        <Box sx={{ mb: 2 }}>
+          <Tabs 
+            value={tabValue}
+            onChange={handleTabChange}
+            aria-label="dashboard tabs"
+            variant="fullWidth"
+          >
+            <Tab 
+              icon={<DashboardIcon />} 
+              label={t('dashboard.title')} 
+              id="dashboard-tab-0"
+              aria-controls="dashboard-tabpanel-0"
+            />
+            <Tab 
+              icon={<BarChartIcon />} 
+              label={t('navigation.analytics', 'Analytics')} 
+              id="dashboard-tab-1"
+              aria-controls="dashboard-tabpanel-1"
+              disabled={!accessPermissions.analytics}
+            />
+          </Tabs>
+        </Box>
+        
+        {/* Dashboard Content based on selected tab */}
+        <div
+          role="tabpanel"
+          hidden={tabValue !== 0}
+          id="dashboard-tabpanel-0"
+          aria-labelledby="dashboard-tab-0"
+        >
+          {tabValue === 0 && renderDashboardContent()}
+        </div>
+        
+        <div
+          role="tabpanel"
+          hidden={tabValue !== 1}
+          id="dashboard-tabpanel-1"
+          aria-labelledby="dashboard-tab-1"
+        >
+          {tabValue === 1 && (
+            <ProjectProvider>
+              <AnalyticsDashboard />
+            </ProjectProvider>
+          )}
+        </div>
       </Container>
-    </ProjectProvider>
+      
+      {/* Project List Dialog */}
+      <ProjectDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        title={getDialogTitle(selectedMetric || 'projects')}
+        projects={selectedMetric ? getFilteredProjects(selectedMetric) : projects}
+      />
+      
+      {/* Risks Dialog */}
+      <Dialog open={risksDialogOpen} onClose={() => setRisksDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          {t('dashboard.highPriorityRisks')}
+          <IconButton
+            aria-label="close"
+            onClick={() => setRisksDialogOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('risk.name')}</TableCell>
+                  <TableCell>{t('risk.project')}</TableCell>
+                  <TableCell>{t('risk.impact')}</TableCell>
+                  <TableCell>{t('risk.probability')}</TableCell>
+                  <TableCell>{t('risk.status')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {risks
+                  .filter(risk => 
+                    risk.impact === RiskImpact.HIGH || 
+                    risk.impact === RiskImpact.CRITICAL
+                  )
+                  .map((risk) => (
+                    <TableRow key={risk.id}>
+                      <TableCell>{risk.title}</TableCell>
+                      <TableCell>{getProjectNameById(risk.projectId)}</TableCell>
+                      <TableCell>{t(`risk.impact.${risk.impact.toLowerCase()}`)}</TableCell>
+                      <TableCell>{risk.probability}%</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={t(`risk.status.${risk.status.toLowerCase()}`)}
+                          size="small"
+                          color={risk.status === RiskStatus.IDENTIFIED ? 'error' : 'default'}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Issues Dialog */}
+      <Dialog open={issuesDialogOpen} onClose={() => setIssuesDialogOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>
+          {t('dashboard.openIssues')}
+          <IconButton
+            aria-label="close"
+            onClick={() => setIssuesDialogOpen(false)}
+            sx={{ position: 'absolute', right: 8, top: 8 }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </DialogTitle>
+        <DialogContent>
+          <TableContainer component={Paper}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>{t('issue.name')}</TableCell>
+                  <TableCell>{t('issue.project')}</TableCell>
+                  <TableCell>{t('issue.priority')}</TableCell>
+                  <TableCell>{t('issue.status')}</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {issues
+                  .filter(issue => issue.status === IssueStatus.OPEN)
+                  .map((issue) => (
+                    <TableRow key={issue.id}>
+                      <TableCell>{issue.title}</TableCell>
+                      <TableCell>{getProjectNameById(issue.projectId)}</TableCell>
+                      <TableCell>
+                        <Chip
+                          label={t(`issue.priority.medium`)}
+                          size="small"
+                          color="warning"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Chip
+                          label={t(`issue.status.${issue.status.toLowerCase()}`)}
+                          size="small"
+                          color={issue.status === IssueStatus.OPEN ? 'error' : 'default'}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </DialogContent>
+      </Dialog>
+    </Box>
   );
 };
 

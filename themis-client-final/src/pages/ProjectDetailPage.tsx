@@ -279,58 +279,7 @@ const mockProject: ProjectWithTeamData = {
 };
 
 // Mock data for tasks
-const mockTasks = [
-  { 
-    id: '1', 
-    title: 'Requirements Gathering', 
-    description: 'Gather and document system requirements from stakeholders.',
-    status: 'DONE', 
-    priority: 'HIGH',
-    startDate: '2023-01-15', 
-    dueDate: '2023-01-31',
-    assignee: 'Jane Smith'
-  },
-  { 
-    id: '2', 
-    title: 'Database Schema Design', 
-    description: 'Design the database schema for the new system.',
-    status: 'DONE', 
-    priority: 'MEDIUM',
-    startDate: '2023-02-01', 
-    dueDate: '2023-02-15',
-    assignee: 'Robert Brown'
-  },
-  { 
-    id: '3', 
-    title: 'Frontend Prototype', 
-    description: 'Create a prototype of the user interface.',
-    status: 'IN_PROGRESS', 
-    priority: 'MEDIUM',
-    startDate: '2023-02-15', 
-    dueDate: '2023-03-01',
-    assignee: 'Sarah Williams'
-  },
-  { 
-    id: '4', 
-    title: 'API Development', 
-    description: 'Develop the API endpoints for the system.',
-    status: 'IN_PROGRESS', 
-    priority: 'HIGH',
-    startDate: '2023-02-15', 
-    dueDate: '2023-03-15',
-    assignee: 'Robert Brown'
-  },
-  { 
-    id: '5', 
-    title: 'Testing Plan', 
-    description: 'Create a comprehensive testing plan for the system.',
-    status: 'TODO', 
-    priority: 'MEDIUM',
-    startDate: '2023-03-01', 
-    dueDate: '2023-03-15',
-    assignee: 'Mike Johnson'
-  }
-];
+const mockTasks = [];
 
 // Helper function to get status color
 const getStatusColor = (status: string, endDate?: string) => {

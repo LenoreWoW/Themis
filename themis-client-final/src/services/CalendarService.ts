@@ -135,7 +135,7 @@ class CalendarService {
       switch (eventType) {
         case CalendarEventType.TASK:
           // Update task dates
-          const task = await api.tasks.getTaskById(eventId, token);
+          const task = await api.tasks.getTaskById('', eventId, token);
           if (task.data) {
             await api.tasks.updateTask(eventId, {
               ...task.data,

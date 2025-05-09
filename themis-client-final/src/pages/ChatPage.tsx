@@ -33,7 +33,7 @@ const Root = styled('div')(({ theme }) => ({
 }));
 
 const ChatPage: React.FC = () => {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   
   // Update document title
   useEffect(() => {
@@ -44,7 +44,7 @@ const ChatPage: React.FC = () => {
   }, []);
   
   // Redirect to login if not authenticated
-  if (!loading && !isAuthenticated) {
+  if (!isLoading && !isAuthenticated) {
     return <Navigate to="/login" />;
   }
   

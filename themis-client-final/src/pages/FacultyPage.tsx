@@ -28,7 +28,8 @@ import {
   MenuItem,
   FormHelperText,
   InputAdornment,
-  Avatar
+  Avatar,
+  SelectChangeEvent
 } from '@mui/material';
 import { 
   Search as SearchIcon,
@@ -399,6 +400,22 @@ const FacultyPage: React.FC = () => {
     }
   };
 
+  const handleDepartmentChange = (event: SelectChangeEvent<string>) => {
+    const { value } = event.target;
+    setFormData(prev => ({
+      ...prev,
+      departmentId: value
+    }));
+  };
+
+  const handleRoleChange = (event: SelectChangeEvent<UserRole>) => {
+    const value = event.target.value as UserRole;
+    setFormData(prev => ({
+      ...prev,
+      role: value
+    }));
+  };
+
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -406,7 +423,13 @@ const FacultyPage: React.FC = () => {
           {t('faculty.title')}
         </Typography>
         
-        {hasRole(['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE']) && (
+        {hasRole([
+          UserRole.ADMIN, 
+          UserRole.DEPARTMENT_DIRECTOR, 
+          UserRole.SUB_PMO, 
+          UserRole.MAIN_PMO, 
+          UserRole.EXECUTIVE
+        ]) && (
           <Button 
             variant="contained" 
             color="primary" 
@@ -423,7 +446,7 @@ const FacultyPage: React.FC = () => {
           <Tabs value={tabValue} onChange={handleTabChange} aria-label="faculty tabs">
             <Tab label={t('faculty.departmentMembers')} />
             <Tab label={t('faculty.requestsInProgress')} />
-            {hasRole(['ADMIN', 'MAIN_PMO']) && (
+            {hasRole([UserRole.ADMIN, UserRole.MAIN_PMO]) && (
               <Tab label={t('faculty.allMembers')} />
             )}
           </Tabs>
@@ -563,7 +586,12 @@ const FacultyPage: React.FC = () => {
                           <IconButton size="small" color="primary">
                             <VisibilityIcon fontSize="small" />
                           </IconButton>
-                          {hasRole(['ADMIN', 'DEPARTMENT_DIRECTOR', 'MAIN_PMO', 'SUB_PMO']) && (
+                          {hasRole([
+                            UserRole.ADMIN, 
+                            UserRole.DEPARTMENT_DIRECTOR, 
+                            UserRole.MAIN_PMO, 
+                            UserRole.SUB_PMO
+                          ]) && (
                             <IconButton size="small" color="primary">
                               <EditIcon fontSize="small" />
                             </IconButton>
@@ -595,7 +623,7 @@ const FacultyPage: React.FC = () => {
         </TabPanel>
 
         {/* All Members Tab (Admin Only) */}
-        {hasRole(['ADMIN', 'MAIN_PMO']) && (
+        {hasRole([UserRole.ADMIN, UserRole.MAIN_PMO]) && (
           <TabPanel value={tabValue} index={2}>
             <Box sx={{ py: 2, px: 2 }}>
               <TextField
@@ -720,7 +748,7 @@ const FacultyPage: React.FC = () => {
                   name="departmentId"
                   value={formData.departmentId}
                   label={t('faculty.department')}
-                  onChange={handleInputChange}
+                  onChange={handleDepartmentChange}
                 >
                   {mockDepartments.map(dept => (
                     <MenuItem key={dept.id} value={dept.id}>{dept.name}</MenuItem>
@@ -736,7 +764,7 @@ const FacultyPage: React.FC = () => {
                   name="role"
                   value={formData.role}
                   label={t('faculty.role')}
-                  onChange={handleInputChange}
+                  onChange={handleRoleChange}
                 >
                   <MenuItem value={UserRole.PROJECT_MANAGER}>{UserRole.PROJECT_MANAGER}</MenuItem>
                   <MenuItem value={UserRole.SUB_PMO}>{UserRole.SUB_PMO}</MenuItem>

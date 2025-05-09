@@ -5,6 +5,8 @@ import { API_BASE_URL, AUTH_CONFIG } from '../config';
 import { User, UserRole, AuthResponse } from '../types';
 import { jwtDecode } from 'jwt-decode';
 import { login as loginService } from '../services/auth';
+import logger from '../utils/logger';
+import api from '../services/api';
 
 // Use the token storage key from config
 const TOKEN_STORAGE_KEY = AUTH_CONFIG.TOKEN_STORAGE_KEY;
@@ -133,175 +135,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
     checkTokenAndSetUser();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const login = async (username: string, password: string = '') => {
+  const login = async (username: string, password: string) => {
     setIsLoading(true);
-    console.log('Login attempt with username:', username);
-    
     try {
-      // Special case for "admin" user - no password required
-      if (username.toLowerCase() === 'admin') {
-        // Admin user bypasses password validation
-        console.log('Admin login - bypassing password validation');
-        // Create admin mock response
-        const mockResponse: AuthResponse = {
-          userId: 'admin-1',
-          username: 'admin',
-          role: UserRole.ADMIN,
-          token: 'mock-jwt-token-admin-' + Date.now(),
-          success: true,
-          message: 'Login successful',
-          user: {
-            id: 'admin-1',
-            username: 'admin',
-            firstName: 'Admin',
-            lastName: 'User',
-            email: 'admin@acme.com',
-            role: UserRole.ADMIN,
-            department: {
-              id: 'dept-1',
-              name: 'IT Department',
-              description: 'Information Technology Department',
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        };
-        
-        console.log('Setting admin user');
-        setUser(mockResponse.user);
-        setToken(mockResponse.token);
-        localStorage.setItem(TOKEN_STORAGE_KEY, mockResponse.token);
-        setIsLoading(false);
-        return;
-      }
+      // Use the login service directly
+      const response = await loginService(username, password);
       
-      // Check for test users - no need for API calls
-      const isTestUser = username === 'john.smith@acme.com' ||
-                        username === 'sarah.johnson@acme.com' ||
-                        username === 'emma.garcia@acme.com' ||
-                        username === 'robert.taylor@acme.com' ||
-                        username === 'david.wilson@acme.com' ||
-                        username === 'jessica.brown@acme.com' ||
-                        username === 'michael.chen@acme.com';
-                        
-      if (isTestUser) {
-        console.log('Using test user authentication for:', username);
-        // For development mode or test accounts
-        // Map the email address to the appropriate role
-        let userRole = UserRole.ADMIN; // Default
+      if (response.success && response.user) {
+        const { token, user } = response;
         
-        // Map test accounts to their respective roles
-        if (username === 'sarah.johnson@acme.com') {
-          userRole = UserRole.PROJECT_MANAGER;
-        } else if (username === 'emma.garcia@acme.com') {
-          userRole = UserRole.DEPARTMENT_DIRECTOR;
-        } else if (username === 'robert.taylor@acme.com') {
-          userRole = UserRole.EXECUTIVE;
-        } else if (username === 'david.wilson@acme.com') {
-          userRole = UserRole.MAIN_PMO;
-        } else if (username === 'jessica.brown@acme.com') {
-          userRole = UserRole.SUB_PMO;
-        } else if (username === 'michael.chen@acme.com') {
-          userRole = UserRole.DEVELOPER;
-        }
-        // john.smith@acme.com will remain as ADMIN (default)
+        // Store token and user
+        setToken(token);
+        setUser(user);
+        localStorage.setItem('token', token);
+        localStorage.setItem('userId', user.id);
         
-        // Set department details based on user
-        let departmentId = 'dept-1';
-        let departmentName = 'IT Department';
-        let departmentDescription = 'Information Technology Department';
-        
-        // Assign departments to users
-        if (username === 'sarah.johnson@acme.com' || username === 'jessica.brown@acme.com') {
-          // Project Manager and Sub PMO belong to the same department
-          departmentId = 'dept-2';
-          departmentName = 'Digital Transformation';
-          departmentDescription = 'Digital Transformation and Innovation Department';
-        } else if (username === 'emma.garcia@acme.com') {
-          departmentId = 'dept-3';
-          departmentName = 'Finance Department';
-          departmentDescription = 'Finance and Accounting Department';
-        } else if (username === 'michael.chen@acme.com') {
-          departmentId = 'dept-4';
-          departmentName = 'Development Department';
-          departmentDescription = 'Software Development Department';
-        }
-        
-        // For pre-AD integration: create a mock successful login response
-        const mockResponse: AuthResponse = {
-          userId: '1',
-          username: username,
-          role: userRole,
-          token: 'mock-jwt-token-' + Date.now(), // Add timestamp to make it unique
-          success: true,
-          message: 'Login successful',
-          // Create a minimal user object to satisfy the interface requirement
-          user: {
-            id: '1',
-            username: username,
-            firstName: username.split('@')[0].split('.').join(' '),
-            lastName: '',
-            email: username,
-            role: userRole,
-            department: {
-              id: departmentId,
-              name: departmentName,
-              description: departmentDescription,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString()
-            },
-            isActive: true,
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          }
-        };
-        
-        console.log('Setting test user:', mockResponse.user);
-        setUser(mockResponse.user);
-        console.log('Setting token:', mockResponse.token);
-        setToken(mockResponse.token);
-        
-        // Store token in localStorage
-        localStorage.setItem(TOKEN_STORAGE_KEY, mockResponse.token);
         setIsLoading(false);
-        return;
-      }
-      
-      // For regular production authentication with non-empty password
-      if (password) {
-        // Production environment: Use the login service to authenticate
-        try {
-          console.log('Attempting production login with service');
-          const response = await loginService(username, password);
-          
-          console.log('Setting user:', response.user);
-          setUser(response.user);
-          console.log('Setting token:', response.token);
-          setToken(response.token);
-          
-          // Store token in localStorage
-          localStorage.setItem(TOKEN_STORAGE_KEY, response.token);
-          
-          setIsLoading(false);
-          return;
-        } catch (error) {
-          console.error('Authentication error:', error);
-          setIsLoading(false);
-          throw error;
-        }
       } else {
-        // If we got here, it means we have a non-test user with no password
-        console.error('Non-test user without password');
         setIsLoading(false);
-        throw new Error('Password is required');
+        console.error('Authentication failed');
       }
     } catch (error) {
-      console.error('Login error details:', error);
       setIsLoading(false);
-      throw error;
+      console.error('Login error:', error);
     }
   };
 

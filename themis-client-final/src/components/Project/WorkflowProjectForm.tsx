@@ -44,6 +44,7 @@ interface ProjectFormData {
   budget: number;
   goalsLink: string;
   priority: ProjectPriority;
+  dependencySeverity: 'high' | 'medium' | 'low';
   approvalStatus: ApprovalStatus;
   comments?: string;
 }
@@ -94,6 +95,9 @@ const projectSchema = yup.object({
   priority: yup.string()
     .required('Priority is required'),
   
+  dependencySeverity: yup.string()
+    .required('Dependency severity is required'),
+  
   goalsLink: yup.string()
     .url('Please enter a valid URL')
     .nullable()
@@ -131,6 +135,7 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
     budget: 0,
     goalsLink: '',
     priority: ProjectPriority.MEDIUM,
+    dependencySeverity: 'medium',
     approvalStatus: ApprovalStatus.DRAFT
   };
   
@@ -152,7 +157,8 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
             priority: responseData.priority as ProjectPriority,
             approvalStatus: (responseData.approvalStatus as ApprovalStatus) || ApprovalStatus.DRAFT,
             goalsLink: responseData.goalsLink || '',
-            actualCost: responseData.actualCost
+            actualCost: responseData.actualCost,
+            dependencySeverity: responseData.dependencySeverity || 'medium'
           };
           
           setProject(projectData as Project);
@@ -168,6 +174,7 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
           defaultValues.budget = responseData.budget;
           defaultValues.priority = responseData.priority as ProjectPriority;
           defaultValues.goalsLink = responseData.goalsLink || '';
+          defaultValues.dependencySeverity = responseData.dependencySeverity || 'medium';
           defaultValues.approvalStatus = (responseData.approvalStatus as ApprovalStatus) || ApprovalStatus.DRAFT;
         } else {
           setError('Project not found');
@@ -240,6 +247,7 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
         startDate: data.startDate.toISOString(),
         endDate: data.endDate.toISOString(),
         approvalStatus: nextStatus,
+        dependencySeverity: data.dependencySeverity,
         comments: comments || undefined
       };
       
@@ -407,6 +415,24 @@ const WorkflowProjectForm: React.FC<WorkflowProjectFormProps> = ({
               { value: ProjectPriority.MEDIUM, label: t('projectPriority.MEDIUM') },
               { value: ProjectPriority.HIGH, label: t('projectPriority.HIGH') },
               { value: ProjectPriority.CRITICAL, label: t('projectPriority.CRITICAL') }
+            ]}
+            startIcon={
+              <InputAdornment position="start">
+                <PriorityIcon color="action" />
+              </InputAdornment>
+            }
+          />
+        </GridItem>
+        
+        <GridItem xs={12} sm={6}>
+          <FormSelect
+            name="dependencySeverity"
+            label={t('dependencies.impact')}
+            required
+            options={[
+              { value: 'high', label: t('dependencies.highImpact') },
+              { value: 'medium', label: t('dependencies.mediumImpact') },
+              { value: 'low', label: t('dependencies.lowImpact') }
             ]}
             startIcon={
               <InputAdornment position="start">

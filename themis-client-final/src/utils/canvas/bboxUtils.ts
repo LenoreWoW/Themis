@@ -1,14 +1,4 @@
-import { Card, CardGroup, Connection, Position, Size } from '../../store/slices/canvasSlice';
-
-/**
- * Interface for a bounding box
- */
-export interface BBox {
-  minX: number;
-  minY: number;
-  maxX: number;
-  maxY: number;
-}
+import { Card, CardGroup, Connection, Position, Size, BBox } from '../../types/Canvas';
 
 /**
  * Creates an empty bounding box

@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { RootState } from '../../redux/store';
-import { Card, Position, Size } from '../../store/slices/canvasSlice';
+import { Card, Position, Size } from '../../types/Canvas';
 
 /**
  * Custom hook for canvas snapping functionality
@@ -16,6 +16,9 @@ export const useCanvasSnap = () => {
   
   // Get all cards except the ones with the given IDs
   const getOtherCards = useCallback((excludeIds: string[] = []): Card[] => {
+    if (!Array.isArray(cards)) {
+      return Object.values(cards || {}).filter(card => !excludeIds.includes(card.id));
+    }
     return cards.filter(card => !excludeIds.includes(card.id));
   }, [cards]);
   

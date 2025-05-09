@@ -336,15 +336,21 @@ class AIService {
     // In a real implementation, this would use a search index and semantic search
     // For now, use basic string matching with permission filtering
     
+    // Create an array to store results
     const results: any[] = [];
+    
+    // Return empty results array instead of using localStorage
+    if (!query || query.trim() === '') {
+      return results;
+    }
     
     // Normalize query for more effective searching
     const normalizedQuery = query.toLowerCase().trim();
     
-    // Get data from localStorage (in a real app, this would be from your API)
-    const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-    const tasks = JSON.parse(localStorage.getItem('tasks') || '[]');
-    const changeRequests = JSON.parse(localStorage.getItem('changeRequests') || '[]');
+    // Get data from API in a real implementation
+    const projects: Project[] = [];
+    const tasks: Task[] = [];
+    const changeRequests: ChangeRequest[] = [];
     
     // Search in projects if requested
     if (contentTypes.includes('projects')) {

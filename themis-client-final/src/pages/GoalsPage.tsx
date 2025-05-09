@@ -25,12 +25,16 @@ import {
   ListItemText,
   Checkbox,
   OutlinedInput,
-  SelectChangeEvent
+  SelectChangeEvent,
+  Container
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon, Link as LinkIcon } from '@mui/icons-material';
 import { GridContainer, GridItem } from '../components/common/MuiGridWrapper';
 import { useTranslation } from 'react-i18next';
 import api from '../services/api';
+import GoalRelationshipsPage from './GoalRelationshipsPage';
+import GoalMindMapPage from './GoalMindMapPage';
+import ProjectGoalMindMapPage from './ProjectGoalMindMapPage';
 
 // Enums used in this component
 enum GoalType {
@@ -633,35 +637,49 @@ const GoalsPage: React.FC = () => {
   };
 
   return (
-    <Box sx={{ p: 3 }}>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 3, alignItems: 'center' }}>
-        <Typography variant="h4">{t('navigation.goals')}</Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          startIcon={<AddIcon />}
-          onClick={() => handleOpenDialog()}
-        >
-          {t('goals.add')}
-        </Button>
-      </Box>
-
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs value={tabValue} onChange={handleTabChange} aria-label="goal types">
-          <Tab label={t('goals.strategic')} {...a11yProps(0)} />
-          <Tab label={t('goals.annual')} {...a11yProps(1)} />
-        </Tabs>
-      </Box>
+    <Container maxWidth="xl" sx={{ py: 3 }}>
+      <Paper sx={{ width: '100%', p: 3 }}>
+        <Box sx={{ borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Tabs value={tabValue} onChange={handleTabChange} aria-label="goal tabs">
+            <Tab label={t('goals.strategicGoals')} {...a11yProps(0)} />
+            <Tab label={t('goals.annualGoals')} {...a11yProps(1)} />
+            <Tab label={t('goals.relationships')} {...a11yProps(2)} />
+            <Tab label={t('goals.goalMindMap')} {...a11yProps(3)} />
+            <Tab label={t('goals.projectGoalMindMap')} {...a11yProps(4)} />
+          </Tabs>
+          
+          <Button
+            variant="contained"
+            color="primary"
+            startIcon={<AddIcon />}
+            onClick={() => handleOpenDialog()}
+          >
+            {t('goals.addGoal')}
+          </Button>
+        </Box>
+        
+        <TabPanel value={tabValue} index={0}>
+          {renderGoalCards(strategicGoals)}
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={1}>
+          {renderGoalCards(annualGoals)}
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={2}>
+          <GoalRelationshipsPage />
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={3}>
+          <GoalMindMapPage />
+        </TabPanel>
+        
+        <TabPanel value={tabValue} index={4}>
+          <ProjectGoalMindMapPage />
+        </TabPanel>
+      </Paper>
       
-      <TabPanel value={tabValue} index={0}>
-        {renderGoalCards(strategicGoals)}
-      </TabPanel>
-      
-      <TabPanel value={tabValue} index={1}>
-        {renderGoalCards(annualGoals)}
-      </TabPanel>
-
-      {/* Goal Edit/Create Dialog */}
+      {/* Dialog for adding/editing goals */}
       <Dialog open={openDialog} onClose={handleCloseDialog} maxWidth="md" fullWidth>
         <DialogTitle>
           {isEditing 
@@ -949,7 +967,7 @@ const GoalsPage: React.FC = () => {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </Container>
   );
 };
 

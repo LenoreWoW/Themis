@@ -1,6 +1,6 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { combineReducers } from 'redux';
-import { persistStore, persistReducer } from 'redux-persist';
+import { persistStore, persistReducer, Persistor } from 'redux-persist';
 import storage from 'redux-persist/lib/storage';
 import { dragReducer } from './reducers/dragReducer';
 import canvasReducer from '../store/slices/canvasSlice';
@@ -32,6 +32,7 @@ const store = configureStore({
 
 export type AppDispatch = typeof store.dispatch;
 
-export const persistor = persistStore(store);
+// Use type assertion to fix the typing issue with persistStore
+export const persistor: Persistor = persistStore(store as any);
 
 export default store; 

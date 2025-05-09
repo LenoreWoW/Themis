@@ -11,6 +11,8 @@ import {
   Button,
   Stack,
   Alert,
+  Tooltip,
+  Snackbar
 } from '@mui/material';
 import {
   BarChart,
@@ -32,7 +34,7 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  Tooltip,
+  Tooltip as RechartsTooltip,
   Legend,
   Cell,
   ResponsiveContainer,
@@ -42,6 +44,14 @@ import { Project, ProjectStatus, ProjectPriority, UserRole, AssignmentStatus, Ri
 import { useAuth } from '../../hooks/useAuth';
 import api from '../../services/api';
 import { useTranslation } from 'react-i18next';
+import {
+  Save as SaveIcon,
+  PictureAsPdf as PdfIcon,
+  TableChart as ExcelIcon
+} from '@mui/icons-material';
+import jsPDF from 'jspdf';
+import * as ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
 
 interface ChartData {
   name: string;
@@ -75,6 +85,11 @@ const AnalyticsDashboard: React.FC = () => {
   const [selectedMetric, setSelectedMetric] = useState<string>('');
   const [selectedChartType, setSelectedChartType] = useState<ChartConfig['type']>('bar');
   const [charts, setCharts] = useState<ChartConfig[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [reportSchema, setReportSchema] = useState<any>(null);
 
   const metrics: MetricOption[] = [
     { value: 'client', label: t('analytics.projectsByClient', 'Number of Projects by Client'), allowedRoles: [UserRole.ADMIN, UserRole.EXECUTIVE, UserRole.MAIN_PMO] },
@@ -415,7 +430,7 @@ const AnalyticsDashboard: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                   <Bar dataKey="value" fill="#8884d8" />
                 </BarChart>
@@ -447,7 +462,7 @@ const AnalyticsDashboard: React.FC = () => {
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
@@ -467,7 +482,7 @@ const AnalyticsDashboard: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                   <Line type="monotone" dataKey="value" stroke="#8884d8" />
                 </LineChart>
@@ -488,7 +503,7 @@ const AnalyticsDashboard: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                   <Area type="monotone" dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.3} />
                 </AreaChart>
@@ -509,7 +524,7 @@ const AnalyticsDashboard: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis dataKey="value" />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                   <Scatter data={data} fill="#8884d8" />
                 </ScatterChart>
@@ -531,7 +546,7 @@ const AnalyticsDashboard: React.FC = () => {
                   <PolarAngleAxis dataKey="name" />
                   <PolarRadiusAxis />
                   <Radar dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                 </RadarChart>
               </ResponsiveContainer>
@@ -551,7 +566,7 @@ const AnalyticsDashboard: React.FC = () => {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" />
                   <YAxis />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Legend />
                   <Bar dataKey="value" fill="#8884d8" />
                   <Line type="monotone" dataKey="value" stroke="#ff7300" />
@@ -566,12 +581,204 @@ const AnalyticsDashboard: React.FC = () => {
     }
   };
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
-        {t('analytics.title', 'Project Analytics Dashboard')}
-      </Typography>
+  // Function to save the current report state to the database
+  const saveReport = async () => {
+    if (!selectedMetric) {
+      setSnackbarMessage('Please select a metric to save');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    try {
+      setSaving(true);
       
+      // Generate a schema representing the current report state
+      const schema = {
+        metrics: selectedMetric,
+        chartType: selectedChartType,
+        charts: charts,
+        timestamp: new Date().toISOString(),
+        createdBy: user?.id,
+        title: `${t(`analytics.${selectedMetric}`, selectedMetric)} Report`
+      };
+      
+      // Save this schema to state for export functions to use
+      setReportSchema(schema);
+      
+      // Call the API to save the report
+      const response = await fetch('/api/reports', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(schema),
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        setSnackbarMessage('Report saved successfully');
+      } else {
+        setSnackbarMessage('Failed to save report: ' + data.error);
+      }
+    } catch (error) {
+      console.error('Error saving report:', error);
+      setSnackbarMessage('An error occurred while saving the report');
+    } finally {
+      setSaving(false);
+      setSnackbarOpen(true);
+    }
+  };
+
+  // Function to export the current report as PDF
+  const exportPdf = async () => {
+    if (!selectedMetric) {
+      setSnackbarMessage('Please select a metric to export');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    try {
+      setExporting(true);
+      
+      // Create a new jsPDF instance
+      const doc = new jsPDF();
+      
+      // Add title
+      doc.setFontSize(16);
+      doc.text(`${t(`analytics.${selectedMetric}`, selectedMetric)} Report`, 20, 20);
+      
+      // Add timestamp
+      doc.setFontSize(10);
+      doc.text(`Generated: ${new Date().toLocaleString()}`, 20, 30);
+      
+      // Add data
+      doc.setFontSize(12);
+      const data = processData(selectedMetric);
+      
+      // Add table
+      let yPos = 40;
+      doc.text('Value', 150, yPos);
+      doc.text('Name', 20, yPos);
+      yPos += 10;
+      
+      data.forEach((item, index) => {
+        if (yPos > 270) {
+          doc.addPage();
+          yPos = 20;
+          doc.text('Name', 20, yPos);
+          doc.text('Value', 150, yPos);
+          yPos += 10;
+        }
+        
+        doc.text(String(item.name), 20, yPos);
+        doc.text(String(item.value), 150, yPos);
+        yPos += 10;
+      });
+      
+      // Save the PDF
+      doc.save(`${selectedMetric}_report.pdf`);
+      
+      setSnackbarMessage('PDF exported successfully');
+    } catch (error) {
+      console.error('Error exporting PDF:', error);
+      setSnackbarMessage('An error occurred while exporting PDF');
+    } finally {
+      setExporting(false);
+      setSnackbarOpen(true);
+    }
+  };
+  
+  // Function to export the current report as Excel
+  const exportExcel = async () => {
+    if (!selectedMetric) {
+      setSnackbarMessage('Please select a metric to export');
+      setSnackbarOpen(true);
+      return;
+    }
+    
+    try {
+      setExporting(true);
+      
+      // Create a new workbook and worksheet
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet(`${selectedMetric} Report`);
+      
+      // Add headers
+      worksheet.columns = [
+        { header: 'Name', key: 'name', width: 30 },
+        { header: 'Value', key: 'value', width: 20 }
+      ];
+      
+      // Add data
+      const data = processData(selectedMetric);
+      data.forEach(item => {
+        worksheet.addRow({ name: item.name, value: item.value });
+      });
+      
+      // Apply some styling
+      worksheet.getRow(1).font = { bold: true };
+      
+      // Generate the file
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      saveAs(blob, `${selectedMetric}_report.xlsx`);
+      
+      setSnackbarMessage('Excel file exported successfully');
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      setSnackbarMessage('An error occurred while exporting Excel');
+    } finally {
+      setExporting(false);
+      setSnackbarOpen(true);
+    }
+  };
+
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+  };
+
+  return (
+    <Paper sx={{ p: 3 }}>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Typography variant="h5" gutterBottom>{t('analytics.title', 'Analytics Dashboard')}</Typography>
+        
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Tooltip title={t('analytics.saveReport', 'Save Report')}>
+            <Button
+              variant="outlined"
+              startIcon={<SaveIcon />}
+              onClick={saveReport}
+              disabled={saving || !selectedMetric}
+            >
+              {t('analytics.save', 'Save')}
+            </Button>
+          </Tooltip>
+          
+          <Tooltip title={t('analytics.exportPdf', 'Export as PDF')}>
+            <Button
+              variant="outlined"
+              startIcon={<PdfIcon />}
+              onClick={exportPdf}
+              disabled={exporting || !selectedMetric}
+            >
+              PDF
+            </Button>
+          </Tooltip>
+          
+          <Tooltip title={t('analytics.exportExcel', 'Export as Excel')}>
+            <Button
+              variant="outlined"
+              startIcon={<ExcelIcon />}
+              onClick={exportExcel}
+              disabled={exporting || !selectedMetric}
+            >
+              Excel
+            </Button>
+          </Tooltip>
+        </Box>
+      </Box>
+
       {availableMetrics.length === 0 ? (
         <Alert severity="info">
           {t('analytics.noAccess', 'You don\'t have access to any analytics data. Please contact your administrator for access.')}
@@ -701,7 +908,14 @@ const AnalyticsDashboard: React.FC = () => {
           )}
         </>
       )}
-    </Box>
+      
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        message={snackbarMessage}
+      />
+    </Paper>
   );
 };
 

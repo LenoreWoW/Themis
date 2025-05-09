@@ -1,4 +1,4 @@
-import { AuthResponse, ApiResponse, User } from '../types';
+import { AuthResponse, ApiResponse, User, UserRole } from '../types';
 import axios from 'axios';
 import { API_BASE_URL, AUTH0_CONFIG } from '../config';
 import auth0 from 'auth0-js';
@@ -121,7 +121,63 @@ export const logoutAuth0 = (): void => {
 // Legacy login function (will be deprecated once Auth0 is fully integrated)
 export const login = async (username: string, password: string): Promise<AuthResponse> => {
   try {
-    // Try LDAP authentication first
+    // Special handling for test accounts - bypass validation
+    const testAccounts = [
+      'admin',
+      'john.smith@acme.com',
+      'sarah.johnson@acme.com',
+      'emma.garcia@acme.com',
+      'robert.taylor@acme.com',
+      'david.wilson@acme.com',
+      'jessica.brown@acme.com',
+      'michael.chen@acme.com'
+    ];
+    
+    if (testAccounts.includes(username.toLowerCase())) {
+      console.log('Using test account auto-validation for:', username);
+      
+      // Create a mock successful response for the test account
+      const mockUser: User = {
+        id: 'test-user-' + Date.now(),
+        username: username,
+        firstName: username.split('@')[0].split('.')[0],
+        lastName: username.split('@')[0].split('.')[1] || '',
+        email: username,
+        role: username.toLowerCase() === 'admin' ? UserRole.ADMIN : 
+              username.toLowerCase().includes('manager') ? UserRole.PROJECT_MANAGER :
+              username.toLowerCase().includes('director') ? UserRole.DEPARTMENT_DIRECTOR :
+              username.toLowerCase().includes('executive') ? UserRole.EXECUTIVE :
+              username.toLowerCase().includes('main') ? UserRole.MAIN_PMO :
+              username.toLowerCase().includes('sub') ? UserRole.SUB_PMO :
+              UserRole.DEVELOPER,
+        department: {
+          id: 'dept-' + Math.floor(Math.random() * 10),
+          name: username.includes('digital') ? 'Digital Transformation' :
+                username.includes('finance') ? 'Finance Department' :
+                username.includes('dev') ? 'Development Department' : 'IT Department',
+          description: 'Department for ' + username,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        },
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      // Mock successful response
+      return {
+        userId: mockUser.id,
+        username: mockUser.username,
+        role: mockUser.role,
+        departmentId: mockUser.department.id,
+        token: 'test-token-' + Date.now(),
+        success: true,
+        message: 'Test account login successful',
+        user: mockUser
+      };
+    }
+    
+    // For real accounts, try LDAP authentication first
     console.log('Attempting LDAP authentication for:', username);
     return await makeRequest<AuthResponse>('/auth/ldap/login', 'POST', { username, password });
   } catch (error) {
@@ -184,4 +240,44 @@ export const rejectUserRequest = async (id: string, comments: string, token: str
   return makeRequest<any>(`/auth/user-requests/${id}/reject`, 'POST', { comments }, token);
 };
 
-export { makeRequest }; 
+export const getCurrentUser = async (token: string): Promise<ApiResponse<User>> => {
+  // In a real implementation, this would call an API endpoint to get the current user
+  // For now, simulate a response after a short delay
+  await new Promise(resolve => setTimeout(resolve, 300));
+  
+  // Create a mock user response
+  const mockUser: User = {
+    id: 'current-user',
+    username: 'current.user',
+    firstName: 'Current',
+    lastName: 'User',
+    email: 'current.user@example.com',
+    role: UserRole.ADMIN, // Default to admin for testing
+    department: {
+      id: 'dept-1',
+      name: 'IT Department',
+      description: 'Information Technology Department',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    },
+    isActive: true,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  
+  return {
+    data: mockUser,
+    success: true
+  };
+};
+
+// Make sure to export default for the main auth object
+const auth = {
+  login,
+  refreshToken,
+  logout,
+  getCurrentUser,
+  // other methods...
+};
+
+export default auth; 

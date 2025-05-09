@@ -68,6 +68,11 @@ export interface CanvasState {
   selectedCardIds: string[];
   selectedConnectionIds: string[];
   selectedGroupIds: string[];
+  selection: {
+    cardIds: string[];
+    connectionIds: string[];
+    groupIds: string[];
+  };
   viewport: Viewport;
   gridSize: number;
   snapToGrid: boolean;
@@ -89,6 +94,11 @@ const initialState: CanvasState = {
   selectedCardIds: [],
   selectedConnectionIds: [],
   selectedGroupIds: [],
+  selection: {
+    cardIds: [],
+    connectionIds: [],
+    groupIds: []
+  },
   viewport: {
     pan: { x: 0, y: 0 },
     zoom: 1,
@@ -317,48 +327,81 @@ export const canvasSlice = createSlice({
     },
     
     // Selection actions
-    selectCard: (state, action: PayloadAction<string>) => {
-      const cardId = action.payload;
-      if (state.cards[cardId] && !state.selectedCardIds.includes(cardId)) {
-        state.selectedCardIds.push(cardId);
+    selectCard: (state, action: PayloadAction<{ id: string; addToSelection: boolean }>) => {
+      const { id, addToSelection } = action.payload;
+      
+      if (!addToSelection) {
+        state.selectedCardIds = [];
+        state.selection.cardIds = [];
+      }
+      
+      if (state.cards[id] && !state.selectedCardIds.includes(id)) {
+        state.selectedCardIds.push(id);
+        state.selection.cardIds.push(id);
       }
     },
     selectMultipleCards: (state, action: PayloadAction<{ids: string[], addToSelection: boolean}>) => {
       const { ids, addToSelection } = action.payload;
+      
       if (!addToSelection) {
         state.selectedCardIds = [];
+        state.selection.cardIds = [];
       }
+      
       ids.forEach(id => {
         if (state.cards[id] && !state.selectedCardIds.includes(id)) {
           state.selectedCardIds.push(id);
+          state.selection.cardIds.push(id);
         }
       });
     },
-    selectConnection: (state, action: PayloadAction<string>) => {
-      const connectionId = action.payload;
-      if (state.connections[connectionId] && !state.selectedConnectionIds.includes(connectionId)) {
-        state.selectedConnectionIds.push(connectionId);
+    selectConnection: (state, action: PayloadAction<{ id: string; addToSelection: boolean }>) => {
+      const { id, addToSelection } = action.payload;
+      
+      if (!addToSelection) {
+        state.selectedConnectionIds = [];
+        state.selection.connectionIds = [];
+      }
+      
+      if (state.connections[id] && !state.selectedConnectionIds.includes(id)) {
+        state.selectedConnectionIds.push(id);
+        state.selection.connectionIds.push(id);
       }
     },
-    selectGroup: (state, action: PayloadAction<string>) => {
-      const groupId = action.payload;
-      if (state.groups[groupId] && !state.selectedGroupIds.includes(groupId)) {
-        state.selectedGroupIds.push(groupId);
+    selectGroup: (state, action: PayloadAction<{ id: string; addToSelection: boolean }>) => {
+      const { id, addToSelection } = action.payload;
+      
+      if (!addToSelection) {
+        state.selectedGroupIds = [];
+        state.selection.groupIds = [];
+      }
+      
+      if (state.groups[id] && !state.selectedGroupIds.includes(id)) {
+        state.selectedGroupIds.push(id);
+        state.selection.groupIds.push(id);
       }
     },
     deselectCard: (state, action: PayloadAction<string>) => {
       state.selectedCardIds = state.selectedCardIds.filter(id => id !== action.payload);
+      state.selection.cardIds = state.selection.cardIds.filter(id => id !== action.payload);
     },
     deselectConnection: (state, action: PayloadAction<string>) => {
       state.selectedConnectionIds = state.selectedConnectionIds.filter(id => id !== action.payload);
+      state.selection.connectionIds = state.selection.connectionIds.filter(id => id !== action.payload);
     },
     deselectGroup: (state, action: PayloadAction<string>) => {
       state.selectedGroupIds = state.selectedGroupIds.filter(id => id !== action.payload);
+      state.selection.groupIds = state.selection.groupIds.filter(id => id !== action.payload);
     },
     clearSelection: (state) => {
       state.selectedCardIds = [];
       state.selectedConnectionIds = [];
       state.selectedGroupIds = [];
+      state.selection = {
+        cardIds: [],
+        connectionIds: [],
+        groupIds: []
+      };
     },
     
     // History actions

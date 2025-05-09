@@ -1,0 +1,9 @@
+declare module 'cors';
+declare module 'helmet';
+declare module 'morgan';
+declare module 'compression';
+declare module 'node-cron';
+declare module 'rrule';
+declare module 'jspdf';
+declare module 'simple-peer';
+declare module 'socket.io'; 
