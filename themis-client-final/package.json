@@ -82,7 +82,7 @@
   },
   "scripts": {
     "start": "react-app-rewired start",
-    "build": "TSC_COMPILE_ON_ERROR=true react-app-rewired build",
+    "build": "TSC_COMPILE_ON_ERROR=true react-app-rewired build && cp -f public/_redirects build/_redirects",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",
     "setup-supabase": "./setup-supabase.sh",
@@ -92,7 +92,7 @@
     "netlify:deploy": "./netlify-deploy.sh",
     "netlify:deploy:prod": "./netlify-deploy.sh --prod",
     "netlify:dev": "netlify dev",
-    "postbuild": "cp ../public/_redirects build/"
+    "postbuild": "echo '/* /index.html 200' > build/_redirects"
   },
   "eslintConfig": {
     "extends": [

@@ -8,7 +8,18 @@
   # Default build command.
   command = "npm run build"
 
-# Redirects for SPA routing
+# Redirects for SPA routing - more specific first
+[[redirects]]
+  from = "/static/*"
+  to = "/static/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/assets/*"
+  to = "/assets/:splat"
+  status = 200
+
+# Catch-all redirect for SPA routing
 [[redirects]]
   from = "/*"
   to = "/index.html"

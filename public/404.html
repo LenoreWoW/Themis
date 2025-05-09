@@ -4,15 +4,17 @@
   <meta charset="utf-8">
   <title>Themis - Page Not Found</title>
   <script type="text/javascript">
-    // Single Page Apps for GitHub Pages
+    // Single Page Apps for GitHub Pages and Netlify
     // MIT License
     // https://github.com/rafgraph/spa-github-pages
-    var segmentCount = 0;
+    var pathSegmentsToKeep = 0;
     var l = window.location;
+    
+    // Redirect to the index.html page with the full path as a query parameter
     l.replace(
       l.protocol + '//' + l.hostname + (l.port ? ':' + l.port : '') +
-      l.pathname.split('/').slice(0, 1 + segmentCount).join('/') + '/?p=/' +
-      l.pathname.slice(1).split('/').slice(segmentCount).join('/').replace(/&/g, '~and~') +
+      l.pathname.split('/').slice(0, 1 + pathSegmentsToKeep).join('/') + '/?p=/' +
+      l.pathname.slice(1).split('/').slice(pathSegmentsToKeep).join('/').replace(/&/g, '~and~') +
       (l.search ? '&q=' + l.search.slice(1).replace(/&/g, '~and~') : '') +
       l.hash
     );
