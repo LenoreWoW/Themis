@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Box,
   Container,
@@ -23,7 +23,8 @@ import {
   DialogTitle,
   Grid,
   Alert,
-  useTheme
+  useTheme,
+  Snackbar
 } from '@mui/material';
 import {
   Refresh as ResetIcon,
@@ -38,26 +39,56 @@ import { Link as RouterLink } from 'react-router-dom';
 import { UserRole } from '../../types/index';
 import { QuestCategory, QuestStatus } from '../../types/Onboarding';
 import { useOnboarding } from '../../hooks/useOnboarding';
+import { useAuth } from '../../hooks/useAuth';
+import { useTranslation } from 'react-i18next';
 
 const TutorialSettingsPage: React.FC = () => {
   const theme = useTheme();
-  // Normally this would come from auth context
-  const currentUser = {
-    id: '1',
-    role: UserRole.PROJECT_MANAGER
-  };
+  const { user } = useAuth();
+  const { t } = useTranslation();
   
   const {
     quests,
     completedQuests,
     archivedQuests,
     resetQuest
-  } = useOnboarding(currentUser.id, currentUser.role);
+  } = useOnboarding(user?.id || '1', (user?.role || UserRole.PROJECT_MANAGER) as UserRole);
   
   const [globalTutorialsEnabled, setGlobalTutorialsEnabled] = useState(true);
   const [welcomeTutorialsEnabled, setWelcomeTutorialsEnabled] = useState(true);
+  const [showGuidedTour, setShowGuidedTour] = useState(false);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [questToReset, setQuestToReset] = useState<string | null>(null);
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState('');
+  const [snackbarSeverity, setSnackbarSeverity] = useState<'success' | 'info' | 'warning' | 'error'>('success');
+  
+  useEffect(() => {
+    // Check if tutorial is complete from localStorage
+    if (user) {
+      const tutorialCompleteKey = `tutorial_complete_${user.id}`;
+      const tutorialComplete = localStorage.getItem(tutorialCompleteKey) === 'true';
+      // Invert the value since we're showing "Show Guided Tour" toggle (not "Hide")
+      setShowGuidedTour(!tutorialComplete);
+    }
+  }, [user]);
+
+  // Handle toggling the guided tour
+  const handleGuidedTourToggle = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = event.target.checked;
+    setShowGuidedTour(newValue);
+    
+    if (user) {
+      // Set tutorial_complete to the opposite of show guided tour
+      localStorage.setItem(`tutorial_complete_${user.id}`, (!newValue).toString());
+      setSnackbarMessage(newValue 
+        ? t('settings.tutorial.guidedTourEnabled', 'Guided tour enabled. It will show on your next login.') 
+        : t('settings.tutorial.guidedTourDisabled', 'Guided tour disabled.')
+      );
+      setSnackbarSeverity('success');
+      setSnackbarOpen(true);
+    }
+  };
   
   // Handle resetting a quest
   const handleResetQuest = (questKey: string) => {
@@ -72,6 +103,11 @@ const TutorialSettingsPage: React.FC = () => {
       setResetConfirmOpen(false);
       setQuestToReset(null);
     }
+  };
+  
+  // Handle snackbar close
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
   };
   
   // Get status chip color
@@ -172,6 +208,26 @@ const TutorialSettingsPage: React.FC = () => {
             />
             <Typography variant="caption" color="text.secondary" display="block">
               When enabled, first-time users will be shown the welcome tutorial.
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12}>
+            <Divider sx={{ my: 1 }} />
+          </Grid>
+          
+          <Grid item xs={12}>
+            <FormControlLabel
+              control={
+                <Switch
+                  checked={showGuidedTour}
+                  onChange={handleGuidedTourToggle}
+                  color="primary"
+                />
+              }
+              label="Show guided tour"
+            />
+            <Typography variant="caption" color="text.secondary" display="block">
+              When enabled, the welcome pop-up and guided tour will be shown on your next login.
             </Typography>
           </Grid>
         </Grid>
@@ -277,18 +333,27 @@ const TutorialSettingsPage: React.FC = () => {
         <DialogTitle>Reset Tutorial?</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to reset this tutorial? It will be marked as not started, and you'll be able to complete it again.
+            Are you sure you want to reset this tutorial? This will mark it as not started, allowing you to complete it again.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setResetConfirmOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={confirmResetQuest} color="primary" variant="contained">
+          <Button onClick={() => setResetConfirmOpen(false)}>Cancel</Button>
+          <Button onClick={confirmResetQuest} color="primary" autoFocus>
             Reset
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Snackbar for notifications */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+      >
+        <Alert onClose={handleSnackbarClose} severity={snackbarSeverity}>
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
     </Container>
   );
 };
