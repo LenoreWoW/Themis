@@ -184,7 +184,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
   };
 
   const menuItems: MenuItem[] = [
-    { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard', role: ['ADMIN', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR'] },
+    { text: t('navigation.dashboard'), icon: <DashboardIcon />, path: '/dashboard' },
     { 
       text: t('navigation.workspaceMain'), 
       icon: <FolderIcon />, 
@@ -468,7 +468,10 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
           }
           
           // Check if the route requires a specific role
-          if (item.role && user?.role && !item.role.includes(user.role)) {
+          // Don't filter the workspaceMain menu items by role or the Dashboard
+          if (item.role && user?.role && !item.role.includes(user.role) && 
+              item.text !== t('navigation.workspaceMain') &&
+              item.text !== t('navigation.dashboard')) {
             return null;
           }
 
