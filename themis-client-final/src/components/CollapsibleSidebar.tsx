@@ -221,20 +221,17 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
     { 
       text: t('navigation.userManagement', 'User Management'), 
       icon: <PeopleIcon />, 
-      path: '/users',
-      role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'EXECUTIVE'] 
+      path: '/users'
     },
     { 
       text: t('navigation.departments'), 
       icon: <BusinessIcon />, 
-      path: '/departments',
-      role: ['ADMIN', 'MAIN_PMO', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR'] 
+      path: '/departments'
     },
     { 
       text: t('navigation.faculty'), 
       icon: <SchoolIcon />, 
-      path: '/faculty',
-      role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE'] 
+      path: '/faculty'
     },
     { 
       text: t('navigation.tutorials'), 
@@ -628,23 +625,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                                           fontSize: '0.9rem'
                                         }}
                                       />
-                                      {/* Add "Add Project" button if this is the Projects section */}
-                                      {grandchild.text === t('navigation.projects') && (
-                                        <IconButton 
-                                          component={NavLink}
-                                          to="/projects/new"
-                                          size="small"
-                                          sx={{ 
-                                            ml: 1, 
-                                            color: 'white',
-                                            '&:hover': { backgroundColor: alpha('#fff', 0.2) }
-                                          }}
-                                        >
-                                          <Tooltip title={t('projects.addProject', 'Add Project')}>
-                                            <AddIcon fontSize="small" />
-                                          </Tooltip>
-                                        </IconButton>
-                                      )}
                                     </ListItem>
                                   );
                                 })}
@@ -691,23 +671,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                               fontSize: '0.9rem'
                             }}
                           />
-                          {/* Add "Add Project" button if this is the Projects section */}
-                          {child.text === t('navigation.projects') && (
-                            <IconButton 
-                              component={NavLink}
-                              to="/projects/new"
-                              size="small"
-                              sx={{ 
-                                ml: 1, 
-                                color: 'white',
-                                '&:hover': { backgroundColor: alpha('#fff', 0.2) }
-                              }}
-                            >
-                              <Tooltip title={t('projects.addProject', 'Add Project')}>
-                                <AddIcon fontSize="small" />
-                              </Tooltip>
-                            </IconButton>
-                          )}
                         </ListItem>
                       );
                     })}
@@ -942,7 +905,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
           <List sx={{ pt: 1 }}>
             {settingsMenuItems.map((item) => {
               // Check if the route requires a specific role
-              if (item.role && user?.role && !item.role.includes(user.role)) {
+              // Skip role check for User Management, Faculty, and Departments
+              const isAdminItem = item.text === t('navigation.userManagement', 'User Management') ||
+                                  item.text === t('navigation.faculty') ||
+                                  item.text === t('navigation.departments');
+                                  
+              if (item.role && user?.role && !item.role.includes(user.role) && !isAdminItem) {
                 return null;
               }
               
