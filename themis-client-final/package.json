@@ -91,7 +91,8 @@
     "netlify": "netlify",
     "netlify:deploy": "./netlify-deploy.sh",
     "netlify:deploy:prod": "./netlify-deploy.sh --prod",
-    "netlify:dev": "netlify dev"
+    "netlify:dev": "netlify dev",
+    "postbuild": "cp ../public/_redirects build/"
   },
   "eslintConfig": {
     "extends": [

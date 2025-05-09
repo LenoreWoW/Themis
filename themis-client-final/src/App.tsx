@@ -119,8 +119,12 @@ const AppContent: React.FC = () => {
 
   // Check for first-time users when logged in
   useEffect(() => {
-    if (user) {
-      checkFirstTimeUser();
+    try {
+      if (user) {
+        checkFirstTimeUser();
+      }
+    } catch (error) {
+      console.error('Error checking first-time user status:', error);
     }
   }, [user, checkFirstTimeUser]);
 
