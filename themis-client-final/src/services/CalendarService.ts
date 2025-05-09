@@ -57,7 +57,7 @@ export interface BookingSlot {
 /**
  * Service to handle calendar-related operations
  */
-const calendarService = {
+export const calendarService = {
   /**
    * Fetches calendar events based on user role and permissions
    */

@@ -35,7 +35,11 @@ const NotificationInitializer: React.FC = () => {
     
     // Start calendar notification service (if user is logged in)
     if (user) {
-      CalendarNotificationService.startNotificationService();
+      try {
+        CalendarNotificationService.startNotificationService();
+      } catch (error) {
+        console.error('Failed to start calendar notification service:', error);
+      }
     }
     
     if (!user) return;

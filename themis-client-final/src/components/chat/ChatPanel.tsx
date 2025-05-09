@@ -437,16 +437,18 @@ const ChatPanel: React.FC = () => {
               
               <Box className={classes.channelActions}>
                 <Tooltip title="Start a Video Call">
-                  <Button
-                    startIcon={<VideocamIcon />}
-                    variant="outlined"
-                    color="primary"
-                    onClick={handleStartCall}
-                    disabled={callLoading || selectedChannel.isArchived}
-                    sx={{ mr: 1 }}
-                  >
-                    {callLoading ? 'Starting...' : 'Start Call'}
-                  </Button>
+                  <span>
+                    <Button
+                      startIcon={<VideocamIcon />}
+                      variant="outlined"
+                      color="primary"
+                      onClick={handleStartCall}
+                      disabled={callLoading || selectedChannel.isArchived}
+                      sx={{ mr: 1 }}
+                    >
+                      {callLoading ? 'Starting...' : 'Start Call'}
+                    </Button>
+                  </span>
                 </Tooltip>
                 <Tooltip title="Members">
                   <IconButton onClick={() => setShowChannelMembers(!showChannelMembers)}>

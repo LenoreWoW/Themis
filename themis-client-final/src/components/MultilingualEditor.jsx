@@ -173,24 +173,26 @@ const MultilingualEditor = ({
         </Tabs>
         <Box>
           <Tooltip title={t('common.translate')}>
-            <IconButton
-              onClick={handleTranslate}
-              disabled={isTranslating || (!enContent && !arContent)}
-            >
-              <TranslateIcon color={isTranslating ? 'disabled' : 'action'} />
-              {isTranslating && (
-                <CircularProgress
-                  size={24}
-                  sx={{
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    marginTop: '-12px',
-                    marginLeft: '-12px',
-                  }}
-                />
-              )}
-            </IconButton>
+            <span>
+              <IconButton
+                onClick={handleTranslate}
+                disabled={isTranslating || (!enContent && !arContent)}
+              >
+                <TranslateIcon color={isTranslating ? 'disabled' : 'action'} />
+                {isTranslating && (
+                  <CircularProgress
+                    size={24}
+                    sx={{
+                      position: 'absolute',
+                      top: '50%',
+                      left: '50%',
+                      marginTop: '-12px',
+                      marginLeft: '-12px',
+                    }}
+                  />
+                )}
+              </IconButton>
+            </span>
           </Tooltip>
           <Button
             size="small"

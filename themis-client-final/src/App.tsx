@@ -244,8 +244,9 @@ const AppContent: React.FC = () => {
                       <Route path="faculty" element={<PrivateRoute roleRequired={['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE']}><FacultyPage /></PrivateRoute>} />
                       <Route path="projects/new" element={<PrivateRoute roleRequired={['ADMIN', 'PROJECT_MANAGER', 'SUB_PMO', 'MAIN_PMO']}><ProjectApprovalPage /></PrivateRoute>} />
                       <Route path="approvals" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']}><ApprovalsPage /></PrivateRoute>} />
+                      <Route path="approvals/:tab" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE']}><ApprovalsPage /></PrivateRoute>} />
                       <Route path="project-approvals" element={<Navigate to="/approvals" replace />} />
-                      <Route path="change-requests" element={<PrivateRoute><ChangeRequestsPage /></PrivateRoute>} />
+                      <Route path="change-requests" element={<Navigate to="/approvals?tab=2" replace />} />
                       <Route path="ideation" element={<PrivateRoute><IdeationPage /></PrivateRoute>} />
                       <Route path="project-relationships" element={<PrivateRoute><ProjectRelationshipMapPage /></PrivateRoute>} />
                       <Route path="audit" element={<PrivateRoute roleRequired={['ADMIN', 'MAIN_PMO', 'EXECUTIVE']}><AuditPage /></PrivateRoute>} />

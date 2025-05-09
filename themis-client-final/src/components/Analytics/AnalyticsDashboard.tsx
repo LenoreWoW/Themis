@@ -745,36 +745,42 @@ const AnalyticsDashboard: React.FC = () => {
         
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title={t('analytics.saveReport', 'Save Report')}>
-            <Button
-              variant="outlined"
-              startIcon={<SaveIcon />}
-              onClick={saveReport}
-              disabled={saving || !selectedMetric}
-            >
-              {t('analytics.save', 'Save')}
-            </Button>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<SaveIcon />}
+                onClick={saveReport}
+                disabled={saving || !selectedMetric}
+              >
+                {t('analytics.save', 'Save')}
+              </Button>
+            </span>
           </Tooltip>
           
           <Tooltip title={t('analytics.exportPdf', 'Export as PDF')}>
-            <Button
-              variant="outlined"
-              startIcon={<PdfIcon />}
-              onClick={exportPdf}
-              disabled={exporting || !selectedMetric}
-            >
-              PDF
-            </Button>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<PdfIcon />}
+                onClick={exportPdf}
+                disabled={exporting || !selectedMetric}
+              >
+                PDF
+              </Button>
+            </span>
           </Tooltip>
           
           <Tooltip title={t('analytics.exportExcel', 'Export as Excel')}>
-            <Button
-              variant="outlined"
-              startIcon={<ExcelIcon />}
-              onClick={exportExcel}
-              disabled={exporting || !selectedMetric}
-            >
-              Excel
-            </Button>
+            <span>
+              <Button
+                variant="outlined"
+                startIcon={<ExcelIcon />}
+                onClick={exportExcel}
+                disabled={exporting || !selectedMetric}
+              >
+                Excel
+              </Button>
+            </span>
           </Tooltip>
         </Box>
       </Box>

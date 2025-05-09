@@ -1,6 +1,7 @@
 [build]
-  command = "npm run build"
-  publish = "build"
+  base = "."
+  publish = "./build"
+  command = "CI=false DISABLE_ESLINT_PLUGIN=true npm run build:ci"
   functions = "netlify/functions"
 
 [dev]

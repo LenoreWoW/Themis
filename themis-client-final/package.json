@@ -83,11 +83,15 @@
   "scripts": {
     "start": "react-app-rewired start",
     "build": "react-app-rewired build && echo \"/* /index.html 200\" > build/_redirects",
+    "build:ci": "node build.js",
     "test": "react-app-rewired test",
     "eject": "react-scripts eject",
     "presentation": "echo '\n\n🚀 Starting Themis Presentation Mode with Mock Data\n\n' && BROWSER=none react-app-rewired start",
     "setup-supabase": "./setup-supabase.sh",
-    "postinstall": "patch-package"
+    "postinstall": "patch-package",
+    "lint": "eslint \"src/**/*.{js,jsx,ts,tsx}\"",
+    "lint:fix": "eslint \"src/**/*.{js,jsx,ts,tsx}\" --fix",
+    "fix:lint": "node fix-lint-warnings.js"
   },
   "eslintConfig": {
     "extends": [

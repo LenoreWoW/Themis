@@ -111,6 +111,7 @@ interface MenuItem {
   role?: string[];
   submenu?: boolean;
   children?: MenuItem[];
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 interface CollapsibleSidebarProps {
@@ -197,6 +198,7 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
         { text: t('navigation.dependencies'), icon: <AccountTreeIcon />, path: '/dependencies' },
         { text: t('navigation.repository'), icon: <StorageIcon />, path: '/repository' },
         { text: t('navigation.chat'), icon: <ChatIcon />, path: '/chat' },
+        { text: t('navigation.approvals'), icon: <CheckCircleIcon />, path: '/approvals' },
         { 
           text: t('navigation.myWork'), 
           icon: <WorkIcon />, 
@@ -212,7 +214,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
         },
       ]
     },
-    { text: t('navigation.approvals'), icon: <CheckCircleIcon />, path: '/approvals' },
   ];
 
   // Settings menu items - for the slide-in panel

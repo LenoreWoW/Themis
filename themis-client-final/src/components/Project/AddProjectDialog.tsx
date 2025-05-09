@@ -432,7 +432,7 @@ const AddProjectDialog: React.FC<AddProjectDialogProps> = ({
         fullWidth
         key="add-project-dialog"
       >
-        <DialogTitle>
+        <DialogTitle component="div">
           <Typography variant="h5" component="div" fontWeight="bold">
             {t('project.addNew')}
           </Typography>

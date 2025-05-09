@@ -43,31 +43,36 @@ const calendarNotificationService = {
       const token = localStorage.getItem('token') || '';
       
       // Get current user for authentication
-      const currentUserResponse = await api.auth.getProfile(token);
-      if (!currentUserResponse.success || !currentUserResponse.data) {
-        console.error('Failed to get current user for notifications');
+      try {
+        const currentUserResponse = await api.auth.getProfile(token);
+        if (!currentUserResponse.success || !currentUserResponse.data) {
+          console.error('Failed to get current user for notifications');
+          return;
+        }
+        
+        // Fetch necessary data for notifications
+        const [meetings, assignments, projects, users] = await Promise.all([
+          this.fetchMeetings(token),
+          this.fetchAssignments(token),
+          this.fetchProjects(token),
+          this.fetchUsers(token)
+        ]);
+        
+        // Generate notifications using NotificationRulesService
+        const notifications = NotificationRulesService.checkCalendarEvents(
+          meetings,
+          assignments,
+          projects,
+          users
+        );
+        
+        // If there are notifications, send them to the server
+        if (notifications.length > 0) {
+          await this.sendNotifications(notifications, token);
+        }
+      } catch (profileError) {
+        console.error('Failed to get current user for notifications second on: ', profileError);
         return;
-      }
-      
-      // Fetch necessary data for notifications
-      const [meetings, assignments, projects, users] = await Promise.all([
-        this.fetchMeetings(token),
-        this.fetchAssignments(token),
-        this.fetchProjects(token),
-        this.fetchUsers(token)
-      ]);
-      
-      // Generate notifications using NotificationRulesService
-      const notifications = NotificationRulesService.checkCalendarEvents(
-        meetings,
-        assignments,
-        projects,
-        users
-      );
-      
-      // If there are notifications, send them to the server
-      if (notifications.length > 0) {
-        await this.sendNotifications(notifications, token);
       }
     } catch (error) {
       console.error('Error checking for calendar notifications:', error);

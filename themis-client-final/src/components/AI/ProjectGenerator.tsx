@@ -279,9 +279,11 @@ const ProjectGenerator: React.FC<ProjectGeneratorProps> = ({
                       Generated Template
                     </Typography>
                     <Tooltip title="Regenerate with current settings">
-                      <IconButton onClick={handleRegenerate} disabled={loading}>
-                        <RegenerateIcon />
-                      </IconButton>
+                      <span>
+                        <IconButton onClick={handleRegenerate} disabled={loading}>
+                          <RegenerateIcon />
+                        </IconButton>
+                      </span>
                     </Tooltip>
                   </Stack>
                   

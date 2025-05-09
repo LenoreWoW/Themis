@@ -85,6 +85,18 @@ const ApprovalsPage: React.FC = () => {
       return isNaN(tabValue) ? 0 : tabValue;
     }
     
+    // Check for tab parameter in the URL path (e.g., /approvals/2)
+    const pathParts = location.pathname.split('/');
+    const lastPart = pathParts[pathParts.length - 1];
+    if (lastPart && !isNaN(Number(lastPart))) {
+      return Number(lastPart);
+    }
+    
+    // Check if we got here via change-requests redirect
+    if (location.pathname.includes('change-requests')) {
+      return 2; // Change requests tab
+    }
+    
     return location.state?.activeTab ?? 0;
   };
 

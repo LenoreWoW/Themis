@@ -107,19 +107,21 @@ const DynamicTranslation: React.FC<DynamicTranslationProps> = ({
       
       {showTranslationIcon && !isTranslated && (
         <Tooltip title={isRTL ? 'ترجم المحتوى' : 'Translate content'}>
-          <IconButton
-            size="small"
-            color="primary"
-            onClick={handleTranslateClick}
-            disabled={isTranslating}
-            sx={{ ml: 0.5, opacity: 0.7 }}
-          >
-            {isTranslating ? (
-              <CircularProgress size={16} />
-            ) : (
-              <TranslateIcon fontSize="small" />
-            )}
-          </IconButton>
+          <span>
+            <IconButton
+              size="small"
+              color="primary"
+              onClick={handleTranslateClick}
+              disabled={isTranslating}
+              sx={{ ml: 0.5, opacity: 0.7 }}
+            >
+              {isTranslating ? (
+                <CircularProgress size={16} />
+              ) : (
+                <TranslateIcon fontSize="small" />
+              )}
+            </IconButton>
+          </span>
         </Tooltip>
       )}
     </Box>

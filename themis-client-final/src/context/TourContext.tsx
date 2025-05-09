@@ -280,6 +280,15 @@ export const TourProvider: React.FC<TourProviderProps> = ({ children }) => {
       
       try {
         const response = await apiRequest(`/users/${user.id}/tutorial-status`, 'GET');
+        
+        // Add null check before destructuring
+        if (!response.data) {
+          // Default to tutorial not complete if data is missing
+          setIsTourComplete(false);
+          setIsWelcomeOpen(true);
+          return;
+        }
+        
         const { tutorial_complete } = response.data;
         
         if (tutorial_complete === false) {

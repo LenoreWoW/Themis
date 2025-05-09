@@ -34,7 +34,7 @@ class ChatService {
     
     // Create the connection
     this.connection = new HubConnectionBuilder()
-      .withUrl(`${process.env.REACT_APP_API_URL}/hubs/chat?access_token=${this.token}`)
+      .withUrl(`${process.env.REACT_APP_API_URL || 'http://localhost:3000/api'}/hubs/chat?access_token=${this.token}`)
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Information)
       .build();
