@@ -222,6 +222,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
           role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR', 'TEAM_MEMBER']
         },
         { 
+          text: t('navigation.announcements', 'Announcements'), 
+          icon: <NotificationsIcon />, 
+          path: '/announcements',
+          role: ['ADMIN', 'MAIN_PMO', 'SUB_PMO', 'PROJECT_MANAGER', 'EXECUTIVE', 'DEPARTMENT_DIRECTOR', 'TEAM_MEMBER']
+        },
+        { 
           text: t('navigation.myWork'), 
           icon: <WorkIcon />, 
           path: '/workspace',
@@ -238,7 +244,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       ]
     },
     { text: t('navigation.onboarding'), icon: <EmojiEventsIcon />, path: '/onboarding' },
-    { text: t('navigation.help'), icon: <HelpIcon />, path: '/help' },
   ];
 
   // Settings menu items - for the slide-in panel
@@ -266,6 +271,12 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
       icon: <SchoolIcon />, 
       path: '/settings/tutorials',
       role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE', 'PROJECT_MANAGER'] 
+    },
+    { 
+      text: t('navigation.help', 'Help'), 
+      icon: <HelpIcon />, 
+      path: '/settings/help',
+      role: ['ADMIN', 'DEPARTMENT_DIRECTOR', 'SUB_PMO', 'MAIN_PMO', 'EXECUTIVE', 'PROJECT_MANAGER', 'TEAM_MEMBER'] 
     },
     { 
       text: t('navigation.auditLogs'), 
@@ -643,6 +654,23 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                                           fontSize: '0.9rem'
                                         }}
                                       />
+                                      {/* Add "Add Project" button if this is the Projects section */}
+                                      {grandchild.text === t('navigation.projects') && (
+                                        <IconButton 
+                                          component={NavLink}
+                                          to="/projects/new"
+                                          size="small"
+                                          sx={{ 
+                                            ml: 1, 
+                                            color: 'white',
+                                            '&:hover': { backgroundColor: alpha('#fff', 0.2) }
+                                          }}
+                                        >
+                                          <Tooltip title={t('projects.addProject', 'Add Project')}>
+                                            <PeopleIcon fontSize="small" />
+                                          </Tooltip>
+                                        </IconButton>
+                                      )}
                                     </ListItem>
                                   );
                                 })}
@@ -689,6 +717,23 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
                               fontSize: '0.9rem'
                             }}
                           />
+                          {/* Add "Add Project" button if this is the Projects section */}
+                          {child.text === t('navigation.projects') && (
+                            <IconButton 
+                              component={NavLink}
+                              to="/projects/new"
+                              size="small"
+                              sx={{ 
+                                ml: 1, 
+                                color: 'white',
+                                '&:hover': { backgroundColor: alpha('#fff', 0.2) }
+                              }}
+                            >
+                              <Tooltip title={t('projects.addProject', 'Add Project')}>
+                                <PeopleIcon fontSize="small" />
+                              </Tooltip>
+                            </IconButton>
+                          )}
                         </ListItem>
                       );
                     })}
@@ -791,43 +836,6 @@ const CollapsibleSidebar: React.FC<CollapsibleSidebarProps> = ({
           );
         })}
       </List>
-      
-      {/* Help Section */}
-      <Divider sx={{ mt: 2 }} />
-      <List>
-        <ListItem 
-          component={NavLink} 
-          to="/help"
-          sx={{
-            borderRadius: 0,
-            mb: 0.5,
-            px: 1.5,
-            color: 'white',
-            backgroundColor: location.pathname === '/help'
-              ? alpha('#fff', 0.1)
-              : 'transparent',
-            '&:hover': {
-              backgroundColor: alpha('#fff', 0.15),
-            },
-            transition: 'all 0.2s ease',
-          }}
-        >
-          <ListItemIcon sx={{ 
-            minWidth: 40, 
-            color: 'white',
-          }}>
-            <HelpIcon />
-          </ListItemIcon>
-          <ListItemText 
-            primary={t('navigation.help', 'Help')} 
-            primaryTypographyProps={{ 
-              fontWeight: location.pathname === '/help' ? 600 : 400,
-              fontSize: '0.9rem'
-            }}
-          />
-        </ListItem>
-      </List>
-      <Divider />
       
       {/* User profile section at the bottom - Discord style */}
       <UserProfileSection>
