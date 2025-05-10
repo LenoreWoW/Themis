@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import { BrowserRouter } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import store, { persistor } from './redux/store';
@@ -14,22 +13,23 @@ import './services/initServices';
 // Add import for notification styles
 import './styles/notification-highlight.css';
 
+// Fix for Emotion provider issues with multiple React versions
+// @ts-ignore
+window.React = React;
+
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 
+// Disable strict mode to prevent double-mounting issues with hooks
 root.render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <PersistGate loading={null} persistor={persistor}>
-        <BrowserRouter future={{ v7_startTransition: true }}>
-          <EasterEggProvider>
-            <App />
-          </EasterEggProvider>
-        </BrowserRouter>
-      </PersistGate>
-    </Provider>
-  </React.StrictMode>
+  <Provider store={store}>
+    <PersistGate loading={null} persistor={persistor}>
+      <EasterEggProvider>
+        <App />
+      </EasterEggProvider>
+    </PersistGate>
+  </Provider>
 );
 
 // If you want your app to work offline and load faster, you can change
