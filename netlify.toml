@@ -6,7 +6,7 @@
   publish = "themis-client-final/build"
   
   # Updated build command to ensure dependencies are installed correctly
-  command = "cd themis-client-final && npm install && npm run build"
+  command = "chmod +x netlify-prebuild.sh && ./netlify-prebuild.sh && cd themis-client-final && npm install && npm run build"
 
 # Plugin to install function dependencies
 [[plugins]]
