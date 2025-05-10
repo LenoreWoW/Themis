@@ -16,5 +16,22 @@ module.exports = function override(config, env) {
     config.devtool = 'source-map';
   }
   
+  // Fix for stylis-plugin-rtl source map warning
+  const rules = config.module.rules.find(rule => Array.isArray(rule.oneOf)).oneOf;
+  
+  // Find the source-map-loader rule
+  const sourceMapRule = config.module.rules.find(
+    rule => rule.loader && String(rule.loader).includes('source-map-loader')
+  );
+  
+  if (sourceMapRule) {
+    // Add exclusion for stylis-plugin-rtl
+    sourceMapRule.exclude = [
+      /node_modules[/\\]stylis-plugin-rtl/,
+      ...(Array.isArray(sourceMapRule.exclude) ? sourceMapRule.exclude : 
+         sourceMapRule.exclude ? [sourceMapRule.exclude] : [])
+    ];
+  }
+  
   return config;
 } 
