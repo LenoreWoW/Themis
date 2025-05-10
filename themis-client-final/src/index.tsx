@@ -1,8 +1,6 @@
 import React from 'react';
 
-// Make React globally available
-// This needs to happen BEFORE any emotion imports or component rendering
-window.React = React;
+// Remove global React assignment
 
 import ReactDOM from 'react-dom/client';
 import './index.css';
@@ -18,9 +16,7 @@ import './services/initServices';
 // Add import for notification styles
 import './styles/notification-highlight.css';
 
-// Fix for Emotion provider issues with multiple React versions
-// @ts-ignore
-window.React = React; // Ensure it's set even after all imports
+// Remove second global React assignment
 
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement

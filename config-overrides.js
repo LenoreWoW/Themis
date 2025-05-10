@@ -1,8 +1,18 @@
+const path = require('path');
+
 /**
  * React App Rewired configuration
  * This file is used by react-app-rewired to modify the webpack config
  */
 module.exports = function override(config, env) {
+  // Force a single React instance by explicitly aliasing to node_modules paths
+  config.resolve = config.resolve || {};
+  config.resolve.alias = {
+    ...(config.resolve.alias || {}),
+    'react': path.resolve(__dirname, 'node_modules', 'react'),
+    'react-dom': path.resolve(__dirname, 'node_modules', 'react-dom'),
+  };
+  
   // Disable React Fast Refresh completely
   if (env === 'development') {
     // Remove ReactRefreshPlugin from the plugins array
