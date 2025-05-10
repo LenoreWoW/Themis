@@ -105,19 +105,6 @@
         window.history.replaceState({}, document.title, newUrl);
       }
     </script>
-    <script>
-      // Fix for React initialization issues
-      window.addEventListener('error', function(e) {
-        // Check if the error is related to React hooks
-        if (e && e.message && (e.message.includes('useMemo') || e.message.includes('React hook'))) {
-          console.error('React hook error detected, will reload page');
-          // Give the app a moment to load properly first
-          setTimeout(function() {
-            window.location.reload();
-          }, 1000);
-        }
-      });
-    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

@@ -95,7 +95,7 @@ const FullScreenSpinner = () => (
 // AppContent component with simplified provider nesting
 const AppContent: React.FC = () => {
   const { i18n } = useTranslation();
-  const { themeMode, isDarkMode } = useTheme();
+  const { isDarkMode } = useTheme();
   const { user, isAuthenticated } = useAuth();
   const { checkFirstTimeUser } = useOnboardingSystem();
   const location = useLocation();
@@ -111,12 +111,10 @@ const AppContent: React.FC = () => {
   const [direction, setDirection] = useState<Direction>(initialDirection);
   const [isAppReady, setIsAppReady] = useState(false);
 
-  // Create theme once based on dark mode status
-  const selectedTheme = useMemo(() => {
-    return isDarkMode 
-      ? createAppTheme(direction, 'dark') 
-      : createAppTheme(direction, 'light');
-  }, [isDarkMode, direction]);
+  // Create theme based on current mode
+  const theme = isDarkMode 
+    ? createAppTheme(direction, 'dark') 
+    : createAppTheme(direction, 'light');
 
   // Ensure app is cleaned before rendering
   useEffect(() => {
@@ -194,7 +192,7 @@ const AppContent: React.FC = () => {
 
   return (
     <CacheProvider value={cache}>
-      <MuiThemeProvider theme={selectedTheme}>
+      <MuiThemeProvider theme={theme}>
         <CssBaseline />
         <NotificationProvider>
           <ProjectProvider>
