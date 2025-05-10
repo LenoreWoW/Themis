@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, BrowserRouter } from 'react-router-dom';
 import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction, Stack, CircularProgress, Box } from '@mui/material';
 import createAppTheme from './theme';
@@ -8,7 +8,7 @@ import { ProjectProvider } from './context/ProjectContext';
 import { TaskProvider } from './context/TaskContext';
 import { TaskRequestProvider } from './context/TaskRequestContext';
 import { NotificationProvider } from './context/NotificationContext';
-import ThemeContext, { ThemeProvider, useTheme } from './context/ThemeContext';
+import { ThemeProvider, useTheme } from './context/ThemeContext';
 import PrivateRoute from './components/common/PrivateRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
@@ -71,7 +71,6 @@ import createCache from '@emotion/cache';
 import rtlPlugin from 'stylis-plugin-rtl';
 import { prefixer } from 'stylis';
 
-// Clear all test data on application startup
 // Force clean data on every app load
 initializeCleanApplication();
 
@@ -93,15 +92,14 @@ const FullScreenSpinner = () => (
   </Box>
 );
 
-// AppContent component separated to use theme context
+// AppContent component with simplified provider nesting
 const AppContent: React.FC = () => {
-  const { i18n, t } = useTranslation();
+  const { i18n } = useTranslation();
   const { themeMode, isDarkMode } = useTheme();
-  const selectedTheme = useMemo(() => (isDarkMode ? createAppTheme('rtl', 'dark') : createAppTheme('rtl', 'light')), [isDarkMode]);
-  const location = useLocation();
-  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuth();
   const { checkFirstTimeUser } = useOnboardingSystem();
+  const location = useLocation();
+  const navigate = useNavigate();
   
   // State for welcome modal
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
@@ -111,8 +109,14 @@ const AppContent: React.FC = () => {
   const initialDirection = savedLanguage === 'ar' ? 'rtl' : 'ltr';
   
   const [direction, setDirection] = useState<Direction>(initialDirection);
-  const [currentTheme, setCurrentTheme] = useState(selectedTheme);
   const [isAppReady, setIsAppReady] = useState(false);
+
+  // Create theme once based on dark mode status
+  const selectedTheme = useMemo(() => {
+    return isDarkMode 
+      ? createAppTheme(direction, 'dark') 
+      : createAppTheme(direction, 'light');
+  }, [isDarkMode, direction]);
 
   // Ensure app is cleaned before rendering
   useEffect(() => {
@@ -152,11 +156,9 @@ const AppContent: React.FC = () => {
   const handleDirectionChange = (newDirection: Direction) => {
     console.log('Direction changed to:', newDirection);
     setDirection(newDirection);
-    setCurrentTheme(selectedTheme);
     
     // Set document dir attribute
     document.documentElement.dir = newDirection;
-    document.dir = newDirection;
     
     // Add appropriate font for Arabic
     if (newDirection === 'rtl' && !document.getElementById('arabic-font')) {
@@ -168,17 +170,12 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Update theme when mode changes
-  useEffect(() => {
-    setCurrentTheme(selectedTheme);
-  }, [selectedTheme]);
-
   // Clean up mock data on application startup
   useEffect(() => {
     // Remove mock data from localStorage
     cleanupMockData();
     
-    // Try to initialize scheduler service (will only work when authenticated)
+    // Try to initialize scheduler service
     try {
       const SchedulerService = require('./services/SchedulerService').default;
       const schedulerService = SchedulerService.getInstance();
@@ -189,7 +186,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   if (!isAppReady) {
-    return null; // Don't render until app is cleaned
+    return null;
   }
 
   // Choose the right cache based on direction
@@ -197,7 +194,7 @@ const AppContent: React.FC = () => {
 
   return (
     <CacheProvider value={cache}>
-      <MuiThemeProvider theme={currentTheme}>
+      <MuiThemeProvider theme={selectedTheme}>
         <CssBaseline />
         <NotificationProvider>
           <ProjectProvider>
@@ -273,21 +270,7 @@ const AppContent: React.FC = () => {
   );
 };
 
-const ProtectedRoutes = () => {
-  const { user, isLoading } = useAuth();
-  const location = useLocation();
-
-  if (isLoading) {
-    return <FullScreenSpinner />;
-  }
-
-  if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
-  }
-
-  return <React.Fragment>{React.createElement('outlet')}</React.Fragment>;
-};
-
+// Root App component - simplified to reduce the nesting level
 const App: React.FC = () => {
   return (
     <BrowserRouter>

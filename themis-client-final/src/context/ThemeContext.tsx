@@ -1,7 +1,5 @@
-import React, { createContext, useContext } from 'react';
-import { ThemeProvider as MuiThemeProvider, PaletteMode } from '@mui/material';
+import React, { createContext, useContext, useMemo } from 'react';
 import useThemeMode, { ThemeMode } from '../hooks/useThemeMode';
-import { lightTheme, darkTheme } from '../theme/modernTheme';
 
 // Define the context type
 interface ThemeContextType {
@@ -12,32 +10,43 @@ interface ThemeContextType {
   setThemeMode: (mode: ThemeMode) => void;
 }
 
-// Create the context with a default value
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+// Create the context with default values
+const ThemeContext = createContext<ThemeContextType>({
+  themeMode: 'light',
+  isDarkMode: false,
+  isLightMode: true,
+  toggleThemeMode: () => {},
+  setThemeMode: () => {},
+});
 
 // Create the provider component
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  // Get theme state and functions
   const themeHook = useThemeMode();
   
-  // Use the appropriate theme based on the current mode
-  const theme = themeHook.themeMode === 'dark' ? darkTheme : lightTheme;
+  // Create memoized context value
+  const contextValue = useMemo(() => ({
+    themeMode: themeHook.themeMode,
+    isDarkMode: themeHook.isDarkMode,
+    isLightMode: themeHook.isLightMode,
+    toggleThemeMode: themeHook.toggleThemeMode,
+    setThemeMode: themeHook.setThemeMode
+  }), [
+    themeHook.themeMode,
+    themeHook.isDarkMode,
+    themeHook.isLightMode,
+    themeHook.toggleThemeMode,
+    themeHook.setThemeMode
+  ]);
 
   return (
-    <ThemeContext.Provider value={themeHook}>
-      <MuiThemeProvider theme={theme}>
-        {children}
-      </MuiThemeProvider>
+    <ThemeContext.Provider value={contextValue}>
+      {children}
     </ThemeContext.Provider>
   );
 };
 
-// Create a custom hook to use the theme context
-export const useTheme = (): ThemeContextType => {
-  const context = useContext(ThemeContext);
-  if (context === undefined) {
-    throw new Error('useTheme must be used within a ThemeProvider');
-  }
-  return context;
-};
+// Custom hook to use the theme context
+export const useTheme = () => useContext(ThemeContext);
 
 export default ThemeContext; 
