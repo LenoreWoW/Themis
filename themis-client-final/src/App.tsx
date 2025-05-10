@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, BrowserRouter } from 'react-router-dom';
 import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction, Stack, CircularProgress, Box } from '@mui/material';
-// Make sure React is available from window when importing Emotion
-if (typeof window !== 'undefined' && window.React === undefined) {
-  window.React = React;
-}
+// React is now set in index.tsx before any imports
 import createAppTheme from './theme';
 import { useAuth } from './hooks/useAuth';
 import { AuthProvider } from './context/AuthContext';
