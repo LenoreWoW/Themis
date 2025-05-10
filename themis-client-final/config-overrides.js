@@ -1,29 +1,29 @@
 const path = require('path');
+const { addWebpackAlias, addWebpackPlugin, override } = require('customize-cra');
 
 /**
  * React App Rewired configuration
  * This file is used by react-app-rewired to modify the webpack config
  */
-module.exports = function override(config, env) {
+module.exports = override(
   // Force a single React instance by explicitly aliasing to node_modules paths
-  config.resolve = config.resolve || {};
-  config.resolve.alias = {
-    ...(config.resolve.alias || {}),
+  addWebpackAlias({
     'react': path.resolve(__dirname, 'node_modules', 'react'),
     'react-dom': path.resolve(__dirname, 'node_modules', 'react-dom'),
-  };
-
-  // Fix React Refresh issues by ensuring it's properly loaded
-  if (env === 'development') {
-    // Remove problematic alias and let webpack resolve react-refresh normally
-    // If needed, uncomment and use proper path:
-    // config.resolve.alias['react-refresh/runtime'] = path.resolve(__dirname, 'node_modules', 'react-refresh', 'runtime');
-  }
+  }),
   
-  // Enable source maps for production build
-  if (env === 'production') {
-    config.devtool = 'source-map';
+  // Custom config modifications
+  (config) => {
+    // Disable ModuleScopePlugin
+    config.resolve.plugins = (config.resolve.plugins || []).filter(
+      plugin => !(plugin.constructor && plugin.constructor.name && plugin.constructor.name === 'ModuleScopePlugin')
+    );
+    
+    // Enable source maps for production build
+    if (process.env.NODE_ENV === 'production') {
+      config.devtool = 'source-map';
+    }
+    
+    return config;
   }
-  
-  return config;
-}
+);
