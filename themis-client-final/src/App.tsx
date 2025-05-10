@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Routes, Route, Navigate, useLocation, useNavigate, BrowserRouter } from 'react-router-dom';
 import { CssBaseline, ThemeProvider as MuiThemeProvider, Direction, Stack, CircularProgress, Box } from '@mui/material';
+// Make sure React is available from window when importing Emotion
+if (typeof window !== 'undefined' && window.React === undefined) {
+  window.React = React;
+}
 import createAppTheme from './theme';
 import { useAuth } from './hooks/useAuth';
 import { AuthProvider } from './context/AuthContext';
@@ -189,6 +193,12 @@ const AppContent: React.FC = () => {
 
   // Choose the right cache based on direction
   const cache = direction === 'rtl' ? rtlCache : ltrCache;
+  
+  // Ensure cache is valid
+  if (!cache) {
+    console.error('Cache is not properly initialized');
+    return <FullScreenSpinner />;
+  }
 
   return (
     <CacheProvider value={cache}>
